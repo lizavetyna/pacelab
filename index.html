@@ -98,6 +98,8 @@
     letter-spacing: -0.02em;
     line-height: 1;
     color: var(--ink);
+    position: relative;
+    display: inline-block;
   }
   .calibrator .ctime .it { font-style: italic; font-weight: 700; }
   .calibrator .cmode {
@@ -106,6 +108,75 @@
     letter-spacing: 0.04em;
   }
   .calibrator .cmode.real { color: var(--blue); }
+
+  /* Shimmer effect — draws the eye to the calibrator before it's used */
+  .ctime.shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--ink) 0%,
+      var(--ink) 40%,
+      rgba(0,51,255,0.85) 50%,
+      var(--ink) 60%,
+      var(--ink) 100%
+    );
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: shimmer-text 3s ease-in-out infinite;
+  }
+  @keyframes shimmer-text {
+    0%   { background-position: 100% 0; }
+    50%  { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  .calibrate-btn.shimmer {
+    position: relative;
+    overflow: hidden;
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+    box-shadow: 0 0 0 0 rgba(0,51,255,0.55), 0 4px 16px rgba(0,51,255,0.25);
+    animation: shimmer-pulse 1.8s ease-in-out infinite;
+  }
+  .calibrate-btn.shimmer:hover {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 8px rgba(0,51,255,0.18), 0 6px 20px rgba(0,51,255,0.4);
+  }
+  .calibrate-btn.shimmer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,0.6) 50%,
+      transparent 100%
+    );
+    animation: shimmer-sweep 1.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes shimmer-sweep {
+    0%   { left: -60%; }
+    60%  { left: 110%; }
+    100% { left: 110%; }
+  }
+  @keyframes shimmer-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(0,51,255,0.0), 0 4px 16px rgba(0,51,255,0.25);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgba(0,51,255,0.12), 0 6px 24px rgba(0,51,255,0.4);
+    }
+  }
   .calibrate-btn {
     background: var(--ink);
     color: var(--paper);
@@ -710,11 +781,21 @@
     text-align: center;
     transition: border-color .15s, background .15s;
     cursor: pointer;
+    position: relative;
   }
   .upload:hover, .upload.drag {
     border-color: var(--ink);
     background: var(--paper-2);
   }
+  .upload.locked {
+    border-color: rgba(0,51,255,0.25);
+    background: rgba(0,51,255,0.02);
+  }
+  .upload.locked:hover {
+    border-color: var(--blue);
+    background: rgba(0,51,255,0.05);
+  }
+  .upload.locked .upload-icon { color: var(--blue); }
   .upload-icon {
     font-family: "Fraunces", serif;
     font-size: 32px;
@@ -1764,7 +1845,7 @@
 <div class="wrap">
 
   <div class="top">
-    <h1>Compare any <span class="it">marathon's</span> climb.</h1>
+    <h1>We know the <span class="it">future.</span><br>No bullshit. Just science.</h1>
     <div class="meta">
       <strong>5 of 10</strong> selected<br>
       <span id="metaDistance">42.2 km</span> · sea level @ 0 m
@@ -1775,7 +1856,7 @@
     <div class="calibrator-left">
       <div>
         <div class="clbl">Baseline marathon time</div>
-        <div class="ctime"><span id="calTime">4:00:00</span></div>
+        <div class="ctime shimmer" id="calTimeWrap"><span id="calTime">4:00:00</span></div>
       </div>
       <div>
         <div class="clbl">Mode</div>
@@ -1784,7 +1865,7 @@
     </div>
     <div style="display:flex; gap:8px;">
       <button class="calibrate-btn reset" id="calReset" style="display:none;">Reset</button>
-      <button class="calibrate-btn" id="calBtn">Calculate your REAL time</button>
+      <button class="calibrate-btn shimmer" id="calBtn">Calculate your REAL time</button>
     </div>
     <div class="calibrator-form" id="calForm">
       <div class="cf-tabs">
@@ -1836,13 +1917,12 @@
 
   <div class="unlock-banner" id="unlockBanner">
     <div class="ub-left">
-      <div class="ub-eyebrow">Premium · 5 more marathons</div>
+      <div class="ub-eyebrow">Premium · 5 more marathons + GPX upload</div>
       <div class="ub-title">Unlock <span class="it">Berlin · Tokyo · Chicago · Paris · Valencia</span></div>
-      <div class="ub-sub">Leave your email and they all open up — free, forever, no card.</div>
+      <div class="ub-sub">Leave your email + $1.99 and unlock everything — all 5 premium courses plus GPX upload. Forever.</div>
     </div>
     <div class="ub-right">
-      <button class="ub-btn" id="ubBtn">Unlock all marathons</button>
-      <div class="ub-fine">or pay <button class="ub-link" id="ubSupport">$1 to support</button></div>
+      <button class="ub-btn" id="ubBtn">Unlock everything</button>
     </div>
   </div>
 
@@ -1858,11 +1938,11 @@
       <div class="pick-pills" id="pickPills"></div>
     </div>
     <div class="picker-section">
-      <div class="picker-label">OR DROP YOUR OWN GPX FILE</div>
-      <label class="upload" id="uploadBox">
+      <div class="picker-label" id="uploadLabel">OR DROP YOUR OWN GPX FILE — <span style="color:var(--blue);text-transform:none;letter-spacing:0.04em;">🔒 premium feature</span></div>
+      <label class="upload locked" id="uploadBox">
         <div class="upload-icon">↑</div>
         <div class="upload-text"><strong>Click to upload</strong> or drag a .gpx file here</div>
-        <div class="upload-sub">YOUR RUN STAYS IN YOUR BROWSER — NOTHING IS UPLOADED</div>
+        <div class="upload-sub">UNLOCK GPX UPLOAD WITH ANY PREMIUM TIER · YOUR RUN STAYS IN YOUR BROWSER</div>
         <input type="file" id="gpxInput" accept=".gpx,application/gpx+xml,text/xml">
         <div class="upload-status" id="uploadStatus"></div>
       </label>
@@ -1904,12 +1984,12 @@
 
   <div class="coaching-hook">
     <div class="ch-left">
-      <div class="ch-eyebrow">Want this calibrated to you?</div>
-      <div class="ch-title">A <span class="it">personal pace plan</span> — your km splits across any marathon, including elevation, heat, and your training history.</div>
-      <div class="ch-sub">We'll work with you 1:1 to build a course-specific pacing strategy. Send a message — we'll get back same week.</div>
+      <div class="ch-eyebrow">Talk to us</div>
+      <div class="ch-title">Any <span class="it">questions or suggestions?</span></div>
+      <div class="ch-sub">Want more marathons in the catalogue, or a personal pace calculation for your next race? Send us a message — we'll get back.</div>
     </div>
     <div class="ch-right">
-      <a class="ch-btn" href="mailto:hello@pacelab.run?subject=Personal%20pace%20plan&body=Hi%20—%20I'd%20like%20to%20get%20a%20personalized%20pace%20plan.%20My%20target%20marathon%20is%20...%20and%20my%20current%20flat%20time%20is%20...">Get in touch</a>
+      <a class="ch-btn" href="mailto:hello@pacelab.me?subject=Pacelab%20—%20hello&body=Hi%20—%20">Contact us</a>
       <div class="ch-fine">Replace the email above with yours before publishing</div>
     </div>
   </div>
@@ -1921,8 +2001,8 @@
       <div class="ft-fine">No tracking. GPX files stay in your browser.</div>
     </div>
     <div class="ft-right">
-      <div class="ft-prompt">All 11 marathons free with email.</div>
-      <button class="ft-cta-btn" id="footerUnlockBtn">Unlock all marathons</button>
+      <div class="ft-prompt">Subscribe to be in touch for new Marathons, runner.</div>
+      <button class="ft-cta-btn" id="footerUnlockBtn">Subscribe + unlock all</button>
       <div class="ft-fine" id="footerStatus"></div>
     </div>
   </footer>
@@ -1943,12 +2023,12 @@ const PLOT_DATA = {"distance_km":[0.0,0.02,0.04,0.06,0.08,0.1,0.12,0.14,0.16,0.1
 /* ================== MARATHON CATALOGUE ================== */
 const MARATHONS = {
   // Original 5 — real FIT/published data — FREE
-  "Madrid":    {col:"madrid_relative_altitude_m",    color:"#0033ff", gain:334, lost:362, country:"Spain",        source:"fit",     defaultOn:true,  tier:"free", emoji:"🇪🇸", month:"Apr", tempC:17, weather:"Warm, dry"},
+  "Madrid":    {col:"madrid_relative_altitude_m",    color:"#0033ff", gain:334, lost:362, country:"Spain",        source:"fit",     defaultOn:false, tier:"free", emoji:"🇪🇸", month:"Apr", tempC:17, weather:"Warm, dry"},
   "Boston":    {col:"boston_relative_altitude_m",    color:"#ff4d1f", gain:188, lost:314, country:"USA",          source:"fit",     defaultOn:true,  tier:"free", emoji:"🇺🇸", month:"Apr", tempC:10, weather:"Cool, variable"},
   "New York":  {col:"new_york_relative_altitude_m",  color:"#ffb800", gain:281, lost:278, country:"USA",          source:"fit",     defaultOn:true,  tier:"free", emoji:"🇺🇸", month:"Nov", tempC:10, weather:"Crisp, breezy"},
   "London":    {col:"london_relative_altitude_m",    color:"#00a878", gain:123, lost:165, country:"UK",           source:"fit",     defaultOn:true,  tier:"free", emoji:"🇬🇧", month:"Apr", tempC:12, weather:"Mild, damp"},
-  "Sydney":    {col:"sydney_relative_altitude_m",    color:"#9333ea", gain:313, lost:396, country:"Australia",    source:"profile", defaultOn:true,  tier:"free", emoji:"🇦🇺", month:"May", tempC:17, weather:"Mild autumn"},
-  "Cape Town": {col:"cape_town_relative_altitude_m", color:"#14b8a6", gain:214, lost:209, country:"South Africa", source:"fit", defaultOn:true,  tier:"free", emoji:"🇿🇦", month:"May 24", tempC:14, weather:"Cool autumn morning · 24 May 2026"},
+  "Sydney":    {col:"sydney_relative_altitude_m",    color:"#9333ea", gain:313, lost:396, country:"Australia",    source:"profile", defaultOn:false, tier:"free", emoji:"🇦🇺", month:"May", tempC:17, weather:"Mild autumn"},
+  "Cape Town": {col:"cape_town_relative_altitude_m", color:"#14b8a6", gain:214, lost:209, country:"South Africa", source:"fit", defaultOn:false, tier:"free", emoji:"🇿🇦", month:"May 24", tempC:14, weather:"Cool autumn morning · 24 May 2026"},
   // Additions — approximate synthesized profiles — PAID
   "Berlin":    {col:"berlin_relative_altitude_m",    color:"#e11d48", gain:91,  lost:91,  country:"Germany",      source:"approx", tier:"paid", emoji:"🇩🇪", month:"Sep", tempC:13, weather:"Cool, ideal"},
   "Chicago":   {col:"chicago_relative_altitude_m",   color:"#0ea5e9", gain:25,  lost:30,  country:"USA",          source:"approx", tier:"paid", emoji:"🇺🇸", month:"Oct", tempC:13, weather:"Cool, windy"},
@@ -1957,8 +2037,10 @@ const MARATHONS = {
   "Valencia":  {col:"valencia_relative_altitude_m",  color:"#f97316", gain:32,  lost:35,  country:"Spain",        source:"approx", tier:"paid", emoji:"🇪🇸", month:"Dec", tempC:14, weather:"Mild, calm"}
 };
 
-const PRICE_SINGLE = 2;
-const PRICE_BUNDLE = 9;
+const PRICE_SINGLE = 1.99;
+const PRICE_BUNDLE = 9.99;
+// Helper to format money — drops trailing zero for whole dollars, keeps two decimals otherwise
+const fmtPrice = (n) => `$${n.toFixed(2)}`;
 
 // Available color pool for custom uploads
 const CUSTOM_COLORS = ["#06b6d4", "#84cc16", "#ec4899", "#f59e0b", "#8b5cf6", "#10b981"];
@@ -1987,18 +2069,21 @@ const $ = id => document.getElementById(id);
 // Persist unlocks in localStorage so signup state survives reloads.
 const STORAGE_KEY = "stride_unlocked_v1";
 const EMAIL_KEY = "stride_email_v1";
+const GPX_KEY = "stride_gpx_v1";
 // PASTE YOUR FORMSPREE FORM ID HERE after signing up at formspree.io
 // Example: "xyzabcde" (random string in your form's URL).
 // Until set, signups are saved to localStorage so nothing is lost while wiring up.
 const FORMSPREE_ID = "";
 let unlocked = new Set();
 let userEmail = null;
+let gpxPaid = false;
 try {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
     JSON.parse(stored).forEach(n => unlocked.add(n));
   }
   userEmail = localStorage.getItem(EMAIL_KEY);
+  gpxPaid = localStorage.getItem(GPX_KEY) === "1";
 } catch (e) { /* localStorage not available — that's fine */ }
 
 function persistUnlocked() {
@@ -2012,13 +2097,20 @@ function persistEmail(email) {
     userEmail = email;
   } catch (e) { /* nothing to do */ }
 }
-// Once email is given, ALL premium courses unlock — this is the new model.
+function persistGpxPaid() {
+  try {
+    localStorage.setItem(GPX_KEY, "1");
+    gpxPaid = true;
+  } catch (e) { /* nothing to do */ }
+}
+// Once email is given, ALL premium courses + GPX upload unlock — this is the new model.
 function emailUnlocksEverything() {
   if (!userEmail) return false;
   Object.keys(MARATHONS).forEach(n => {
     if (MARATHONS[n].tier === 'paid') unlocked.add(n);
   });
   persistUnlocked();
+  if (!gpxPaid) persistGpxPaid();
   return true;
 }
 
@@ -2030,6 +2122,17 @@ function isAvailable(name) {
 }
 function isLocked(name) {
   return !isAvailable(name);
+}
+
+// GPX upload is now a paid feature. Unlocked when:
+//   - user has given email (any tier with email = full unlock incl. GPX)
+//   - user paid the single-tier with GPX context (gpxPaid flag)
+//   - user paid any bundle (promo or non-email) which includes GPX
+function isGpxUnlocked() {
+  if (userEmail) return true;
+  if (gpxPaid) return true;
+  // Bundle modes set this implicitly via gpxPaid below
+  return false;
 }
 
 // On load, if user has previously given email, unlock everything
@@ -2211,7 +2314,7 @@ function renderPicker() {
     const net = m.gain - m.lost;
     const sign = net > 0 ? "+" : "";
     let tagHtml = "";
-    if (locked) tagHtml = `<span class="lock-tag">🔒 $${PRICE_SINGLE}</span>`;
+    if (locked) tagHtml = `<span class="lock-tag">🔒 ${fmtPrice(PRICE_SINGLE)}</span>`;
     else if (isUnlocked) tagHtml = `<span class="lock-tag">UNLOCKED</span>`;
     return `<button class="pick-pill ${active?'active':''} ${locked?'locked':''} ${isUnlocked?'unlocked':''}" data-name="${name}">
       <span class="pdot" style="background:${m.color}"></span>
@@ -2227,7 +2330,7 @@ function renderPicker() {
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">${freePills}</div>
     <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
       Premium courses
-      <span style="font-size:9px;letter-spacing:0.04em;text-transform:none;background:rgba(0,51,255,0.08);color:var(--blue);padding:2px 8px;border-radius:100px;">$${PRICE_SINGLE} each · $${PRICE_BUNDLE} unlocks all</span>
+      <span style="font-size:9px;letter-spacing:0.04em;text-transform:none;background:rgba(0,51,255,0.08);color:var(--blue);padding:2px 8px;border-radius:100px;">${fmtPrice(PRICE_SINGLE)} each · ${fmtPrice(PRICE_BUNDLE)} unlocks all</span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;">${paidPills}</div>
   `;
@@ -2257,18 +2360,62 @@ const uploadBox = $("uploadBox");
 const gpxInput = $("gpxInput");
 const uploadStatus = $("uploadStatus");
 
+// Gate: open the unlock modal if GPX hasn't been paid for yet.
+// Returns true if we intercepted (caller should bail).
+function gateGpxUpload(e) {
+  if (isGpxUnlocked()) return false;
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  openUnlockModal({ type: 'gpx-upload', name: null });
+  return true;
+}
+
+// Refresh the upload box visual state — called by renderAll
+function refreshUploadBox() {
+  if (!uploadBox) return;
+  if (isGpxUnlocked()) {
+    uploadBox.classList.remove("locked");
+    const lbl = $("uploadLabel");
+    if (lbl) lbl.innerHTML = `OR DROP YOUR OWN GPX FILE — <span style="color:#0ea5e9;text-transform:none;letter-spacing:0.04em;">✓ unlocked</span>`;
+    const sub = uploadBox.querySelector(".upload-sub");
+    if (sub) sub.textContent = "YOUR RUN STAYS IN YOUR BROWSER — NOTHING IS UPLOADED";
+  } else {
+    uploadBox.classList.add("locked");
+    const lbl = $("uploadLabel");
+    if (lbl) lbl.innerHTML = `OR DROP YOUR OWN GPX FILE — <span style="color:var(--blue);text-transform:none;letter-spacing:0.04em;">🔒 premium feature</span>`;
+    const sub = uploadBox.querySelector(".upload-sub");
+    if (sub) sub.textContent = "UNLOCK GPX UPLOAD WITH ANY PREMIUM TIER · YOUR RUN STAYS IN YOUR BROWSER";
+  }
+}
+
+// Intercept the label click (which triggers file picker) when locked
+uploadBox.addEventListener("click", e => {
+  if (gateGpxUpload(e)) return;
+});
+
 uploadBox.addEventListener("dragover", e => {
   e.preventDefault();
+  if (!isGpxUnlocked()) return;
   uploadBox.classList.add("drag");
 });
 uploadBox.addEventListener("dragleave", () => uploadBox.classList.remove("drag"));
 uploadBox.addEventListener("drop", e => {
   e.preventDefault();
   uploadBox.classList.remove("drag");
+  if (gateGpxUpload(e)) return;
   const file = e.dataTransfer.files[0];
   if (file) handleGpxFile(file);
 });
 gpxInput.addEventListener("change", e => {
+  // Belt-and-braces: in case label click somehow fired the input
+  if (!isGpxUnlocked()) {
+    e.preventDefault();
+    e.target.value = "";
+    openUnlockModal({ type: 'gpx-upload', name: null });
+    return;
+  }
   const file = e.target.files[0];
   if (file) handleGpxFile(file);
 });
@@ -2608,7 +2755,7 @@ function renderChips() {
       <span class="cdrag">⋮⋮</span>
       <span class="cdot" style="background:${m.color}"></span>
       <span class="cname">${name}</span>
-      ${locked ? `<span class="lock-mini">🔒 $${PRICE_SINGLE}</span>` : `<span class="cstat">+${m.gain}m</span>`}
+      ${locked ? `<span class="lock-mini">🔒 ${fmtPrice(PRICE_SINGLE)}</span>` : `<span class="cstat">+${m.gain}m</span>`}
     </div>`;
   }).join("");
   row.innerHTML = html;
@@ -2691,16 +2838,24 @@ function renderMeta() {
 function renderCalibrator() {
   $("calTime").textContent = fmtClock(userTime.flatMinutes);
   const modeEl = $("calMode");
+  const timeWrap = $("calTimeWrap");
+  const calBtn = $("calBtn");
   if (userTime.mode === 'real') {
     modeEl.textContent = "Your real time";
     modeEl.classList.add("real");
-    $("calBtn").textContent = "Update your time";
+    calBtn.textContent = "Update your time";
     $("calReset").style.display = "";
+    // Stop shimmer once the user has calibrated
+    timeWrap.classList.remove("shimmer");
+    calBtn.classList.remove("shimmer");
   } else {
     modeEl.textContent = "Medium runner reference · 4 h";
     modeEl.classList.remove("real");
-    $("calBtn").textContent = "Calculate your REAL time";
+    calBtn.textContent = "Calculate your REAL time";
     $("calReset").style.display = "none";
+    // Re-enable shimmer if user resets
+    timeWrap.classList.add("shimmer");
+    calBtn.classList.add("shimmer");
   }
   // Update the "You · X:XX:XX flat" legend label
   if ($("compareYouLabel")) {
@@ -2877,47 +3032,73 @@ function openUnlockModal(ctx) {
   // Default to the promo tier — best deal, most useful for the business
   modalMode = bundleAvailable ? 'promo' : 'single';
 
-  const courseName = ctx.name || lockedNames[0];
-  const m = MARATHONS[courseName];
+  const isGpxContext = ctx.type === 'gpx-upload';
+  const courseName = ctx.name || (isGpxContext ? 'Your GPX' : lockedNames[0]);
+  const m = isGpxContext ? null : MARATHONS[courseName];
+
+  let eyebrow, title, sub, previewHtml;
+  if (isGpxContext) {
+    eyebrow = "Unlock GPX upload";
+    title = `Add <span class="it">your own run</span>.`;
+    sub = `Upload your own .gpx file and run it through the same elevation + weather + pace math. Premium feature — included with any paid tier.`;
+    previewHtml = `
+      <div class="modal-preview">
+        <span class="dot" style="background:#0ea5e9"></span>
+        <div>
+          <div class="name">Your GPX file</div>
+          <div class="meta" style="margin:0;text-align:left;font-size:10px;">PRIVATE · STAYS IN BROWSER</div>
+        </div>
+        <div class="meta">
+          Parsed locally<br>
+          <span class="country">never uploaded</span>
+        </div>
+      </div>`;
+  } else {
+    eyebrow = "Unlock Premium Marathon";
+    title = `Add <span class="it">${courseName}</span>.`;
+    sub = "Premium courses include curated elevation profiles, calibrated to the official published gain/loss totals. Yours to keep — no subscription.";
+    previewHtml = `
+      <div class="modal-preview">
+        <span class="dot" style="background:${m.color}"></span>
+        <div>
+          <div class="name">${courseName}</div>
+          <div class="meta" style="margin:0;text-align:left;font-size:10px;">${m.country.toUpperCase()}</div>
+        </div>
+        <div class="meta">
+          +${m.gain}m gain · −${m.lost}m loss<br>
+          <span class="country">${m.source === 'fit' ? 'fit activity' : m.source === 'profile' ? 'profile' : 'approx profile'}</span>
+        </div>
+      </div>`;
+  }
 
   const html = `
-    <div class="modal-eyebrow">Unlock Premium Marathon</div>
-    <div class="modal-title">Add <span class="it">${courseName}</span>.</div>
-    <div class="modal-sub">Premium courses include curated elevation profiles, calibrated to the official published gain/loss totals. Yours to keep — no subscription.</div>
+    <div class="modal-eyebrow">${eyebrow}</div>
+    <div class="modal-title">${title}</div>
+    <div class="modal-sub">${sub}</div>
 
-    <div class="modal-preview">
-      <span class="dot" style="background:${m.color}"></span>
-      <div>
-        <div class="name">${courseName}</div>
-        <div class="meta" style="margin:0;text-align:left;font-size:10px;">${m.country.toUpperCase()}</div>
-      </div>
-      <div class="meta">
-        +${m.gain}m gain · −${m.lost}m loss<br>
-        <span class="country">${m.source === 'fit' ? 'fit activity' : m.source === 'profile' ? 'profile' : 'approx profile'}</span>
-      </div>
-    </div>
+    ${previewHtml}
 
     <div class="price-options" id="priceOptions">
       <button class="price-opt" data-mode="single">
         <div class="info">
-          <span class="label">Just ${courseName}</span>
-          <span class="desc">Permanent access · use it forever</span>
+          <span class="label">${isGpxContext ? 'Just GPX upload' : 'Just ' + courseName}</span>
+          <span class="desc">One course OR upload your own GPX · permanent access</span>
         </div>
-        <div class="price">$${PRICE_SINGLE}</div>
+        <div class="price">${fmtPrice(PRICE_SINGLE)}</div>
       </button>
       ${bundleAvailable ? `<button class="price-opt promo selected" data-mode="promo">
         <div class="info">
-          <span class="label">All ${lockedCount} + email <span class="promo-badge">PROMO</span></span>
-          <span class="desc">Give us your email and unlock all 5 premium courses for the price of one. Berlin, Tokyo, Chicago, Paris, Valencia.</span>
+          <span class="label">All ${lockedCount} + GPX + email <span class="promo-badge">PROMO</span></span>
+          <span class="desc">Give us your email and unlock all 5 premium courses <strong>plus GPX upload</strong> for the price of one. Berlin, Tokyo, Chicago, Paris, Valencia.</span>
         </div>
-        <div class="price"><span class="strike">$${PRICE_SINGLE * lockedCount}</span>$${PRICE_SINGLE}</div>
+        <div class="price"><span class="strike">${fmtPrice(PRICE_SINGLE * lockedCount)}</span>${fmtPrice(PRICE_SINGLE)}</div>
       </button>` : ''}
       ${bundleAvailable ? `<button class="price-opt" data-mode="bundle">
         <div class="info">
-          <span class="label">All ${lockedCount} · no email</span>
-          <span class="desc">Skip the email. Same courses, slightly more <span class="save">SAVE $${(PRICE_SINGLE * lockedCount) - PRICE_BUNDLE}</span></span>
+          <span class="label">All ${lockedCount} + GPX · no email</span>
+          <span class="desc">Skip the email. Same courses, same GPX upload, just much more expensive (because, why not).</span>
         </div>
-        <div class="price"><span class="strike">$${PRICE_SINGLE * lockedCount}</span>$${PRICE_BUNDLE}</div>
+        <div class="price"><span class="strike">${fmtPrice(PRICE_SINGLE * lockedCount)}</span>${fmtPrice(PRICE_BUNDLE)}</div>
       </button>` : ''}
     </div>
 
@@ -2944,7 +3125,7 @@ function openUnlockModal(ctx) {
 
     <div class="pay-actions">
       <button class="btn-secondary" id="payCancel">Cancel</button>
-      <button class="btn-primary" id="payConfirm">Pay $<span id="payAmount">${PRICE_SINGLE}</span></button>
+      <button class="btn-primary" id="payConfirm">Pay <span id="payAmount">${fmtPrice(PRICE_SINGLE)}</span></button>
     </div>
     <div class="el-msg" id="promoMsg"></div>
     <div class="demo-note"><strong>Demo mode</strong> — no real payment is processed. Card details are not sent or stored.</div>
@@ -2989,13 +3170,13 @@ function syncTierUI() {
   const payAmount = $("payAmount");
   if (modalMode === 'promo') {
     emailField.classList.add("show");
-    payAmount.textContent = PRICE_SINGLE;
+    payAmount.textContent = fmtPrice(PRICE_SINGLE);
   } else if (modalMode === 'bundle') {
     emailField.classList.remove("show");
-    payAmount.textContent = PRICE_BUNDLE;
+    payAmount.textContent = fmtPrice(PRICE_BUNDLE);
   } else {
     emailField.classList.remove("show");
-    payAmount.textContent = PRICE_SINGLE;
+    payAmount.textContent = fmtPrice(PRICE_SINGLE);
   }
   // Sync the selected visual
   document.querySelectorAll(".price-opt").forEach(opt => {
@@ -3054,35 +3235,50 @@ async function confirmPurchase() {
   // Simulated processing delay so the demo feels real
   setTimeout(() => {
     if (modalMode === 'single') {
-      // Just the named one
-      if (pendingContext.name) unlocked.add(pendingContext.name);
+      // Just the one thing they were buying
+      if (pendingContext.type === 'gpx-upload') {
+        persistGpxPaid();
+      } else if (pendingContext.name) {
+        unlocked.add(pendingContext.name);
+      }
     } else {
-      // promo or bundle: unlock all paid marathons
+      // promo or bundle: unlock everything (all marathons + GPX)
       Object.keys(MARATHONS).forEach(n => {
         if (MARATHONS[n].tier === 'paid') unlocked.add(n);
       });
+      persistGpxPaid();
     }
     persistUnlocked();
     if (pendingContext.name) visible.add(pendingContext.name);
-    showUnlockSuccess(pendingContext.name, modalMode);
+    showUnlockSuccess(pendingContext.name, modalMode, pendingContext.type);
     renderAll();
   }, 800);
 }
 
-function showUnlockSuccess(name, mode) {
+function showUnlockSuccess(name, mode, contextType) {
   const unlockedCount = Object.keys(MARATHONS).filter(n =>
     MARATHONS[n].tier === 'paid' && unlocked.has(n)
   ).length;
-  let titleHtml, subText;
+  const isGpx = contextType === 'gpx-upload';
+  let titleHtml, subText, ctaText;
   if (mode === 'single') {
-    titleHtml = `${name} <span class="it">unlocked.</span>`;
-    subText = `${name} has been added to your chart. Want the other ${5 - 1} premium courses too? They'll show up locked next time you visit.`;
+    if (isGpx) {
+      titleHtml = `GPX upload <span class="it">unlocked.</span>`;
+      subText = `Open the picker (the dashed "Add marathon" tile) and drop your .gpx file. The chart will redraw with your run included.`;
+      ctaText = "Open picker";
+    } else {
+      titleHtml = `${name} <span class="it">unlocked.</span>`;
+      subText = `${name} has been added to your chart. Want the other ${5 - 1} premium courses too? They'll show up locked next time you visit.`;
+      ctaText = "View on chart";
+    }
   } else if (mode === 'promo') {
-    titleHtml = `${unlockedCount} courses <span class="it">unlocked.</span>`;
-    subText = `Promo claimed — Berlin, Tokyo, Chicago, Paris and Valencia are all yours. We'll only email you when new marathons launch.`;
+    titleHtml = `Everything <span class="it">unlocked.</span>`;
+    subText = `Promo claimed — Berlin, Tokyo, Chicago, Paris, Valencia are all yours, plus GPX upload. We'll only email you when new marathons launch.`;
+    ctaText = "View on chart";
   } else {
-    titleHtml = `${unlockedCount} courses <span class="it">unlocked.</span>`;
-    subText = `Berlin, Tokyo, Chicago, Paris and Valencia are now available on your chart and chip bar.`;
+    titleHtml = `Everything <span class="it">unlocked.</span>`;
+    subText = `Berlin, Tokyo, Chicago, Paris, Valencia and GPX upload are now available.`;
+    ctaText = "View on chart";
   }
   const html = `
     <div class="pay-success">
@@ -3090,14 +3286,19 @@ function showUnlockSuccess(name, mode) {
       <div class="modal-eyebrow">Payment successful · DEMO</div>
       <div class="modal-title" style="margin-bottom:12px;">${titleHtml}</div>
       <div class="modal-sub" style="margin-bottom:24px;">${subText}</div>
-      <button class="btn-primary" style="width:100%;border:1px solid var(--ink);" id="paySuccessClose">View on chart</button>
+      <button class="btn-primary" style="width:100%;border:1px solid var(--ink);" id="paySuccessClose">${ctaText}</button>
     </div>
   `;
   $("modalBody").innerHTML = html;
   $("modal").classList.add("success");
   $("paySuccessClose").addEventListener("click", () => {
     closeModal();
-    setTimeout(() => $("chart").scrollIntoView({behavior:"smooth", block:"center"}), 200);
+    if (isGpx) {
+      $("picker").classList.add("open");
+      setTimeout(() => $("uploadBox").scrollIntoView({behavior:"smooth", block:"center"}), 200);
+    } else {
+      setTimeout(() => $("chart").scrollIntoView({behavior:"smooth", block:"center"}), 200);
+    }
   });
 }
 
@@ -3137,6 +3338,7 @@ function renderAll() {
   renderCompare();
   renderMeta();
   if (typeof refreshUnlockUI === "function") refreshUnlockUI();
+  if (typeof refreshUploadBox === "function") refreshUploadBox();
 }
 
 wireCalibrator();
@@ -3149,13 +3351,7 @@ window.addEventListener("resize", () => renderChart());
 (function wireUnlockCTAs() {
   // Unlock banner
   const ubBtn = $("ubBtn");
-  const ubSupport = $("ubSupport");
   if (ubBtn) ubBtn.addEventListener("click", () => openUnlockModal({ type:'unlock-all', name:null }));
-  if (ubSupport) ubSupport.addEventListener("click", () => {
-    pendingContext = { type:'unlock-all', name:null };
-    $("modalBackdrop").classList.add("open");
-    openSupportFlow();
-  });
 
   // Footer CTA
   const fb = $("footerUnlockBtn");
@@ -3169,9 +3365,10 @@ function refreshUnlockUI() {
   const banner = $("unlockBanner");
   const fb = $("footerUnlockBtn");
   const fs = $("footerStatus");
-  const allUnlocked = userEmail || Object.keys(MARATHONS).every(n =>
+  const allMarathonsUnlocked = Object.keys(MARATHONS).every(n =>
     MARATHONS[n].tier !== 'paid' || unlocked.has(n)
   );
+  const allUnlocked = userEmail || (allMarathonsUnlocked && gpxPaid);
   if (banner) {
     if (allUnlocked) banner.classList.add("hidden");
     else banner.classList.remove("hidden");
@@ -3183,7 +3380,7 @@ function refreshUnlockUI() {
       fb.disabled = true;
       if (fs) fs.textContent = userEmail ? `Signed up as ${userEmail}` : "";
     } else {
-      fb.textContent = "Unlock all marathons";
+      fb.textContent = "Subscribe + unlock all";
       fb.classList.remove("unlocked");
       fb.disabled = false;
       if (fs) fs.textContent = "";
