@@ -135,30 +135,30 @@
   .calibrate-btn.shimmer {
     position: relative;
     overflow: hidden;
-    background: var(--blue);
-    border-color: var(--blue);
+    background: #1d4ed8;
+    border-color: #1d4ed8;
     color: #fff;
-    box-shadow: 0 0 0 0 rgba(0,51,255,0.55), 0 4px 16px rgba(0,51,255,0.25);
+    box-shadow: 0 0 0 0 rgba(29,78,216,0.55), 0 4px 16px rgba(29,78,216,0.22);
     animation: shimmer-pulse 1.8s ease-in-out infinite;
   }
   .calibrate-btn.shimmer:hover {
-    background: var(--blue);
+    background: #1e40af;
     color: #fff;
-    border-color: var(--blue);
+    border-color: #1e40af;
     transform: translateY(-1px);
-    box-shadow: 0 0 0 8px rgba(0,51,255,0.18), 0 6px 20px rgba(0,51,255,0.4);
+    box-shadow: 0 0 0 8px rgba(29,78,216,0.16), 0 6px 20px rgba(29,78,216,0.35);
   }
   .calibrate-btn.shimmer::before {
     content: "";
     position: absolute;
     top: 0;
-    left: -100%;
+    left: -60%;
     width: 60%;
     height: 100%;
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(255,255,255,0.6) 50%,
+      rgba(255,255,255,0.5) 50%,
       transparent 100%
     );
     animation: shimmer-sweep 1.8s ease-in-out infinite;
@@ -171,11 +171,37 @@
   }
   @keyframes shimmer-pulse {
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(0,51,255,0.0), 0 4px 16px rgba(0,51,255,0.25);
+      box-shadow: 0 0 0 0 rgba(29,78,216,0.0), 0 4px 16px rgba(29,78,216,0.22);
     }
     50% {
-      box-shadow: 0 0 0 10px rgba(0,51,255,0.12), 0 6px 24px rgba(0,51,255,0.4);
+      box-shadow: 0 0 0 10px rgba(29,78,216,0.12), 0 6px 24px rgba(29,78,216,0.4);
     }
+  }
+
+  /* Runner stick-figure leg pump */
+  .runner-dot .leg-front {
+    animation: runner-leg-front 0.35s ease-in-out infinite;
+    transform-origin: 0px -3px;
+  }
+  .runner-dot .leg-back {
+    animation: runner-leg-back 0.35s ease-in-out infinite;
+    transform-origin: 0px -3px;
+  }
+  .runner-dot .arm {
+    animation: runner-arm 0.35s ease-in-out infinite;
+    transform-origin: 0px -8px;
+  }
+  @keyframes runner-leg-front {
+    0%, 100% { transform: rotate(-12deg); }
+    50%      { transform: rotate(18deg); }
+  }
+  @keyframes runner-leg-back {
+    0%, 100% { transform: rotate(18deg); }
+    50%      { transform: rotate(-12deg); }
+  }
+  @keyframes runner-arm {
+    0%, 100% { transform: rotate(-8deg); }
+    50%      { transform: rotate(14deg); }
   }
   .calibrate-btn {
     background: var(--ink);
@@ -2674,6 +2700,9 @@ function renderChart() {
     svg += `<path d="${path}" fill="none" stroke="${m.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>`;
   });
 
+  // Runner dot group — populated by the animation loop
+  svg += `<g id="chartRunners"></g>`;
+
   svg += `<line id="chartHoverLine" x1="0" y1="${CHART_PAD.t}" x2="0" y2="${CHART_PAD.t + CHART_IH}" stroke="rgba(10,10,15,0.4)" stroke-width="1" opacity="0"/>`;
   svg += `<g id="chartHoverDots"></g>`;
   svg += `<rect id="chartHoverRect" x="${CHART_PAD.l}" y="${CHART_PAD.t}" width="${CHART_IW}" height="${CHART_IH}" fill="transparent"/>`;
@@ -2730,6 +2759,167 @@ function renderChart() {
     hoverDots.innerHTML = "";
     tooltip.classList.remove("on");
   });
+
+  // Rebuild runner animation profiles for currently visible marathons
+  rebuildRunnerProfiles(maxY);
+}
+
+/* ================== RUNNER ANIMATION ================== */
+// One animated dot per visible marathon. Speed varies with gradient (uphill slows,
+// downhill speeds up). Each runner finishes at a different time according to
+// their course's calibrated total finish time.
+const runnerAnimState = {
+  profiles: {},     // { marathonName: { samples: [{km, y, tFrac}], totalSec, maxY } }
+  maxTotalSec: 0,
+  startedAt: null,
+  paused: false,
+  animDurationMs: 25000,    // slowest finisher takes this long visually
+  restPauseMs: 1500,        // pause between loops
+  rafId: null
+};
+
+function rebuildRunnerProfiles(maxY) {
+  const dist = PLOT_DATA.distance_km;
+  const N = dist.length;
+  const profiles = {};
+  let maxTotalSec = 0;
+
+  visible.forEach(name => {
+    const m = MARATHONS[name];
+    const elev = PLOT_DATA[m.col];
+    const totalSec = userTime.flatMinutes * 60 + timeAddedSecondsFor(m, userTime.flatMinutes);
+
+    // Determine the runner's course endpoint (custom GPX may be shorter than 42.2)
+    let endIdx = N - 1;
+    if (m.customDistance !== undefined) {
+      for (let i = 0; i < N; i++) {
+        if (dist[i] > m.customDistance) { endIdx = i; break; }
+      }
+    }
+
+    // Compute relative effort per segment: uphill = slower, downhill = faster.
+    // Effort weights are unit-less; we normalize at the end so cumulative
+    // matches the known totalSec.
+    const seg = new Float32Array(endIdx);
+    let sumWeights = 0;
+    for (let i = 0; i < endIdx; i++) {
+      const dx_m = (dist[i+1] - dist[i]) * 1000;             // step distance in metres
+      const dy_m = elev[i+1] - elev[i];                       // step elevation change
+      const grade = dx_m > 0 ? dy_m / dx_m : 0;
+      // Pace factor: 1.0 on flat, > 1 on uphill (slower), < 1 on downhill (faster)
+      let factor;
+      if (grade >= 0) factor = 1 + grade * 8;                  // +8% per +1% grade
+      else            factor = 1 + grade * 2;                  // −2% per −1% grade (lighter)
+      factor = Math.max(0.7, Math.min(3.0, factor));
+      const w = dx_m * factor;
+      seg[i] = w;
+      sumWeights += w;
+    }
+
+    // Build samples: (km, y, tFrac) where tFrac is normalized cumulative effort 0..1
+    const samples = new Array(endIdx + 1);
+    let cum = 0;
+    samples[0] = { km: dist[0], y: yToPx(elev[0], maxY), tFrac: 0 };
+    for (let i = 0; i < endIdx; i++) {
+      cum += seg[i];
+      samples[i+1] = {
+        km: dist[i+1],
+        y: yToPx(elev[i+1], maxY),
+        tFrac: sumWeights > 0 ? cum / sumWeights : (i+1)/endIdx
+      };
+    }
+
+    profiles[name] = { samples, totalSec, color: m.color };
+    if (totalSec > maxTotalSec) maxTotalSec = totalSec;
+  });
+
+  runnerAnimState.profiles = profiles;
+  runnerAnimState.maxTotalSec = maxTotalSec;
+  runnerAnimState.startedAt = null;        // restart loop after re-render
+  runnerAnimState.paused = false;
+
+  // Inject one runner figure per runner. We'll mutate transform on each frame.
+  const group = document.getElementById("chartRunners");
+  if (!group) return;
+  let html = "";
+  Object.keys(profiles).forEach(name => {
+    const p = profiles[name];
+    const first = p.samples[0];
+    const cx = xToPx(first.km);
+    const cy = first.y;
+    // Stick figure pointed up the page (so it reads as standing on the line)
+    // Anchored so the feet sit on (cx, cy) — body extends upward
+    html += `<g class="runner-dot" data-name="${name}" transform="translate(${cx} ${cy})">
+      <!-- subtle ground glow -->
+      <ellipse cx="0" cy="1" rx="7" ry="2" fill="${p.color}" opacity="0.18"/>
+      <!-- legs (mid-stride) — animated via CSS to give the running feel -->
+      <line class="leg leg-front" x1="0" y1="-3" x2="-2.5" y2="2" stroke="${p.color}" stroke-width="1.6" stroke-linecap="round"/>
+      <line class="leg leg-back"  x1="0" y1="-3" x2="2.5"  y2="2" stroke="${p.color}" stroke-width="1.6" stroke-linecap="round"/>
+      <!-- body -->
+      <line x1="0" y1="-3" x2="0" y2="-9" stroke="${p.color}" stroke-width="1.6" stroke-linecap="round"/>
+      <!-- arm (forward) — pumping motion -->
+      <line class="arm" x1="0" y1="-8" x2="3" y2="-5" stroke="${p.color}" stroke-width="1.4" stroke-linecap="round"/>
+      <!-- head -->
+      <circle cx="0" cy="-12" r="2.4" fill="${p.color}" stroke="#fff" stroke-width="1"/>
+    </g>`;
+  });
+  group.innerHTML = html;
+
+  // Kick off the animation loop (cancel any previous one)
+  if (runnerAnimState.rafId) cancelAnimationFrame(runnerAnimState.rafId);
+  runnerAnimState.rafId = requestAnimationFrame(tickRunners);
+}
+
+function tickRunners(ts) {
+  const st = runnerAnimState;
+  if (!st.startedAt) st.startedAt = ts;
+  const elapsed = ts - st.startedAt;
+  const animDur = st.animDurationMs;
+
+  // After animDur + restPause, reset and loop
+  if (elapsed > animDur + st.restPauseMs) {
+    st.startedAt = ts;
+  }
+
+  const group = document.getElementById("chartRunners");
+  if (!group) return;
+  const dots = group.querySelectorAll(".runner-dot");
+
+  dots.forEach(dot => {
+    const name = dot.dataset.name;
+    const p = st.profiles[name];
+    if (!p) return;
+
+    // This runner's relative finish point in the animation:
+    // they finish at (totalSec / maxTotalSec) × animDur, so slower courses end later.
+    const finishMs = (p.totalSec / st.maxTotalSec) * animDur;
+    const tProgress = Math.max(0, Math.min(1, elapsed / finishMs));
+
+    // Find km/y at this progress via binary search in samples by tFrac
+    const samples = p.samples;
+    let lo = 0, hi = samples.length - 1;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (samples[mid].tFrac < tProgress) lo = mid;
+      else hi = mid;
+    }
+    const a = samples[lo], b = samples[hi];
+    const span = b.tFrac - a.tFrac;
+    const localT = span > 0 ? (tProgress - a.tFrac) / span : 0;
+    const km = a.km + (b.km - a.km) * localT;
+    const y  = a.y  + (b.y  - a.y)  * localT;
+    const cx = xToPx(km);
+
+    // Move the whole figure group to the new position.
+    // Feet sit on (cx, y); body extends upward from there.
+    dot.setAttribute("transform", `translate(${cx} ${y})`);
+
+    // Faded glow when finished
+    const finished = tProgress >= 1;
+    dot.style.opacity = finished ? 0.7 : 1;
+  });
+
+  st.rafId = requestAnimationFrame(tickRunners);
 }
 
 /* ================== CHIPS BAR ================== */
