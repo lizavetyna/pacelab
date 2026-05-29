@@ -181,15 +181,15 @@
   /* Runner stick-figure leg pump */
   .runner-dot .leg-front {
     animation: runner-leg-front 0.35s ease-in-out infinite;
-    transform-origin: 0px -3px;
+    transform-origin: 0px -4px;
   }
   .runner-dot .leg-back {
     animation: runner-leg-back 0.35s ease-in-out infinite;
-    transform-origin: 0px -3px;
+    transform-origin: 0px -4px;
   }
   .runner-dot .arm {
     animation: runner-arm 0.35s ease-in-out infinite;
-    transform-origin: 0px -8px;
+    transform-origin: 0px -11px;
   }
   @keyframes runner-leg-front {
     0%, 100% { transform: rotate(-12deg); }
@@ -871,6 +871,67 @@
   }
   .chart-wrap { position: relative; width: 100%; }
   #chart { width: 100%; height: 540px; display: block; }
+
+  /* Live rank — small leaderboard overlay top-right inside the chart */
+  .live-rank {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px 9px;
+    min-width: 168px;
+    font-family: "JetBrains Mono", monospace;
+    box-shadow: 0 6px 20px rgba(10,10,15,0.06);
+    backdrop-filter: blur(8px);
+    z-index: 4;
+    pointer-events: none;
+  }
+  .live-rank-title {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .live-rank-row {
+    display: grid;
+    grid-template-columns: 14px auto 1fr auto;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    font-size: 11px;
+    line-height: 1.2;
+    transition: transform .35s cubic-bezier(.2,.7,.2,1), opacity .2s;
+    color: var(--ink);
+  }
+  .live-rank-row .rk {
+    font-weight: 700;
+    color: var(--ink);
+    width: 14px;
+  }
+  .live-rank-row .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .live-rank-row .nm {
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  .live-rank-row .pct {
+    color: var(--muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .live-rank-row.finished .pct {
+    color: var(--blue);
+    font-weight: 700;
+  }
+  .live-rank-row.first .rk { color: var(--blue); }
   .chart-tooltip {
     position: absolute;
     pointer-events: none;
@@ -1984,6 +2045,7 @@
         <div class="big">∅</div>
         <div>Add at least one marathon to begin.</div>
       </div>
+      <div class="live-rank" id="liveRank"></div>
     </div>
     <div class="chips-bar">
       <div class="chips-bar-head">
@@ -2646,6 +2708,12 @@ function renderChart() {
   if (visible.size === 0) {
     chartSvg.style.display = "none";
     $("emptyChart").style.display = "flex";
+    const lr = document.getElementById("liveRank");
+    if (lr) lr.style.display = "none";
+    if (runnerAnimState.rafId) {
+      cancelAnimationFrame(runnerAnimState.rafId);
+      runnerAnimState.rafId = null;
+    }
     return;
   }
   chartSvg.style.display = "block";
@@ -2697,7 +2765,7 @@ function renderChart() {
       }
     }
     const path = buildPath(PLOT_DATA.distance_km, PLOT_DATA[m.col], maxY, maxIdx);
-    svg += `<path d="${path}" fill="none" stroke="${m.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>`;
+    svg += `<path d="${path}" fill="none" stroke="${m.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.45"/>`;
   });
 
   // Runner dot group — populated by the animation loop
@@ -2851,16 +2919,16 @@ function rebuildRunnerProfiles(maxY) {
     // Anchored so the feet sit on (cx, cy) — body extends upward
     html += `<g class="runner-dot" data-name="${name}" transform="translate(${cx} ${cy})">
       <!-- subtle ground glow -->
-      <ellipse cx="0" cy="1" rx="7" ry="2" fill="${p.color}" opacity="0.18"/>
+      <ellipse cx="0" cy="2" rx="10" ry="2.5" fill="${p.color}" opacity="0.18"/>
       <!-- legs (mid-stride) — animated via CSS to give the running feel -->
-      <line class="leg leg-front" x1="0" y1="-3" x2="-2.5" y2="2" stroke="${p.color}" stroke-width="1.6" stroke-linecap="round"/>
-      <line class="leg leg-back"  x1="0" y1="-3" x2="2.5"  y2="2" stroke="${p.color}" stroke-width="1.6" stroke-linecap="round"/>
+      <line class="leg leg-front" x1="0" y1="-4" x2="-3.5" y2="3" stroke="${p.color}" stroke-width="2.2" stroke-linecap="round"/>
+      <line class="leg leg-back"  x1="0" y1="-4" x2="3.5"  y2="3" stroke="${p.color}" stroke-width="2.2" stroke-linecap="round"/>
       <!-- body -->
-      <line x1="0" y1="-3" x2="0" y2="-9" stroke="${p.color}" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="0" y1="-4" x2="0" y2="-12" stroke="${p.color}" stroke-width="2.2" stroke-linecap="round"/>
       <!-- arm (forward) — pumping motion -->
-      <line class="arm" x1="0" y1="-8" x2="3" y2="-5" stroke="${p.color}" stroke-width="1.4" stroke-linecap="round"/>
+      <line class="arm" x1="0" y1="-11" x2="4" y2="-7" stroke="${p.color}" stroke-width="2" stroke-linecap="round"/>
       <!-- head -->
-      <circle cx="0" cy="-12" r="2.4" fill="${p.color}" stroke="#fff" stroke-width="1"/>
+      <circle cx="0" cy="-16" r="3.4" fill="${p.color}" stroke="#fff" stroke-width="1.2"/>
     </g>`;
   });
   group.innerHTML = html;
@@ -2884,6 +2952,9 @@ function tickRunners(ts) {
   const group = document.getElementById("chartRunners");
   if (!group) return;
   const dots = group.querySelectorAll(".runner-dot");
+
+  // Collected per-runner state used for the leaderboard
+  const rankRows = [];
 
   dots.forEach(dot => {
     const name = dot.dataset.name;
@@ -2911,15 +2982,58 @@ function tickRunners(ts) {
     const cx = xToPx(km);
 
     // Move the whole figure group to the new position.
-    // Feet sit on (cx, y); body extends upward from there.
     dot.setAttribute("transform", `translate(${cx} ${y})`);
 
     // Faded glow when finished
     const finished = tProgress >= 1;
     dot.style.opacity = finished ? 0.7 : 1;
+
+    rankRows.push({
+      name,
+      color: p.color,
+      progress: tProgress,
+      km,
+      finished
+    });
   });
 
+  // Update leaderboard at ~6 fps to keep reorder transitions visible & calm
+  if (!st.lastRankUpdate || ts - st.lastRankUpdate > 160) {
+    renderLiveRank(rankRows);
+    st.lastRankUpdate = ts;
+  }
+
   st.rafId = requestAnimationFrame(tickRunners);
+}
+
+function renderLiveRank(rows) {
+  const el = document.getElementById("liveRank");
+  if (!el) return;
+  if (rows.length < 2) {
+    // Don't show the leaderboard with one runner — nothing to rank
+    el.style.display = "none";
+    return;
+  }
+  el.style.display = "block";
+
+  // Sort by progress descending (most-complete first = leader)
+  rows.sort((a, b) => b.progress - a.progress);
+
+  const html = `
+    <div class="live-rank-title">LIVE RANK</div>
+    ${rows.map((r, i) => {
+      const m = MARATHONS[r.name];
+      const emoji = m && m.emoji ? m.emoji : '';
+      const pct = Math.round(r.progress * 100);
+      return `<div class="live-rank-row ${i === 0 ? 'first' : ''} ${r.finished ? 'finished' : ''}" data-name="${r.name}">
+        <span class="rk">${i + 1}</span>
+        <span class="dot" style="background:${r.color}"></span>
+        <span class="nm">${r.name} ${emoji}</span>
+        <span class="pct">${r.finished ? '✓' : pct + '%'}</span>
+      </div>`;
+    }).join('')}
+  `;
+  el.innerHTML = html;
 }
 
 /* ================== CHIPS BAR ================== */
