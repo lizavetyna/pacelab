@@ -2006,7 +2006,7 @@
     <div class="ub-left">
       <div class="ub-eyebrow">Premium · 5 more marathons + GPX upload</div>
       <div class="ub-title">Unlock <span class="it">Berlin · Tokyo · Chicago · Paris · Valencia</span></div>
-      <div class="ub-sub">Leave your email + $1.99 and unlock everything — all 5 premium courses plus GPX upload. Forever.</div>
+      <div class="ub-sub">Leave your email + €1.99 and unlock everything — all 5 premium courses plus GPX upload. Forever.</div>
     </div>
     <div class="ub-right">
       <button class="ub-btn" id="ubBtn">Unlock everything</button>
@@ -2021,6 +2021,18 @@
       <button class="close" id="pickerClose">CLOSE ✕</button>
     </div>
     <div class="picker-section">
+      <div style="margin-bottom:16px;padding:0 2px;">
+        <input id="marathonSearch" type="text" placeholder="Search a marathon…"
+          style="width:100%;box-sizing:border-box;padding:9px 16px;border:1.5px solid rgba(10,10,15,0.15);border-radius:100px;font-family:inherit;font-size:13px;background:var(--paper-2,#f5f4ef);outline:none;color:var(--ink);letter-spacing:0.02em;"
+          oninput="filterMarathonSearch(this.value)"
+        />
+        <div id="marathonNotFound" style="display:none;margin-top:10px;font-size:12px;color:rgba(10,10,15,0.55);letter-spacing:0.04em;text-align:center;">
+          Can't find your marathon?
+          <a id="marathonRequestLink" href="mailto:hello@pacelab.run?subject=Marathon%20request&body=Hi%2C%20I'd%20like%20to%20see%20this%20marathon%3A%20"
+            style="color:var(--blue,#0033ff);text-decoration:underline;">Write to us</a>
+          and we'll add it.
+        </div>
+      </div>
       <div class="picker-label">FREE COURSES</div>
       <div class="pick-pills" id="pickPills"></div>
     </div>
@@ -2057,6 +2069,25 @@
         </span>
       </div>
       <div class="chips-row" id="chipsRow"></div>
+    </div>
+  </div>
+
+  <div style="margin: 0 0 32px 0; text-align: center;">
+    <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(10,10,15,0.45);margin-bottom:12px;">Search your marathon</div>
+    <div style="position:relative;display:inline-block;width:min(480px,90%);">
+      <input
+        type="text"
+        placeholder="e.g. Berlin, Athens, Chicago…"
+        oninput="belowChartSearch(this.value)"
+        onfocus="openPickerFromSearch()"
+        style="width:100%;box-sizing:border-box;padding:12px 20px;border:1.5px solid rgba(10,10,15,0.15);border-radius:100px;font-family:inherit;font-size:14px;background:var(--paper-2,#f5f4ef);outline:none;color:var(--ink);letter-spacing:0.02em;text-align:left;"
+      />
+    </div>
+    <div id="belowChartNotFound" style="display:none;margin-top:10px;font-size:12px;color:rgba(10,10,15,0.55);letter-spacing:0.04em;">
+      Can't find your marathon?
+      <a id="belowChartRequestLink" href="mailto:hello@pacelab.run?subject=Marathon%20request"
+        style="color:var(--blue,#0033ff);text-decoration:underline;">Write to us</a>
+      and we'll add it.
     </div>
   </div>
 
@@ -2128,7 +2159,7 @@ const MARATHONS = {
 const PRICE_SINGLE = 1.99;
 const PRICE_BUNDLE = 9.99;
 // Helper to format money — drops trailing zero for whole dollars, keeps two decimals otherwise
-const fmtPrice = (n) => `$${n.toFixed(2)}`;
+const fmtPrice = (n) => `€${n.toFixed(2)}`;
 
 // Available color pool for custom uploads
 const CUSTOM_COLORS = ["#06b6d4", "#84cc16", "#ec4899", "#f59e0b", "#8b5cf6", "#10b981"];
@@ -2425,6 +2456,87 @@ function renderPicker() {
   $("pickPills").querySelectorAll(".pick-pill").forEach(p => {
     p.addEventListener("click", () => handlePickerClick(p.dataset.name));
   });
+}
+
+function filterMarathonSearch(query) {
+  const q = query.trim().toLowerCase();
+  const notFound = document.getElementById('marathonNotFound');
+  const requestLink = document.getElementById('marathonRequestLink');
+  const pills = document.querySelectorAll('#pickPills .pick-pill');
+
+  // Always show section wrapper divs (headers + containers) — only hide individual pills
+  document.querySelectorAll('#pickPills > div').forEach(d => d.style.display = '');
+
+  if (!q) {
+    pills.forEach(p => p.style.display = '');
+    if (notFound) notFound.style.display = 'none';
+    return;
+  }
+
+  let anyVisible = false;
+  pills.forEach(p => {
+    const name = (p.dataset.name || '').toLowerCase();
+    const show = name.includes(q);
+    p.style.display = show ? '' : 'none';
+    if (show) anyVisible = true;
+  });
+
+  if (notFound) {
+    notFound.style.display = anyVisible ? 'none' : 'block';
+    if (!anyVisible && requestLink) {
+      const subject = encodeURIComponent('Marathon request: ' + query.trim());
+      const body = encodeURIComponent("Hi, I'd like to see this marathon added: " + query.trim());
+      requestLink.href = `mailto:hello@pacelab.run?subject=${subject}&body=${body}`;
+    }
+  }
+}
+
+function openPickerFromSearch() {
+  // Open the picker panel so the user can see all marathons
+  const picker = document.getElementById('picker');
+  if (picker && !picker.classList.contains('open')) {
+    picker.classList.add('open');
+  }
+  // Focus the in-picker search box
+  setTimeout(() => {
+    const s = document.getElementById('marathonSearch');
+    if (s) s.focus();
+  }, 80);
+}
+
+function belowChartSearch(query) {
+  const q = query.trim().toLowerCase();
+  const notFound = document.getElementById('belowChartNotFound');
+  const requestLink = document.getElementById('belowChartRequestLink');
+
+  // Also mirror the query into the picker's search box and open it
+  const pickerInput = document.getElementById('marathonSearch');
+  if (pickerInput) {
+    pickerInput.value = query;
+    filterMarathonSearch(query);
+  }
+
+  // Open picker if there's a query
+  if (q) {
+    const picker = document.getElementById('picker');
+    if (picker && !picker.classList.contains('open')) picker.classList.add('open');
+  }
+
+  const pills = document.querySelectorAll('#pickPills .pick-pill');
+  let anyVisible = false;
+  pills.forEach(p => {
+    const name = (p.dataset.name || '').toLowerCase();
+    if (name.includes(q)) anyVisible = true;
+  });
+
+  if (notFound) {
+    notFound.style.display = (q && !anyVisible) ? 'block' : 'none';
+    if (q && !anyVisible && requestLink) {
+      const subject = encodeURIComponent('Marathon request: ' + query.trim());
+      const body = encodeURIComponent("Hi, I'd like to see this marathon added: " + query.trim());
+      requestLink.href = `mailto:hello@pacelab.run?subject=${subject}&body=${body}`;
+    }
+  }
 }
 
 function handlePickerClick(name) {
@@ -2765,7 +2877,7 @@ function renderChart() {
       }
     }
     const path = buildPath(PLOT_DATA.distance_km, PLOT_DATA[m.col], maxY, maxIdx);
-    svg += `<path d="${path}" fill="none" stroke="${m.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.45"/>`;
+    svg += `<path d="${path}" fill="none" stroke="${m.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.35"/>`;
   });
 
   // Runner dot group — populated by the animation loop
@@ -2841,8 +2953,8 @@ const runnerAnimState = {
   maxTotalSec: 0,
   startedAt: null,
   paused: false,
-  animDurationMs: 25000,    // slowest finisher takes this long visually
-  restPauseMs: 1500,        // pause between loops
+  animDurationMs: 28000,    // slowest finisher takes this long visually
+  restPauseMs: 99999999,    // pause between loops — effectively no loop
   rafId: null
 };
 
@@ -2984,9 +3096,20 @@ function tickRunners(ts) {
     // Move the whole figure group to the new position.
     dot.setAttribute("transform", `translate(${cx} ${y})`);
 
-    // Faded glow when finished
+    // When finished: freeze leg animation, hold at finish line
     const finished = tProgress >= 1;
-    dot.style.opacity = finished ? 0.7 : 1;
+    if (finished) {
+      dot.style.opacity = '1';
+      dot.querySelectorAll('.leg, .arm').forEach(el => {
+        el.style.animation = 'none';
+        el.style.transform = 'none';
+      });
+    } else {
+      dot.style.opacity = '1';
+      dot.querySelectorAll('.leg, .arm').forEach(el => {
+        el.style.animation = '';
+      });
+    }
 
     rankRows.push({
       name,
@@ -3003,6 +3126,19 @@ function tickRunners(ts) {
     st.lastRankUpdate = ts;
   }
 
+  // If all runners finished: briefly pause then restart the loop
+  const allDone = rankRows.length > 0 && rankRows.every(r => r.finished);
+  if (allDone && !st.restingUntil) {
+    st.restingUntil = ts + 2000; // 2s pause after all finish
+  }
+  if (st.restingUntil) {
+    if (ts >= st.restingUntil) {
+      // Restart
+      st.startedAt = ts;
+      st.restingUntil = null;
+    }
+  }
+
   st.rafId = requestAnimationFrame(tickRunners);
 }
 
@@ -3016,11 +3152,15 @@ function renderLiveRank(rows) {
   }
   el.style.display = "block";
 
-  // Sort by progress descending (most-complete first = leader)
-  rows.sort((a, b) => b.progress - a.progress);
+  // Sort by difficulty (time added) descending — hardest course ranks #1
+  rows.sort((a, b) => {
+    const tA = timeAddedSeconds(MARATHONS[a.name] || {gain:0,lost:0});
+    const tB = timeAddedSeconds(MARATHONS[b.name] || {gain:0,lost:0});
+    return tA - tB;  // ASC: easiest first, hardest last
+  });
 
   const html = `
-    <div class="live-rank-title">LIVE RANK</div>
+    <div class="live-rank-title">DIFFICULTY RANK</div>
     ${rows.map((r, i) => {
       const m = MARATHONS[r.name];
       const emoji = m && m.emoji ? m.emoji : '';
@@ -3409,7 +3549,6 @@ function openUnlockModal(ctx) {
     <div class="promo-email-field" id="promoEmailField">
       <label>YOUR EMAIL</label>
       <input type="email" id="promoEmail" placeholder="you@email.com" autocomplete="email" required>
-      <div class="el-fine">No spam. Occasional updates when new marathons launch.</div>
     </div>
 
     <div class="pay-fields">
@@ -3488,6 +3627,13 @@ function syncTierUI() {
   });
 }
 
+// ── Stripe Payment Links ───────────────────────────────────────────────────────────────────────────────
+const STRIPE_LINKS = {
+  single: "https://buy.stripe.com/fZu9AV4wcaiy2tdbwZ8so01",
+  promo:  "https://buy.stripe.com/dRm4gBd2I2Q62tdeJb8so02",
+  bundle: "https://buy.stripe.com/aFaeVfe6M9eu1p930t8so03",
+};
+
 async function confirmPurchase() {
   const btn = $("payConfirm");
   const msg = $("promoMsg");
@@ -3508,56 +3654,89 @@ async function confirmPurchase() {
   }
 
   btn.disabled = true;
-  btn.innerHTML = 'Processing…';
+  btn.innerHTML = 'Redirecting to checkout…';
 
-  // Forward email to Formspree if configured (only in promo mode)
+  // Save context so we can restore it after Stripe redirects back
+  try {
+    sessionStorage.setItem("pacelab_pending_ctx", JSON.stringify({
+      mode: modalMode,
+      context: pendingContext,
+      email: email || null,
+    }));
+  } catch (e) { /* ignore */ }
+
+  // Save email locally if provided (promo mode)
   if (email) {
-    if (FORMSPREE_ID) {
-      try {
-        await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({
-            email,
-            source: "pacelab promo",
-            context: pendingContext.name || "unlock-all",
-            tier: modalMode,
-          }),
-        });
-      } catch (err) { /* don't block on Formspree failure */ }
-    }
-    // Always save locally as backup
     try {
       const key = "pacelab_pending_emails";
       const list = JSON.parse(localStorage.getItem(key) || "[]");
       list.push({ email, at: new Date().toISOString(), context: pendingContext.name || "unlock-all", tier: modalMode });
       localStorage.setItem(key, JSON.stringify(list));
-    } catch (err) { /* ignore */ }
+    } catch (e) { /* ignore */ }
     persistEmail(email);
   }
 
-  // Simulated processing delay so the demo feels real
-  setTimeout(() => {
-    if (modalMode === 'single') {
-      // Just the one thing they were buying
-      if (pendingContext.type === 'gpx-upload') {
-        persistGpxPaid();
-      } else if (pendingContext.name) {
-        unlocked.add(pendingContext.name);
-      }
-    } else {
-      // promo or bundle: unlock everything (all marathons + GPX)
-      Object.keys(MARATHONS).forEach(n => {
-        if (MARATHONS[n].tier === 'paid') unlocked.add(n);
-      });
-      persistGpxPaid();
-    }
-    persistUnlocked();
-    if (pendingContext.name) visible.add(pendingContext.name);
-    showUnlockSuccess(pendingContext.name, modalMode, pendingContext.type);
-    renderAll();
-  }, 800);
+  // Redirect to Stripe — real payment happens there
+  const link = STRIPE_LINKS[modalMode] || STRIPE_LINKS.bundle;
+  window.location.href = link;
 }
+
+// ── Handle redirect back from Stripe ─────────────────────────────────────────────────────────────────────────────
+(function handleStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const payment = params.get("payment");
+  const tier    = params.get("tier");
+  if (payment !== "success" || !tier) return;
+
+  // Clean the URL so a refresh doesn't re-trigger
+  window.history.replaceState({}, "", window.location.pathname);
+
+  // Restore saved context (which marathon was being bought, if any)
+  let savedCtx = { mode: tier, context: { type: 'marathon', name: null }, email: null };
+  try {
+    const raw = sessionStorage.getItem("pacelab_pending_ctx");
+    if (raw) {
+      savedCtx = JSON.parse(raw);
+      sessionStorage.removeItem("pacelab_pending_ctx");
+    }
+  } catch (e) { /* ignore */ }
+
+  // Unlock the right things based on tier from URL
+  if (tier === 'single') {
+    if (savedCtx.context && savedCtx.context.type === 'gpx-upload') {
+      persistGpxPaid();
+    } else if (savedCtx.context && savedCtx.context.name) {
+      unlocked.add(savedCtx.context.name);
+    } else {
+      // Fallback: unlock first locked marathon
+      const first = Object.keys(MARATHONS).find(n => MARATHONS[n].tier === 'paid' && !unlocked.has(n));
+      if (first) unlocked.add(first);
+    }
+  } else {
+    // promo or bundle: unlock everything
+    Object.keys(MARATHONS).forEach(n => {
+      if (MARATHONS[n].tier === 'paid') unlocked.add(n);
+    });
+    persistGpxPaid();
+  }
+
+  persistUnlocked();
+
+  const ctxName = savedCtx.context && savedCtx.context.name;
+  if (ctxName) visible.add(ctxName);
+
+  function doUnlockUI() {
+    renderAll();
+    showUnlockSuccess(ctxName, tier, savedCtx.context && savedCtx.context.type);
+    $("modalBackdrop").classList.add("open");
+  }
+
+  if (document.readyState === 'loading') {
+    window.addEventListener("DOMContentLoaded", doUnlockUI, { once: true });
+  } else {
+    doUnlockUI();
+  }
+})();
 
 function showUnlockSuccess(name, mode, contextType) {
   const unlockedCount = Object.keys(MARATHONS).filter(n =>
