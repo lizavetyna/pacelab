@@ -1511,6 +1511,71 @@
     60% { transform: scale(1.1); }
     100% { transform: scale(1); opacity: 1; }
   }
+  /* Unlocked items as chips */
+  .unlock-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px;
+    margin-bottom: 20px;
+  }
+  .unlock-chip {
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    background: rgba(0,51,255,0.07);
+    color: var(--blue);
+    border: 1px solid rgba(0,51,255,0.16);
+    border-radius: 100px;
+    padding: 6px 12px;
+    white-space: nowrap;
+  }
+  /* "What's next" hint block */
+  .pay-next {
+    text-align: left;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+  }
+  .pay-next-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .pay-next strong { font-weight: 700; color: var(--ink); }
+  /* Bigger, obvious primary CTA */
+  .pay-cta {
+    width: 100%;
+    border: 1px solid var(--ink);
+    font-size: 14px;
+    padding: 15px 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .pay-cta .pay-arrow { transition: transform .15s ease; }
+  .pay-cta:hover .pay-arrow { transform: translateX(4px); }
+  .pay-saved {
+    margin-top: 12px;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+  }
+  /* Brief highlight on the destination after the CTA */
+  .flash { animation: flash-target 1.6s ease-out; }
+  @keyframes flash-target {
+    0%   { box-shadow: 0 0 0 0 rgba(0,51,255,0.0); }
+    25%  { box-shadow: 0 0 0 4px rgba(0,51,255,0.28); }
+    100% { box-shadow: 0 0 0 0 rgba(0,51,255,0.0); }
+  }
 
   /* ===== FOOTER ===== */
   .page-footer {
@@ -2098,7 +2163,7 @@
         />
         <div id="marathonNotFound" style="display:none;margin-top:10px;font-size:12px;color:rgba(10,10,15,0.55);letter-spacing:0.04em;text-align:center;">
           Can't find your marathon?
-          <a id="marathonRequestLink" href="mailto:hello@pacelab.run?subject=Marathon%20request&body=Hi%2C%20I'd%20like%20to%20see%20this%20marathon%3A%20"
+          <a id="marathonRequestLink" href="mailto:help@pacelab.me?subject=Marathon%20request&body=Hi%2C%20I'd%20like%20to%20see%20this%20marathon%3A%20"
             style="color:var(--blue,#0033ff);text-decoration:underline;">Write to us</a>
           and we'll add it.
         </div>
@@ -2154,7 +2219,7 @@
     </div>
     <div id="belowChartNotFound" style="display:none;margin-top:10px;font-size:12px;color:rgba(10,10,15,0.55);letter-spacing:0.04em;">
       Can't find your marathon?
-      <a id="belowChartRequestLink" href="mailto:hello@pacelab.run?subject=Marathon%20request"
+      <a id="belowChartRequestLink" href="mailto:help@pacelab.me?subject=Marathon%20request"
         style="color:var(--blue,#0033ff);text-decoration:underline;">Write to us</a>
       and we'll add it.
     </div>
@@ -2178,7 +2243,7 @@
       <div class="ch-sub">Want more marathons in the catalogue, or a personal pace calculation for your next race? Send us a message — we'll get back.</div>
     </div>
     <div class="ch-right">
-      <a class="ch-btn" href="mailto:hello@pacelab.me?subject=Pacelab%20—%20hello&body=Hi%20—%20">Contact us</a>
+      <a class="ch-btn" href="mailto:help@pacelab.me?subject=Pacelab%20—%20hello&body=Hi%20—%20">Contact us</a>
       <div class="ch-fine">Replace the email above with yours before publishing</div>
     </div>
   </div>
@@ -2620,7 +2685,7 @@ function filterMarathonSearch(query) {
     if (!anyVisible && requestLink) {
       const subject = encodeURIComponent('Marathon request: ' + query.trim());
       const body = encodeURIComponent("Hi, I'd like to see this marathon added: " + query.trim());
-      requestLink.href = `mailto:hello@pacelab.run?subject=${subject}&body=${body}`;
+      requestLink.href = `mailto:help@pacelab.me?subject=${subject}&body=${body}`;
     }
   }
 }
@@ -2668,7 +2733,7 @@ function belowChartSearch(query) {
     if (q && !anyVisible && requestLink) {
       const subject = encodeURIComponent('Marathon request: ' + query.trim());
       const body = encodeURIComponent("Hi, I'd like to see this marathon added: " + query.trim());
-      requestLink.href = `mailto:hello@pacelab.run?subject=${subject}&body=${body}`;
+      requestLink.href = `mailto:help@pacelab.me?subject=${subject}&body=${body}`;
     }
   }
 }
@@ -3972,50 +4037,68 @@ async function confirmPurchase() {
 })();
 
 function showUnlockSuccess(name, mode, contextType) {
-  const unlockedCount = Object.keys(MARATHONS).filter(n =>
-    MARATHONS[n].tier === 'paid' && unlocked.has(n)
-  ).length;
   const isGpx = contextType === 'gpx-upload';
-  let titleHtml, subText, ctaText;
-  if (mode === 'single') {
-    if (isGpx) {
-      titleHtml = `GPX upload <span class="it">unlocked.</span>`;
-      subText = `Open the picker (the dashed "Add marathon" tile) and drop your .gpx file. The chart will redraw with your run included.`;
-      ctaText = "Open picker";
-    } else {
-      titleHtml = `${name} <span class="it">unlocked.</span>`;
-      subText = `${name} has been added to your chart. Want the other ${5 - 1} premium courses too? They'll show up locked next time you visit.`;
-      ctaText = "View on chart";
-    }
-  } else if (mode === 'promo') {
-    titleHtml = `Everything <span class="it">unlocked.</span>`;
-    subText = `Promo claimed — Berlin, Tokyo, Chicago, Paris, Valencia are all yours, plus GPX upload. We'll only email you when new marathons launch.`;
-    ctaText = "View on chart";
+  const premiumNames = Object.keys(MARATHONS).filter(n => MARATHONS[n].tier === 'paid');
+
+  let titleHtml, subText, ctaText, nextHint, chipItems;
+
+  if (mode === 'single' && isGpx) {
+    titleHtml = `GPX upload <span class="it">unlocked.</span>`;
+    subText = `Your own course is ready to add.`;
+    ctaText = `Upload my GPX file`;
+    nextHint = `We'll open the picker — just drop your <strong>.gpx</strong> file on the upload box and the chart redraws with your run on it.`;
+    chipItems = [`📈 GPX upload`];
+  } else if (mode === 'single') {
+    titleHtml = `${name} <span class="it">unlocked.</span>`;
+    subText = `It's already on your chart.`;
+    ctaText = `See ${name} on the chart`;
+    nextHint = `<strong>${name}</strong> is now in your finish-time ranking below. Add the other premium courses any time from the picker.`;
+    chipItems = [`${MARATHONS[name] && MARATHONS[name].emoji ? MARATHONS[name].emoji + ' ' : ''}${name}`];
   } else {
     titleHtml = `Everything <span class="it">unlocked.</span>`;
-    subText = `Berlin, Tokyo, Chicago, Paris, Valencia and GPX upload are now available.`;
-    ctaText = "View on chart";
+    subText = `All five premium courses plus GPX upload are yours.`;
+    ctaText = `See my marathons on the chart`;
+    nextHint = `They're all on your chart now. Add or remove any course from the picker, and upload your own runs via GPX.${mode === 'promo' ? ` We'll only email you when new marathons launch.` : ''}`;
+    chipItems = premiumNames.map(n => `${MARATHONS[n] && MARATHONS[n].emoji ? MARATHONS[n].emoji + ' ' : ''}${n}`).concat([`📈 GPX upload`]);
   }
+
+  const chipsHtml = chipItems.map(t => `<span class="unlock-chip">${t}</span>`).join("");
+
   const html = `
     <div class="pay-success">
       <div class="check">✓</div>
-      <div class="modal-eyebrow">Payment successful · DEMO</div>
-      <div class="modal-title" style="margin-bottom:12px;">${titleHtml}</div>
-      <div class="modal-sub" style="margin-bottom:24px;">${subText}</div>
-      <button class="btn-primary" style="width:100%;border:1px solid var(--ink);" id="paySuccessClose">${ctaText}</button>
+      <div class="modal-eyebrow">Payment successful</div>
+      <div class="modal-title" style="margin-bottom:6px;">${titleHtml}</div>
+      <div class="modal-sub" style="margin-bottom:16px;">${subText}</div>
+      <div class="unlock-chips">${chipsHtml}</div>
+      <div class="pay-next"><span class="pay-next-label">What's next</span>${nextHint}</div>
+      <button class="btn-primary pay-cta" id="paySuccessClose">${ctaText} <span class="pay-arrow">→</span></button>
+      <div class="pay-saved">✓ Saved on this device — it'll be here when you come back.</div>
     </div>
   `;
   $("modalBody").innerHTML = html;
   $("modal").classList.add("success");
-  $("paySuccessClose").addEventListener("click", () => {
+
+  const goNext = () => {
     closeModal();
     if (isGpx) {
       $("picker").classList.add("open");
-      setTimeout(() => $("uploadBox").scrollIntoView({behavior:"smooth", block:"center"}), 200);
+      setTimeout(() => {
+        const box = $("uploadBox");
+        box.scrollIntoView({behavior:"smooth", block:"center"});
+        box.classList.add("flash");
+        setTimeout(() => box.classList.remove("flash"), 1600);
+      }, 250);
     } else {
-      setTimeout(() => $("chart").scrollIntoView({behavior:"smooth", block:"center"}), 200);
+      setTimeout(() => {
+        const chart = $("chart");
+        chart.scrollIntoView({behavior:"smooth", block:"center"});
+        chart.classList.add("flash");
+        setTimeout(() => chart.classList.remove("flash"), 1600);
+      }, 250);
     }
-  });
+  };
+  $("paySuccessClose").addEventListener("click", goNext);
 }
 
 function showQuickToast(text) {
