@@ -1364,9 +1364,38 @@
     margin-bottom: 0;
   }
   .promo-email-field.show {
-    max-height: 130px;
+    max-height: 520px;
     opacity: 1;
     margin-bottom: 16px;
+  }
+  .interest-label {
+    display: block;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 16px 0 8px;
+  }
+  .interest-label span { text-transform: none; letter-spacing: 0.02em; opacity: 0.7; }
+  .interest-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .interest-chip {
+    font-size: 12px;
+    letter-spacing: 0.01em;
+    background: var(--paper);
+    color: var(--ink-soft);
+    border: 1.5px solid var(--line);
+    border-radius: 100px;
+    padding: 7px 13px;
+    cursor: pointer;
+    user-select: none;
+    transition: all .12s;
+    white-space: nowrap;
+  }
+  .interest-chip:hover { border-color: rgba(0,51,255,0.35); }
+  .interest-chip.sel {
+    background: rgba(0,51,255,0.08);
+    color: var(--blue);
+    border-color: rgba(0,51,255,0.45);
   }
   .promo-email-field label {
     display: block;
@@ -2018,7 +2047,7 @@
     flex-direction: column;
     gap: 14px;
   }
-  .tsec-stars { color: var(--blue, #0033ff); font-size: 13px; letter-spacing: 2px; }
+  .tsec-stars { color: var(--blue, #0033ff); font-size: 20px; letter-spacing: 3px; line-height: 1; }
   .tsec-quote {
     font-size: 14px;
     line-height: 1.65;
@@ -2391,6 +2420,31 @@ const GPX_KEY = "stride_gpx_v1";
 // Example: "xyzabcde" (random string in your form's URL).
 // Until set, signups are saved to localStorage so nothing is lost while wiring up.
 const FORMSPREE_ID = "";
+
+// Sends a signup (email + chosen marathons) to your email-collector service.
+// Uses keepalive so it still completes even though we redirect to Stripe right after.
+// Returns immediately; no backend of your own required.
+function submitSignup(payload) {
+  try {
+    if (FORMSPREE_ID) {
+      fetch("https://formspree.io/f/" + FORMSPREE_ID, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {});
+    }
+    // Mirror to analytics as a custom event (no-op if analytics is off).
+    track("signup", { tier: payload.tier || "", marathons: (payload.marathons || []).length });
+  } catch (e) { /* never block the user */ }
+}
+
+// Fires a custom analytics event if a provider is loaded; safe no-op otherwise.
+function track(event, props) {
+  try {
+    if (window.plausible) window.plausible(event, { props: props || {} });
+  } catch (e) { /* ignore */ }
+}
 let unlocked = new Set();
 let userEmail = null;
 let gpxPaid = false;
@@ -3713,6 +3767,11 @@ function openUnlockModal(ctx) {
       </div>`;
   }
 
+  const interestChipsHtml = Object.keys(MARATHONS)
+    .filter(n => MARATHONS[n].tier !== 'custom')
+    .map(n => `<span class="interest-chip" data-name="${n}">${MARATHONS[n].emoji ? MARATHONS[n].emoji + ' ' : ''}${n}</span>`)
+    .join("");
+
   const html = `
     <div class="modal-eyebrow">${eyebrow}</div>
     <div class="modal-title">${title}</div>
@@ -3747,6 +3806,8 @@ function openUnlockModal(ctx) {
     <div class="promo-email-field" id="promoEmailField">
       <label>YOUR EMAIL</label>
       <input type="email" id="promoEmail" placeholder="you@email.com" autocomplete="email" required>
+      <div class="interest-label">Pick your most interesting marathons <span>(optional)</span></div>
+      <div class="interest-chips" id="interestChips">${interestChipsHtml}</div>
     </div>
 
     <div class="pay-fields">
@@ -3803,6 +3864,9 @@ function openUnlockModal(ctx) {
   });
 
   $("payCancel").addEventListener("click", closeModal);
+  document.querySelectorAll("#interestChips .interest-chip").forEach(chip => {
+    chip.addEventListener("click", () => chip.classList.toggle("sel"));
+  });
   $("payConfirm").addEventListener("click", confirmPurchase);
 }
 
@@ -3972,6 +4036,19 @@ async function confirmPurchase() {
       localStorage.setItem(key, JSON.stringify(list));
     } catch (e) { /* ignore */ }
     persistEmail(email);
+  }
+
+  // Collect the marathons they ticked (if any) and send the signup to the email service.
+  if (email) {
+    const interests = Array.from(document.querySelectorAll("#interestChips .interest-chip.sel"))
+      .map(el => el.dataset.name);
+    submitSignup({
+      email,
+      marathons: interests,
+      tier: modalMode,
+      context: pendingContext.name || "unlock-all",
+      at: new Date().toISOString(),
+    });
   }
 
   // Redirect to Stripe — real payment happens there
@@ -4187,7 +4264,30 @@ function refreshUnlockUI() {
   }
 }
 </script>
-<!-- Cloudflare Web Analytics — REPLACE THE TOKEN BELOW WITH YOURS -->
-<!-- <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"YOUR_TOKEN_HERE"}'></script> -->
+<!-- ===== WEB ANALYTICS (privacy-friendly, cookieless — no consent banner needed) =====
+     Pick ONE provider, paste your value, save. Leave both blank = analytics off (zero requests). -->
+<script>
+(function () {
+  // Option A — Cloudflare Web Analytics (free). Paste the token from your Cloudflare dashboard:
+  var CLOUDFLARE_TOKEN = "";
+  // Option B — Plausible (also enables custom events like "signup"). Paste your registered domain, e.g. "pacelab.me":
+  var PLAUSIBLE_DOMAIN = "";
+
+  if (CLOUDFLARE_TOKEN) {
+    var s = document.createElement("script");
+    s.defer = true;
+    s.src = "https://static.cloudflareinsights.com/beacon.min.js";
+    s.setAttribute("data-cf-beacon", JSON.stringify({ token: CLOUDFLARE_TOKEN }));
+    document.head.appendChild(s);
+  } else if (PLAUSIBLE_DOMAIN) {
+    var p = document.createElement("script");
+    p.defer = true;
+    p.setAttribute("data-domain", PLAUSIBLE_DOMAIN);
+    p.src = "https://plausible.io/js/script.tagged-events.js";
+    document.head.appendChild(p);
+    window.plausible = window.plausible || function () { (window.plausible.q = window.plausible.q || []).push(arguments); };
+  }
+})();
+</script>
 </body>
 </html>
