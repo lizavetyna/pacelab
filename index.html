@@ -1364,7 +1364,7 @@
     margin-bottom: 0;
   }
   .promo-email-field.show {
-    max-height: 520px;
+    max-height: 680px;
     opacity: 1;
     margin-bottom: 16px;
   }
@@ -1376,27 +1376,85 @@
     color: var(--muted);
     margin: 16px 0 8px;
   }
-  .interest-label span { text-transform: none; letter-spacing: 0.02em; opacity: 0.7; }
-  .interest-chips { display: flex; flex-wrap: wrap; gap: 7px; }
-  .interest-chip {
-    font-size: 12px;
-    letter-spacing: 0.01em;
+  .ms-hint { text-transform: none; letter-spacing: 0.02em; opacity: 0.7; }
+  /* Searchable multi-select */
+  .ms { position: relative; }
+  .ms-control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
     background: var(--paper);
-    color: var(--ink-soft);
     border: 1.5px solid var(--line);
-    border-radius: 100px;
-    padding: 7px 13px;
-    cursor: pointer;
-    user-select: none;
-    transition: all .12s;
-    white-space: nowrap;
+    border-radius: 16px;
+    padding: 8px 10px;
+    cursor: text;
+    transition: border-color .15s;
   }
-  .interest-chip:hover { border-color: rgba(0,51,255,0.35); }
-  .interest-chip.sel {
+  .ms-control.focus { border-color: var(--blue); }
+  .ms-tags { display: contents; }
+  .ms-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
     background: rgba(0,51,255,0.08);
     color: var(--blue);
-    border-color: rgba(0,51,255,0.45);
+    border: 1px solid rgba(0,51,255,0.30);
+    border-radius: 100px;
+    padding: 5px 6px 5px 11px;
+    white-space: nowrap;
   }
+  .ms-tag .ms-x {
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    width: 17px; height: 17px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: rgba(0,51,255,0.12);
+  }
+  .ms-tag .ms-x:hover { background: rgba(0,51,255,0.25); }
+  .ms-control input {
+    flex: 1;
+    min-width: 120px;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--ink);
+    padding: 5px 2px;
+  }
+  .ms-control input::placeholder { color: var(--muted); opacity: 0.7; }
+  .ms-caret { color: var(--muted); font-size: 12px; padding-right: 4px; }
+  .ms-menu {
+    display: none;
+    margin-top: 6px;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--card, #fff);
+    max-height: 210px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+  .ms-menu.open { display: block; }
+  .ms-opt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    border-bottom: 1px solid var(--line);
+  }
+  .ms-opt:last-child { border-bottom: none; }
+  .ms-opt:hover { background: var(--paper); }
+  .ms-opt .ms-check { color: var(--blue); opacity: 0; font-size: 13px; }
+  .ms-opt.sel { color: var(--blue); }
+  .ms-opt.sel .ms-check { opacity: 1; }
+  .ms-empty { padding: 12px 14px; font-size: 12px; color: var(--muted); }
   .promo-email-field label {
     display: block;
     font-size: 9.5px;
@@ -2420,23 +2478,86 @@ const GPX_KEY = "stride_gpx_v1";
 // Example: "xyzabcde" (random string in your form's URL).
 // Until set, signups are saved to localStorage so nothing is lost while wiring up.
 const FORMSPREE_ID = "";
+// Google Apps Script web-app URL — your single spreadsheet of every signup.
+// Paste the /exec URL you get when you deploy the Apps Script (see setup notes).
+const SHEET_ENDPOINT = "";
 
-// Sends a signup (email + chosen marathons) to your email-collector service.
-// Uses keepalive so it still completes even though we redirect to Stripe right after.
-// Returns immediately; no backend of your own required.
+// Selected marathons live here (filled by the searchable multi-select).
+let marathonInterest = new Set();
+
+// Sends a signup (email + chosen marathons + tier) to your store(s).
+// keepalive lets it finish even though we redirect to Stripe right after.
 function submitSignup(payload) {
   try {
-    if (FORMSPREE_ID) {
-      fetch("https://formspree.io/f/" + FORMSPREE_ID, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true,
+    const body = JSON.stringify(payload);
+    // Primary store: your own Google Sheet (one place, you own the data).
+    if (SHEET_ENDPOINT) {
+      fetch(SHEET_ENDPOINT, {
+        method: "POST", mode: "no-cors", keepalive: true,
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body,
       }).catch(() => {});
     }
-    // Mirror to analytics as a custom event (no-op if analytics is off).
+    // Optional secondary: Formspree (emails you each submission).
+    if (FORMSPREE_ID) {
+      fetch("https://formspree.io/f/" + FORMSPREE_ID, {
+        method: "POST", keepalive: true,
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body,
+      }).catch(() => {});
+    }
     track("signup", { tier: payload.tier || "", marathons: (payload.marathons || []).length });
   } catch (e) { /* never block the user */ }
+}
+
+// Searchable, multi-select marathon picker inside the email step.
+function initMarathonMultiselect() {
+  marathonInterest = new Set();
+  const wrap = $("marathonMS");
+  if (!wrap) return;
+  const input = $("msInput"), menu = $("msMenu"), tags = $("msTags"), control = $("msControl");
+  const options = Object.keys(MARATHONS)
+    .filter(n => MARATHONS[n].tier !== 'custom')
+    .map(n => ({ name: n, emoji: MARATHONS[n].emoji || '' }));
+
+  function renderMenu(filter) {
+    const f = (filter || '').trim().toLowerCase();
+    const rows = options.filter(o => o.name.toLowerCase().includes(f));
+    if (!rows.length) { menu.innerHTML = '<div class="ms-empty">No marathons match.</div>'; return; }
+    menu.innerHTML = rows.map(o =>
+      `<div class="ms-opt${marathonInterest.has(o.name) ? ' sel' : ''}" data-name="${o.name}">
+        <span class="ms-opt-label">${o.emoji ? o.emoji + ' ' : ''}${o.name}</span>
+        <span class="ms-check">✓</span>
+      </div>`).join("");
+    menu.querySelectorAll(".ms-opt").forEach(el => {
+      el.addEventListener("mousedown", e => { e.preventDefault(); toggle(el.dataset.name); });
+    });
+  }
+  function renderTags() {
+    tags.innerHTML = Array.from(marathonInterest).map(n => {
+      const e = MARATHONS[n] && MARATHONS[n].emoji ? MARATHONS[n].emoji + ' ' : '';
+      return `<span class="ms-tag" data-name="${n}">${e}${n}<span class="ms-x">×</span></span>`;
+    }).join("");
+    tags.querySelectorAll(".ms-tag .ms-x").forEach(x => {
+      x.addEventListener("mousedown", e => {
+        e.preventDefault(); e.stopPropagation(); toggle(x.parentElement.dataset.name);
+      });
+    });
+  }
+  function toggle(name) {
+    if (marathonInterest.has(name)) marathonInterest.delete(name);
+    else marathonInterest.add(name);
+    renderTags(); renderMenu(input.value); input.value = ''; input.focus();
+  }
+  function open() { menu.classList.add("open"); control.classList.add("focus"); renderMenu(input.value); }
+  function close() { menu.classList.remove("open"); control.classList.remove("focus"); }
+  input.addEventListener("focus", open);
+  input.addEventListener("input", () => { open(); });
+  control.addEventListener("mousedown", e => {
+    if (e.target === control || e.target === tags) { input.focus(); }
+  });
+  document.addEventListener("mousedown", e => { if (!wrap.contains(e.target)) close(); });
+  renderTags();
 }
 
 // Fires a custom analytics event if a provider is loaded; safe no-op otherwise.
@@ -3767,11 +3888,6 @@ function openUnlockModal(ctx) {
       </div>`;
   }
 
-  const interestChipsHtml = Object.keys(MARATHONS)
-    .filter(n => MARATHONS[n].tier !== 'custom')
-    .map(n => `<span class="interest-chip" data-name="${n}">${MARATHONS[n].emoji ? MARATHONS[n].emoji + ' ' : ''}${n}</span>`)
-    .join("");
-
   const html = `
     <div class="modal-eyebrow">${eyebrow}</div>
     <div class="modal-title">${title}</div>
@@ -3806,31 +3922,23 @@ function openUnlockModal(ctx) {
     <div class="promo-email-field" id="promoEmailField">
       <label>YOUR EMAIL</label>
       <input type="email" id="promoEmail" placeholder="you@email.com" autocomplete="email" required>
-      <div class="interest-label">Pick your most interesting marathons <span>(optional)</span></div>
-      <div class="interest-chips" id="interestChips">${interestChipsHtml}</div>
-    </div>
-
-    <div class="pay-fields">
-      <div class="pay-field field-full">
-        <label>Card number</label>
-        <input type="text" placeholder="4242 4242 4242 4242" id="payCard" maxlength="19">
-      </div>
-      <div class="pay-field">
-        <label>Expiry</label>
-        <input type="text" placeholder="MM / YY" id="payExp" maxlength="7">
-      </div>
-      <div class="pay-field">
-        <label>CVC</label>
-        <input type="text" placeholder="123" id="payCvc" maxlength="4">
+      <div class="interest-label">Pick your marathons <span class="ms-hint">— choose as many as you like</span></div>
+      <div class="ms" id="marathonMS">
+        <div class="ms-control" id="msControl">
+          <div class="ms-tags" id="msTags"></div>
+          <input type="text" id="msInput" placeholder="Search marathons…" autocomplete="off" spellcheck="false">
+          <span class="ms-caret">▾</span>
+        </div>
+        <div class="ms-menu" id="msMenu"></div>
       </div>
     </div>
 
     <div class="pay-actions">
       <button class="btn-secondary" id="payCancel">Cancel</button>
-      <button class="btn-primary" id="payConfirm">Pay <span id="payAmount">${fmtPrice(PRICE_SINGLE)}</span></button>
+      <button class="btn-primary" id="payConfirm">Continue to checkout · <span id="payAmount">${fmtPrice(PRICE_SINGLE)}</span></button>
     </div>
     <div class="el-msg" id="promoMsg"></div>
-    <div class="demo-note"><strong>Demo mode</strong> — no real payment is processed. Card details are not sent or stored.</div>
+    <div class="demo-note">🔒 Card details are entered securely on <strong>Stripe</strong> — we never see or store them.</div>
   `;
   $("modalBody").innerHTML = html;
   $("modal").classList.remove("success");
@@ -3849,24 +3957,8 @@ function openUnlockModal(ctx) {
     });
   });
 
-  // Card-input formatting (cosmetic)
-  $("payCard").addEventListener("input", e => {
-    let v = e.target.value.replace(/\D/g, '').slice(0, 16);
-    e.target.value = v.replace(/(.{4})/g, '$1 ').trim();
-  });
-  $("payExp").addEventListener("input", e => {
-    let v = e.target.value.replace(/\D/g, '').slice(0, 4);
-    if (v.length >= 3) v = v.slice(0,2) + ' / ' + v.slice(2);
-    e.target.value = v;
-  });
-  $("payCvc").addEventListener("input", e => {
-    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
-  });
-
   $("payCancel").addEventListener("click", closeModal);
-  document.querySelectorAll("#interestChips .interest-chip").forEach(chip => {
-    chip.addEventListener("click", () => chip.classList.toggle("sel"));
-  });
+  initMarathonMultiselect();
   $("payConfirm").addEventListener("click", confirmPurchase);
 }
 
@@ -4040,8 +4132,7 @@ async function confirmPurchase() {
 
   // Collect the marathons they ticked (if any) and send the signup to the email service.
   if (email) {
-    const interests = Array.from(document.querySelectorAll("#interestChips .interest-chip.sel"))
-      .map(el => el.dataset.name);
+    const interests = Array.from(marathonInterest);
     submitSignup({
       email,
       marathons: interests,
