@@ -4136,6 +4136,7 @@ async function confirmPurchase() {
     submitSignup({
       email,
       marathons: interests,
+      marathons_list: interests.join(", "),
       tier: modalMode,
       context: pendingContext.name || "unlock-all",
       at: new Date().toISOString(),
@@ -4148,6 +4149,36 @@ async function confirmPurchase() {
 }
 
 // ── Handle redirect back from Stripe ─────────────────────────────────────────────────────────────────────────────
+// ===== TEST / COMP ACCESS =====
+// Open  https://your-site/?unlock=PACELAB-TEST  to unlock everything without paying.
+// Use it yourself or share the link with testers. It's client-side, so treat the code
+// as "soft" (fine for comps and testing, not a real paywall). Change the code below anytime.
+const TEST_UNLOCK_CODE = "PACELAB-TEST";
+
+(function handleTestUnlock() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("unlock");
+  if (!code || code !== TEST_UNLOCK_CODE) return;
+
+  // Strip the code from the URL so it isn't kept on refresh or accidentally shared.
+  window.history.replaceState({}, "", window.location.pathname);
+
+  // Unlock every premium course + GPX upload, and persist it on this device.
+  Object.keys(MARATHONS).forEach(n => { if (MARATHONS[n].tier === 'paid') unlocked.add(n); });
+  persistUnlocked();
+  persistGpxPaid();
+  if (!userEmail) { userEmail = "test@pacelab.me"; persistEmail(userEmail); }
+
+  function doUI() {
+    renderAll();
+    showUnlockSuccess(null, 'promo', null);
+    $("modalBackdrop").classList.add("open");
+  }
+  if (document.readyState === 'loading') {
+    window.addEventListener("DOMContentLoaded", doUI, { once: true });
+  } else { doUI(); }
+})();
+
 (function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   const payment = params.get("payment");
@@ -4360,7 +4391,7 @@ function refreshUnlockUI() {
 <script>
 (function () {
   // Option A — Cloudflare Web Analytics (free). Paste the token from your Cloudflare dashboard:
-  var CLOUDFLARE_TOKEN = "";
+  var CLOUDFLARE_TOKEN = "c420b362ead64d18847227d842fd2e55";
   // Option B — Plausible (also enables custom events like "signup"). Paste your registered domain, e.g. "pacelab.me":
   var PLAUSIBLE_DOMAIN = "";
 
