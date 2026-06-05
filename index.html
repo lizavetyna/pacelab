@@ -108,6 +108,37 @@
     letter-spacing: 0.04em;
   }
   .calibrator .cmode.real { color: var(--blue); }
+  .cal-strava-nudge {
+    flex-basis: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .csn-text { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .csn-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #FC4C02;
+    color: #fff;
+    border: none;
+    border-radius: 100px;
+    padding: 10px 18px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    white-space: nowrap;
+  }
+  .csn-btn:hover { background: #e84402; transform: translateY(-1px); }
+  .csn-btn:active { transform: translateY(0); }
 
   /* Shimmer effect — draws the eye to the calibrator before it's used */
   .ctime.shimmer {
@@ -321,6 +352,11 @@
     gap: 14px;
   }
   .cf-mode.active { display: flex; }
+  .strava-btn { background: #FC4C02; color: #fff; border-color: #FC4C02; }
+  .strava-btn:hover { background: #e84402; border-color: #e84402; }
+  .strava-status { font-size: 12px; line-height: 1.5; color: var(--muted); min-height: 1px; }
+  .strava-status.ok { color: var(--blue); }
+  .strava-status.err { color: #c0392b; }
 
   /* ===== REAL vs IDEAL section ===== */
   .compare-card {
@@ -1693,6 +1729,16 @@
     margin-bottom: 6px;
     max-width: 38ch;
   }
+  .ft-copyright {
+    width: 100%;
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-align: center;
+  }
   .ft-fine {
     font-size: 10px;
     letter-spacing: 0.06em;
@@ -2187,10 +2233,15 @@
       <button class="calibrate-btn reset" id="calReset" style="display:none;">Reset</button>
       <button class="calibrate-btn shimmer" id="calBtn">Calculate your REAL time</button>
     </div>
+    <div class="cal-strava-nudge">
+      <span class="csn-text">Don't know your time? We'll estimate it from your training.</span>
+      <button type="button" class="csn-btn" id="calStravaNudge">Connect Strava →</button>
+    </div>
     <div class="calibrator-form" id="calForm">
       <div class="cf-tabs">
         <button class="cf-tab active" data-mode="time">I've run a marathon</button>
         <button class="cf-tab" data-mode="pace">I have a goal pace</button>
+        <button class="cf-tab" data-mode="strava">Estimate from Strava</button>
       </div>
       <div class="cf-mode active" data-mode="time">
         <div class="cf-fields">
@@ -2229,6 +2280,20 @@
           </div>
           <div class="cf-actions">
             <button class="calibrate-btn" id="calApplyPace">Apply</button>
+          </div>
+        </div>
+      </div>
+      <div class="cf-mode" data-mode="strava">
+        <div class="cf-fields">
+          <div class="cf-field" style="grid-column: span 2;">
+            <label>Let your training set your time</label>
+            <div class="cf-help">Connect Strava and we'll analyze your recent runs to estimate a realistic marathon time — no guessing. Your runs are processed privately and not stored.</div>
+          </div>
+          <div class="cf-actions">
+            <button class="calibrate-btn strava-btn" id="stravaConnect">Connect Strava</button>
+          </div>
+          <div class="cf-field" style="grid-column: span 2;">
+            <div class="strava-status" id="stravaStatus"></div>
           </div>
         </div>
       </div>
@@ -2409,6 +2474,7 @@
     </div>
   </div>
 
+  <div class="ft-copyright">© 2026 Pacelab. All rights reserved.</div>
   </footer>
 
 </div>
@@ -2482,32 +2548,42 @@ const FORMSPREE_ID = "xwvjkgnj";
 // Paste the /exec URL you get when you deploy the Apps Script (see setup notes).
 const SHEET_ENDPOINT = "";
 
+// ===== STRAVA =====
+const STRAVA_CLIENT_ID = "14699";
+const STRAVA_WORKER_URL = "https://pacelab-strava.lizavetyna.workers.dev";
+
 // Selected marathons live here (filled by the searchable multi-select).
 let marathonInterest = new Set();
 
 // Sends a signup (email + chosen marathons + tier) to your store(s).
 // keepalive lets it finish even though we redirect to Stripe right after.
 function submitSignup(payload) {
+  const jobs = [];
   try {
     const body = JSON.stringify(payload);
     // Primary store: your own Google Sheet (one place, you own the data).
     if (SHEET_ENDPOINT) {
-      fetch(SHEET_ENDPOINT, {
+      jobs.push(fetch(SHEET_ENDPOINT, {
         method: "POST", mode: "no-cors", keepalive: true,
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body,
-      }).catch(() => {});
+      }).catch(() => {}));
     }
-    // Optional secondary: Formspree (emails you each submission).
+    // Email collector: Formspree (emails you each submission).
     if (FORMSPREE_ID) {
-      fetch("https://formspree.io/f/" + FORMSPREE_ID, {
+      jobs.push(fetch("https://formspree.io/f/" + FORMSPREE_ID, {
         method: "POST", keepalive: true,
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body,
-      }).catch(() => {});
+      }).catch(() => {}));
     }
     track("signup", { tier: payload.tier || "", marathons: (payload.marathons || []).length });
   } catch (e) { /* never block the user */ }
+  // Resolve once the sends finish, or after 1.2s, so a redirect can wait briefly.
+  return Promise.race([
+    Promise.allSettled(jobs),
+    new Promise(res => setTimeout(res, 1200)),
+  ]);
 }
 
 // Searchable, multi-select marathon picker inside the email step.
@@ -3699,6 +3775,10 @@ function wireCalibrator() {
     userTime.mode = 'baseline';
     renderAll();
   });
+  const sc = $("stravaConnect");
+  if (sc) sc.addEventListener("click", connectStrava);
+  const sn = $("calStravaNudge");
+  if (sn) sn.addEventListener("click", connectStrava);
   // Tabs
   document.querySelectorAll(".cf-tab").forEach(t => {
     t.addEventListener("click", () => {
@@ -3922,6 +4002,7 @@ function openUnlockModal(ctx) {
     <div class="promo-email-field" id="promoEmailField">
       <label>YOUR EMAIL</label>
       <input type="email" id="promoEmail" placeholder="you@email.com" autocomplete="email" required>
+      <input type="text" id="hp_field" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;opacity:0;pointer-events:none;" />
       <div class="interest-label">Pick your marathons <span class="ms-hint">— choose as many as you like</span></div>
       <div class="ms" id="marathonMS">
         <div class="ms-control" id="msControl">
@@ -4131,14 +4212,25 @@ async function confirmPurchase() {
   }
 
   // Collect the marathons they ticked (if any) and send the signup to the email service.
-  if (email) {
+  // We await it (capped at ~1.2s) so the email is captured even if they abandon checkout.
+  const hp = $("hp_field");
+  const looksLikeBot = hp && hp.value.trim() !== "";
+  if (email && !looksLikeBot) {
     const interests = Array.from(marathonInterest);
-    submitSignup({
+    // context = what they actually bought: "unlock-all" for promo/bundle,
+    // or the specific course (or "gpx-upload") for a single purchase.
+    let ctxLabel;
+    if (modalMode === 'single') {
+      ctxLabel = pendingContext.type === 'gpx-upload' ? 'gpx-upload' : (pendingContext.name || 'single');
+    } else {
+      ctxLabel = 'unlock-all';
+    }
+    await submitSignup({
       email,
       marathons: interests,
       marathons_list: interests.join(", "),
       tier: modalMode,
-      context: pendingContext.name || "unlock-all",
+      context: ctxLabel,
       at: new Date().toISOString(),
     });
   }
@@ -4177,6 +4269,83 @@ const TEST_UNLOCK_CODE = "PACELAB-TEST";
   if (document.readyState === 'loading') {
     window.addEventListener("DOMContentLoaded", doUI, { once: true });
   } else { doUI(); }
+})();
+
+// ===== STRAVA: connect, analyse, set time =====
+function connectStrava() {
+  // redirect_uri must be on your Strava app's callback domain (pacelab.me)
+  const redirect = location.origin + location.pathname;
+  const url = "https://www.strava.com/oauth/authorize"
+    + "?client_id=" + encodeURIComponent(STRAVA_CLIENT_ID)
+    + "&redirect_uri=" + encodeURIComponent(redirect)
+    + "&response_type=code"
+    + "&approval_prompt=auto"
+    + "&scope=read,activity:read_all"
+    + "&state=strava";
+  window.location.href = url;
+}
+
+function openStravaTab() {
+  const form = $("calForm");
+  if (form) form.classList.add("open");
+  document.querySelectorAll(".cf-tab").forEach(x => x.classList.toggle("active", x.dataset.mode === 'strava'));
+  document.querySelectorAll(".cf-mode").forEach(x => x.classList.toggle("active", x.dataset.mode === 'strava'));
+  const cal = $("calibrator");
+  if (cal) cal.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function showStravaStatus(msg, ok) {
+  const el = $("stravaStatus");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "strava-status" + (ok === true ? " ok" : ok === false ? " err" : "");
+}
+
+(function handleStravaReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("state") !== "strava") return;
+  const code = params.get("code");
+  const error = params.get("error");
+  window.history.replaceState({}, "", window.location.pathname);
+
+  const run = (fn) => {
+    if (document.readyState === 'loading') window.addEventListener("DOMContentLoaded", fn, { once: true });
+    else fn();
+  };
+
+  if (error || !code) {
+    run(() => { openStravaTab(); showStravaStatus("Strava connection was cancelled — you can try again anytime.", false); });
+    return;
+  }
+
+  run(async () => {
+    openStravaTab();
+    showStravaStatus("Analyzing your Strava runs…", null);
+    try {
+      const res = await fetch(STRAVA_WORKER_URL + "/exchange", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (data && data.estimateSeconds) {
+        userTime.flatMinutes = data.estimateSeconds / 60;
+        userTime.mode = 'real';
+        renderAll();
+        const conf = data.confidence ? ` · ${data.confidence} confidence` : '';
+        showStravaStatus(
+          `Analyzed ${data.runsAnalyzed} runs — your realistic marathon time looks like ${data.estimateHMS}${conf}. We've set it above; tweak it anytime.`,
+          true
+        );
+      } else if (data && data.error === 'not_enough_data') {
+        showStravaStatus("We couldn't find enough runs to estimate yet. Add a few longer runs to Strava and try again.", false);
+      } else {
+        showStravaStatus("Something went wrong reading your Strava data. Please try again.", false);
+      }
+    } catch (e) {
+      showStravaStatus("Couldn't reach the analysis service. Please try again in a moment.", false);
+    }
+  });
 })();
 
 (function handleStripeReturn() {
