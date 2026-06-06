@@ -2151,7 +2151,15 @@
     flex-direction: column;
     gap: 14px;
   }
-  .tsec-stars { color: var(--blue, #0033ff); font-size: 20px; letter-spacing: 3px; line-height: 1; }
+  .tsec-stars { display: inline-flex; gap: 4px; line-height: 1; }
+  .tsec-stars .star { width: 22px; height: 22px; display: block; }
+  .tsec-stars .star path {
+    fill: #FC4C02;
+    stroke: #0033ff;
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    paint-order: stroke;
+  }
   .tsec-quote {
     font-size: 14px;
     line-height: 1.65;
@@ -2416,7 +2424,7 @@
     <div class="tsec-grid">
 
       <div class="tsec-card">
-        <div class="tsec-stars">★★★★★</div>
+        <div class="tsec-stars"><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg></div>
         <div class="tsec-quote">"I ran New York last fall and Madrid was next. The elevation comparison made it instantly clear — Madrid is a completely different beast. I adjusted my training and finished 4 minutes ahead of my target."</div>
         <div class="tsec-author">
           <div class="tsec-avatar-row">
@@ -2430,7 +2438,7 @@
       </div>
 
       <div class="tsec-card">
-        <div class="tsec-stars">★★★★★</div>
+        <div class="tsec-stars"><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg></div>
         <div class="tsec-quote">"I use this with all my athletes before major marathons. The km-by-km breakdown helps us set a realistic pacing strategy and avoid blowups in hilly second halves."</div>
         <div class="tsec-author">
           <div class="tsec-avatar-row">
@@ -2444,7 +2452,7 @@
       </div>
 
       <div class="tsec-card">
-        <div class="tsec-stars">★★★★★</div>
+        <div class="tsec-stars"><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg></div>
         <div class="tsec-quote">"The course looked manageable until I saw the elevation profile. It completely changed my pacing plan. Instead of chasing my goal pace early, I ran conservatively and finished feeling strong."</div>
         <div class="tsec-author">
           <div class="tsec-avatar-row">
@@ -2458,7 +2466,7 @@
       </div>
 
       <div class="tsec-card">
-        <div class="tsec-stars">★★★★★</div>
+        <div class="tsec-stars"><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg><svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26Z"/></svg></div>
         <div class="tsec-quote">"I was choosing between Tokyo and London for my first Major. The elevation comparison helped me understand the differences instantly and pick the course that suited my strengths."</div>
         <div class="tsec-author">
           <div class="tsec-avatar-row">
@@ -2549,7 +2557,7 @@ const FORMSPREE_ID = "xwvjkgnj";
 const SHEET_ENDPOINT = "";
 
 // ===== STRAVA =====
-const STRAVA_CLIENT_ID = "14699";
+const STRAVA_CLIENT_ID = "255679";
 const STRAVA_WORKER_URL = "https://pacelab-strava.lizavetyna.workers.dev";
 
 // Selected marathons live here (filled by the searchable multi-select).
