@@ -120,6 +120,14 @@
   }
   .csn-text { font-size: 13px; color: var(--muted); line-height: 1.4; }
   .csn-connected { display: none; font-size: 13px; color: var(--blue); font-weight: 600; line-height: 1.4; }
+  #stravaConnect.reconnect-icon { width: 46px; min-width: 46px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .pl-fortune { display: flex; align-items: center; gap: 12px; }
+  .pl-fortune-wheel { position: relative; width: 42px; height: 42px; flex: 0 0 42px; }
+  .pl-fortune-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px dashed var(--blue, #0033ff); animation: pl-spin 4s linear infinite; }
+  .pl-fortune-glyph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--blue, #0033ff); animation: pl-glyph .8s ease-in-out infinite alternate; }
+  .pl-fortune-cap { font-size: 13px; color: var(--muted); }
+  @keyframes pl-spin { to { transform: rotate(360deg); } }
+  @keyframes pl-glyph { from { opacity: .5; transform: scale(.9); } to { opacity: 1; transform: scale(1.05); } }
   .csn-btn {
     display: inline-flex;
     align-items: center;
@@ -2156,7 +2164,7 @@
   .tsec-stars .star { width: 22px; height: 22px; display: block; }
   .tsec-stars .star path {
     fill: #F6B73C;
-    stroke: #E09A1E;
+    stroke: #1A1A1A;
     stroke-width: 1.1;
     stroke-linejoin: round;
     paint-order: stroke;
@@ -2223,7 +2231,7 @@
     <h1>We know the <span class="it">future.</span><br>No bullshit. Just science.</h1>
     <div class="meta">
       <strong>5 of 10</strong> selected<br>
-      <span id="metaDistance">42.2 km</span> · sea level @ 0 m
+      Elevation × Effective Temperature = your real finish time
     </div>
   </div>
 
@@ -2242,7 +2250,7 @@
       <button class="calibrate-btn reset" id="calReset" style="display:none;">Reset</button>
       <button class="calibrate-btn shimmer" id="calBtn">Calculate your REAL time</button>
     </div>
-    <div class="cal-strava-nudge">
+    <div class="cal-strava-nudge" id="calStravaNudgeRow">
       <span class="csn-text" id="csnText">We'll estimate your marathon potential from your recent runs.</span>
       <span class="csn-connected" id="csnConnected">✓ Strava connected — your time is set from your runs.</span>
       <button type="button" class="csn-btn" id="calStravaNudge">Connect Strava →</button>
@@ -4256,30 +4264,39 @@ async function confirmPurchase() {
 // Open  https://your-site/?unlock=PACELAB-TEST  to unlock everything without paying.
 // Use it yourself or share the link with testers. It's client-side, so treat the code
 // as "soft" (fine for comps and testing, not a real paywall). Change the code below anytime.
-const TEST_UNLOCK_CODE = "PACELAB-TEST";
-
 (function handleTestUnlock() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get("unlock");
-  if (!code || code !== TEST_UNLOCK_CODE) return;
+  if (!code) return;
 
   // Strip the code from the URL so it isn't kept on refresh or accidentally shared.
   window.history.replaceState({}, "", window.location.pathname);
 
-  // Unlock every premium course + GPX upload, and persist it on this device.
-  Object.keys(MARATHONS).forEach(n => { if (MARATHONS[n].tier === 'paid') unlocked.add(n); });
-  persistUnlocked();
-  persistGpxPaid();
-  if (!userEmail) { userEmail = "test@pacelab.me"; persistEmail(userEmail); }
-
-  function doUI() {
+  function unlockAll() {
+    Object.keys(MARATHONS).forEach(n => { if (MARATHONS[n].tier === 'paid') unlocked.add(n); });
+    persistUnlocked();
+    persistGpxPaid();
+    if (!userEmail) { userEmail = "test@pacelab.me"; persistEmail(userEmail); }
     renderAll();
     showUnlockSuccess(null, 'promo', null);
     $("modalBackdrop").classList.add("open");
   }
+
+  function run() {
+    // The valid code lives only on the backend, never in this file.
+    fetch(STRAVA_WORKER_URL + "/unlock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d && d.ok) unlockAll(); })
+      .catch(() => {});
+  }
+
   if (document.readyState === 'loading') {
-    window.addEventListener("DOMContentLoaded", doUI, { once: true });
-  } else { doUI(); }
+    window.addEventListener("DOMContentLoaded", run, { once: true });
+  } else { run(); }
 })();
 
 // ===== STRAVA: connect, analyse, set time =====
@@ -4306,25 +4323,57 @@ function openStravaTab() {
 }
 
 function showStravaStatus(msg, ok) {
+  stopStravaFortune();
   const el = $("stravaStatus");
   if (!el) return;
   el.textContent = msg;
   el.className = "strava-status" + (ok === true ? " ok" : ok === false ? " err" : "");
 }
 
+// Wordless two-arrow "reconnect" icon.
+const RECONNECT_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>';
+
+// Fortune-teller loading animation: a spinning zodiac wheel while we "read" the runs.
+const ZODIAC = ["\u2648","\u2649","\u264A","\u264B","\u264C","\u264D","\u264E","\u264F","\u2650","\u2651","\u2652","\u2653"];
+const FORTUNE_LINES = ["Reading your recent runs\u2026","Aligning the stars\u2026","Consulting the pace oracle\u2026","Divining your finish time\u2026"];
+let _fortuneTimer = null;
+function startStravaFortune() {
+  const el = $("stravaStatus");
+  if (!el) return;
+  el.className = "strava-status";
+  el.innerHTML = '<div class="pl-fortune"><div class="pl-fortune-wheel"><div class="pl-fortune-ring"></div><div class="pl-fortune-glyph" id="plGlyph">\u2648</div></div><div class="pl-fortune-cap" id="plCap">Reading your recent runs\u2026</div></div>';
+  let i = 0, j = 0;
+  if (_fortuneTimer) clearInterval(_fortuneTimer);
+  _fortuneTimer = setInterval(() => {
+    i = (i + 1) % ZODIAC.length;
+    const g = document.getElementById("plGlyph");
+    if (g) g.textContent = ZODIAC[i];
+    if (i % 4 === 0) { j = (j + 1) % FORTUNE_LINES.length; const cap = document.getElementById("plCap"); if (cap) cap.textContent = FORTUNE_LINES[j]; }
+  }, 280);
+}
+function stopStravaFortune() {
+  if (_fortuneTimer) { clearInterval(_fortuneTimer); _fortuneTimer = null; }
+}
+
 // Reflects the connected/disconnected state on the card + tab.
 function setStravaConnectedUI(connected, hms) {
-  const text = $("csnText"), conn = $("csnConnected"), btn = $("calStravaNudge"), tabBtn = $("stravaConnect");
+  const row = $("calStravaNudgeRow"), tabBtn = $("stravaConnect");
   if (connected) {
-    if (text) text.style.display = "none";
-    if (conn) { conn.style.display = "inline"; conn.textContent = hms ? `✓ Strava connected — estimated ${hms}.` : "✓ Strava connected — time set from your runs."; }
-    if (btn) btn.textContent = "Reconnect →";
-    if (tabBtn) tabBtn.textContent = "Reconnect Strava";
+    if (row) row.style.display = "none";                 // hide the whole second row once connected
+    if (tabBtn) {
+      tabBtn.innerHTML = RECONNECT_ICON;                 // wordless two-arrow reconnect
+      tabBtn.classList.add("reconnect-icon");
+      tabBtn.setAttribute("aria-label", "Reconnect Strava");
+      tabBtn.title = "Reconnect Strava";
+    }
   } else {
-    if (text) text.style.display = "inline";
-    if (conn) conn.style.display = "none";
-    if (btn) btn.textContent = "Connect Strava →";
-    if (tabBtn) tabBtn.textContent = "Connect Strava";
+    if (row) row.style.display = "";
+    if (tabBtn) {
+      tabBtn.textContent = "Connect Strava";
+      tabBtn.classList.remove("reconnect-icon");
+      tabBtn.removeAttribute("aria-label");
+      tabBtn.removeAttribute("title");
+    }
   }
 }
 
@@ -4368,7 +4417,8 @@ function restoreStravaUI() {
   if (isDemo) {
     run(() => {
       openStravaTab();
-      applyStravaEstimate({ estimateSeconds: 13320, estimateHMS: "3:42:00", confidence: "high", runsAnalyzed: 58 });
+      startStravaFortune();
+      setTimeout(() => applyStravaEstimate({ estimateSeconds: 13320, estimateHMS: "3:42:00", confidence: "high", runsAnalyzed: 58 }), 2600);
     });
     return;
   }
@@ -4380,7 +4430,7 @@ function restoreStravaUI() {
 
   run(async () => {
     openStravaTab();
-    showStravaStatus("Analyzing your Strava runs…", null);
+    startStravaFortune();
     try {
       const res = await fetch(STRAVA_WORKER_URL + "/exchange", {
         method: "POST",
