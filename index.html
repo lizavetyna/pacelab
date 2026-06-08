@@ -2791,12 +2791,12 @@ async function loadConditionsFor(names) {
       });
       if (!res.ok) return;
       const d = await res.json();
-      if (d && d.ok && typeof d.effTempC === "number") {
+      if (d && d.ok && typeof d.airTempC === "number") {
         const m = MARATHONS[name];
         if (m) {
-          m.tempC = d.effTempC;                  // existing heat penalty now uses the real effective temp
-          m.effTempC = d.effTempC;
+          m.tempC = d.airTempC;                  // real race-day air temperature drives the heat penalty
           m.airTempC = d.airTempC;
+          m.effTempC = d.effTempC;
           m.weather = d.summary || m.weather;
           m.condReal = true;
           changed = true;
