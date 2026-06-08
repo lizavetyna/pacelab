@@ -2771,6 +2771,41 @@ async function ensurePaidData(force) {
   try { return await _paidLoading; }
   finally { _paidLoading = null; }
 }
+
+// ---- Race-day conditions (effective temperature) from the Worker ----
+// Replaces each course's hand-typed tempC with a real Open-Meteo-derived
+// effective running temperature, so the existing heat penalty reflects the
+// actual race-day heat. Falls back silently to the static value on failure.
+const _condTried = new Set();
+async function loadConditionsFor(names) {
+  const todo = (names || []).filter(n => MARATHONS[n] && !_condTried.has(n));
+  if (!todo.length) return;
+  todo.forEach(n => _condTried.add(n));          // one attempt per course per session
+  let changed = false;
+  await Promise.all(todo.map(async name => {
+    try {
+      const res = await fetch(STRAVA_WORKER_URL + "/conditions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) return;
+      const d = await res.json();
+      if (d && d.ok && typeof d.effTempC === "number") {
+        const m = MARATHONS[name];
+        if (m) {
+          m.tempC = d.effTempC;                  // existing heat penalty now uses the real effective temp
+          m.effTempC = d.effTempC;
+          m.airTempC = d.airTempC;
+          m.weather = d.summary || m.weather;
+          m.condReal = true;
+          changed = true;
+        }
+      }
+    } catch (e) { /* offline / worker unreachable: keep the static tempC */ }
+  }));
+  if (changed) renderAll();
+}
 // Payment-required model: giving an email no longer unlocks premium courses.
 // Entitlement now comes only from a verified pass. Kept as a no-op for safety.
 function emailUnlocksEverything() {
@@ -2927,7 +2962,7 @@ function renderStrip() {
       <div class="mcell-sub">
         <div class="ss"><span class="l">GAIN</span><span class="v">${m.gain}m</span></div>
         <div class="ss"><span class="l">LOST</span><span class="v">${m.lost}m</span></div>
-        ${m.tempC !== undefined ? `<div class="ss weather" title="Typical ${m.month} race-day conditions. Used to estimate heat penalty."><span class="l">${m.month}</span><span class="v">${m.tempC}°</span></div>` : ''}
+        ${m.tempC !== undefined ? `<div class="ss weather" title="${(m.condReal && m.weather) ? m.weather.replace(/"/g,'&quot;') : ('Typical ' + m.month + ' race-day estimate (used for the heat penalty)')}"><span class="l">${m.month}</span><span class="v">${Math.round(m.tempC)}°</span></div>` : ''}
       </div>
     </div>`;
   }).join("");
@@ -4810,6 +4845,7 @@ function renderAll() {
   renderMeta();
   if (typeof refreshUnlockUI === "function") refreshUnlockUI();
   if (typeof refreshUploadBox === "function") refreshUploadBox();
+  if (typeof loadConditionsFor === "function") loadConditionsFor(Array.from(visible));
 }
 
 wireCalibrator();
