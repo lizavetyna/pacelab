@@ -2540,7 +2540,7 @@ const MARATHONS = {
   "Boston":    {col:"boston_relative_altitude_m",    color:"#ff4d1f", gain:188, lost:314, country:"USA",          source:"fit",     defaultOn:true,  tier:"free", emoji:"🇺🇸", month:"Apr", tempC:10, weather:"Cool, variable"},
   "New York":  {col:"new_york_relative_altitude_m",  color:"#ffb800", gain:281, lost:278, country:"USA",          source:"fit",     defaultOn:true,  tier:"free", emoji:"🇺🇸", month:"Nov", tempC:10, weather:"Crisp, breezy"},
   "London":    {col:"london_relative_altitude_m",    color:"#00a878", gain:123, lost:165, country:"UK",           source:"fit",     defaultOn:true,  tier:"free", emoji:"🇬🇧", month:"Apr", tempC:12, weather:"Mild, damp"},
-  "Sydney":    {col:"sydney_relative_altitude_m",    color:"#9333ea", gain:313, lost:396, country:"Australia",    source:"profile", defaultOn:false, tier:"free", emoji:"🇦🇺", month:"May", tempC:17, weather:"Mild autumn"},
+  "Sydney":    {col:"sydney_relative_altitude_m",    color:"#9333ea", gain:313, lost:396, country:"Australia",    source:"profile", defaultOn:false, tier:"free", emoji:"🇦🇺", month:"Aug", tempC:14, weather:"Cool, late winter"},
   "Cape Town": {col:"cape_town_relative_altitude_m", color:"#14b8a6", gain:214, lost:209, country:"South Africa", source:"fit", defaultOn:false, tier:"free", emoji:"🇿🇦", month:"May 24", tempC:14, weather:"Cool autumn morning · 24 May 2026"},
   // Additions — approximate synthesized profiles — PAID
   "Berlin":    {col:"berlin_relative_altitude_m",    color:"#e11d48", gain:129, lost:138,  country:"Germany",      source:"fit", tier:"paid", emoji:"🇩🇪", month:"Sep", tempC:13, weather:"Cool, ideal"},
@@ -2550,7 +2550,7 @@ const MARATHONS = {
   "Valencia":  {col:"valencia_relative_altitude_m",  color:"#f97316", gain:123, lost:131,  country:"Spain",        source:"fit", tier:"paid", emoji:"🇪🇸", month:"Dec", tempC:14, weather:"Mild, calm"},
   "Moscow": {col:"moscow_relative_altitude_m", color:"#6366f1", gain:212, lost:237, country:"Russia", source:"fit", defaultOn:false, tier:"free", emoji:"🇷🇺", month:"Sep", tempC:12, weather:"Cool autumn"},
   "Verona": {col:"verona_relative_altitude_m", color:"#d946ef", gain:185, lost:193, country:"Italy", source:"fit", tier:"paid", emoji:"🇮🇹", month:"Nov", tempC:11, weather:"Mild autumn"},
-  "Carrara": {col:"carrara_relative_altitude_m", color:"#06b6d4", gain:116, lost:121, country:"Italy", source:"fit", tier:"paid", emoji:"🇮🇹", month:"Dec", tempC:10, weather:"Cool, coastal"},
+  "Carrara": {col:"carrara_relative_altitude_m", color:"#06b6d4", gain:116, lost:121, country:"Italy", source:"fit", tier:"paid", emoji:"🇮🇹", month:"Feb", tempC:9, weather:"Cool, coastal"},
   "Los Angeles": {col:"los_angeles_relative_altitude_m", color:"#f43f5e", gain:325, lost:462, country:"USA", source:"fit", tier:"paid", emoji:"🇺🇸", month:"Mar", tempC:16, weather:"Mild, can warm"},
   "Stockholm": {col:"stockholm_relative_altitude_m", color:"#3b82f6", gain:319, lost:298, country:"Sweden", source:"fit", tier:"paid", emoji:"🇸🇪", month:"Jun", tempC:17, weather:"Mild summer"},
   "Prague": {col:"prague_relative_altitude_m", color:"#84cc16", gain:222, lost:221, country:"Czechia", source:"fit", tier:"paid", emoji:"🇨🇿", month:"May", tempC:14, weather:"Mild spring"},
@@ -2855,9 +2855,12 @@ function timeAddedSecondsFor(m, flatMinutes) {
 // (Elites lose less, ~0.3%/°C; we use 0.7% as the default for the 4h reference).
 // Below 12°C, there's a small benefit (cooler = faster), capped at 5°C below ideal.
 function heatPenaltySecondsFor(m, flatMinutes) {
-  if (m.tempC === undefined) return 0;
+  // The card shows the real air temp (m.tempC); the heat penalty is driven by
+  // the effective running temp (air + sun + humidity - wind) when we have it.
+  const useC = (m.effTempC !== undefined) ? m.effTempC : m.tempC;
+  if (useC === undefined) return 0;
   const idealC = 12;
-  const deltaC = m.tempC - idealC;
+  const deltaC = useC - idealC;
   if (deltaC <= 0) {
     // Small bonus down to 7°C: -0.2%/°C below 12
     const bonusC = Math.max(deltaC, -5);
@@ -4534,8 +4537,13 @@ function stopStravaFortune() {
 // Reflects the connected/disconnected state on the card + tab.
 function setStravaConnectedUI(connected, hms) {
   const row = $("calStravaNudgeRow"), tabBtn = $("stravaConnect");
+  const nudgeBtn = $("calStravaNudge"), nudgeText = $("csnText");
   if (connected) {
-    if (row) row.style.display = "none";                 // hide the whole second row once connected
+    if (row) row.style.display = "";                    // keep the row visible so the button never disappears
+    if (nudgeText) nudgeText.textContent = hms
+      ? `Strava connected — we set your time to ${hms}. Reconnect to refresh from newer runs.`
+      : "Strava connected — reconnect anytime to refresh from newer runs.";
+    if (nudgeBtn) nudgeBtn.textContent = "Reconnect Strava →";
     if (tabBtn) {
       tabBtn.innerHTML = RECONNECT_ICON;                 // wordless two-arrow reconnect
       tabBtn.classList.add("reconnect-icon");
@@ -4544,6 +4552,8 @@ function setStravaConnectedUI(connected, hms) {
     }
   } else {
     if (row) row.style.display = "";
+    if (nudgeText) nudgeText.textContent = "We'll estimate your marathon potential from your recent runs.";
+    if (nudgeBtn) nudgeBtn.textContent = "Connect Strava →";
     if (tabBtn) {
       tabBtn.textContent = "Connect Strava";
       tabBtn.classList.remove("reconnect-icon");
