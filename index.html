@@ -4573,7 +4573,7 @@ function applyStravaEstimate(data) {
     `Analyzed ${data.runsAnalyzed} runs — your realistic marathon time looks like ${data.estimateHMS}${conf}. We've set it above; tweak it anytime.`,
     true
   );
-  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, estimateHMS: data.estimateHMS, at: Date.now() })); } catch (e) {}
+  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, at: Date.now() })); } catch (e) {}
   setStravaConnectedUI(true, data.estimateHMS);
 }
 
@@ -4581,7 +4581,15 @@ function applyStravaEstimate(data) {
 function restoreStravaUI() {
   try {
     const s = JSON.parse(localStorage.getItem("pacelab_strava") || "null");
-    if (s && s.connected) setStravaConnectedUI(true, s.estimateHMS);
+    if (s && s.connected) {
+      // Re-apply the time they were estimated last time, so every visit reflects
+      // their real fitness (overwritten whenever they reconnect).
+      if (typeof s.estimateSeconds === "number" && s.estimateSeconds > 0) {
+        userTime.flatMinutes = s.estimateSeconds / 60;
+        userTime.mode = 'real';
+      }
+      setStravaConnectedUI(true, s.estimateHMS);
+    }
   } catch (e) {}
 }
 
