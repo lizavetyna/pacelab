@@ -2855,19 +2855,19 @@ function timeAddedSecondsFor(m, flatMinutes) {
 // (Elites lose less, ~0.3%/°C; we use 0.7% as the default for the 4h reference).
 // Below 12°C, there's a small benefit (cooler = faster), capped at 5°C below ideal.
 function heatPenaltySecondsFor(m, flatMinutes) {
-  // The card shows the real air temp (m.tempC); the heat penalty is driven by
-  // the effective running temp (air + sun + humidity - wind) when we have it.
+  // The card shows real air temp (m.tempC); the penalty uses effective temp.
   const useC = (m.effTempC !== undefined) ? m.effTempC : m.tempC;
   if (useC === undefined) return 0;
-  const idealC = 12;
-  const deltaC = useC - idealC;
-  if (deltaC <= 0) {
-    // Small bonus down to 7°C: -0.2%/°C below 12
-    const bonusC = Math.max(deltaC, -5);
+  if (useC < 12) {
+    // Cool: small speed-up, -0.2%/°C down to 7°C
+    const bonusC = Math.max(useC - 12, -5);
     return Math.round(flatMinutes * 60 * bonusC * 0.002);
   }
-  // Penalty above 12°C: +0.7%/°C
-  return Math.round(flatMinutes * 60 * deltaC * 0.007);
+  if (useC <= 15) return 0;                       // 12-15°C: ideal racing band, no penalty
+  // Warm: gentle near 15°, steep when hot. ~1.5min at 18°, ~7min at 20°, ~20min at 25° (3:45 runner)
+  const d = useC - 15;
+  const pct = 0.0035 * d + 0.00055 * d * d;
+  return Math.round(flatMinutes * 60 * pct);
 }
 
 // Split: how much of the time-added is elevation vs heat (for tooltips/breakdown)
