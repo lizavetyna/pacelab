@@ -713,14 +713,7 @@
     color: var(--ink);
     font-weight: 500;
   }
-  .mcell-diffbar {
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: var(--diff-color, transparent);
-    opacity: 0;
-    transition: opacity .2s;
-  }
+  .mcell-diffbar { display: none; }
   .mcell.on .mcell-diffbar { opacity: 1; }
 
   /* The "add" tile */
@@ -4528,7 +4521,7 @@ function startStravaFortune() {
     const g = document.getElementById("plGlyph");
     if (g) g.innerHTML = ZODIAC_SVG[i];
     if (i % 4 === 0) { j = (j + 1) % FORTUNE_LINES.length; const cap = document.getElementById("plCap"); if (cap) cap.textContent = FORTUNE_LINES[j]; }
-  }, 280);
+  }, 600);
 }
 function stopStravaFortune() {
   if (_fortuneTimer) { clearInterval(_fortuneTimer); _fortuneTimer = null; }
