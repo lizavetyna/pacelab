@@ -564,6 +564,77 @@
   }
 
   /* ===== CITY GRID ===== */
+  .goalrace { margin: 0 0 18px; }
+  .goalrace:empty { display: none; }
+  .gr-card {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 18px 22px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 18px 28px;
+  }
+  .gr-prompt {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+    color: var(--ink-soft); font-size: 15px; flex: 1 1 100%; width: 100%;
+  }
+  .gr-prompt .gr-prompt-label { font-weight: 600; color: var(--ink); }
+  .gr-select {
+    font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--line);
+    border-radius: 12px; background: var(--paper); color: var(--ink); cursor: pointer; margin-left: auto;
+  }
+  .gr-btn {
+    font: inherit; font-size: 13px; font-weight: 600; letter-spacing: .02em;
+    padding: 9px 16px; border: none; border-radius: 12px; cursor: pointer;
+    background: var(--blue); color: #fff;
+  }
+  .gr-btn.ghost { background: transparent; color: var(--muted); font-weight: 500; padding: 6px 4px; }
+  .gr-btn.ghost:hover { color: var(--ink); }
+  .gr-head { display: flex; align-items: baseline; gap: 10px; min-width: 200px; }
+  .gr-eyebrow { font-family: var(--mono, monospace); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 3px; }
+  .gr-name { font-family: var(--serif, Georgia, serif); font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1; }
+  .gr-flag { font-size: 22px; }
+  .gr-metrics { display: flex; flex-wrap: wrap; gap: 14px 30px; align-items: flex-end; flex: 1; }
+  .gr-metric .gr-m-label { font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 2px; }
+  .gr-metric .gr-m-val { font-size: 21px; font-weight: 600; color: var(--ink); }
+  .gr-metric .gr-m-val.accent { color: var(--blue); }
+  .gr-metric .gr-m-sub { font-size: 12px; color: var(--muted); margin-left: 4px; }
+  .gr-badge { display: inline-block; font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 8px; background: rgba(0,51,255,.1); color: var(--blue); margin-left: 6px; vertical-align: middle; }
+  .gr-actions { display: flex; align-items: center; gap: 6px; }
+  .gr-card.gr-loop { flex-direction: column; align-items: stretch; gap: 0; }
+  .gr-top { display: flex; align-items: center; gap: 14px; width: 100%; }
+  .gr-top .gr-cd { font-family: var(--mono, monospace); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-left: auto; }
+  .gr-top .gr-actions { margin-left: 10px; }
+  .gr-loop-row { display: flex; align-items: center; gap: 18px; width: 100%; margin-top: 12px; }
+  .gr-goalicon { width: 26px; height: 26px; display: inline-block; vertical-align: middle; flex: none; }
+  .gr-pred { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+  .gr-pred .gr-m-label { display: block; margin-bottom: 4px; }
+  .gr-pred-val { font-size: 32px; font-weight: 700; color: var(--blue); line-height: 1; letter-spacing: .01em; }
+  .gr-trend { font-size: 12.5px; font-weight: 600; padding-bottom: 5px; }
+  .gr-trend.down { color: #1a9d5a; }
+  .gr-trend.up { color: #c0392b; }
+  .gr-trend.flat { color: var(--muted); font-weight: 500; }
+  .gr-spark { margin-left: auto; opacity: .9; }
+  .gr-next { width: 100%; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .gr-next-title { font-size: 16px; font-weight: 700; color: var(--ink); margin: 3px 0 2px; }
+  .gr-next-meta { display: flex; gap: 8px 16px; flex-wrap: wrap; margin: 4px 0 5px; }
+  .gr-next-meta span { font-family: var(--mono, monospace); font-size: 11.5px; letter-spacing: .03em; color: var(--muted); }
+  .gr-next-meta .rpe { color: var(--blue); }
+  .gr-next-detail { font-size: 14px; color: var(--ink-soft); line-height: 1.45; }
+  .gr-loop-hint { font-size: 12px; color: var(--muted); margin-top: 7px; font-style: italic; }
+  .gr-method { font-size: 12px; color: var(--muted); margin-top: 10px; display: flex; align-items: center; gap: 7px; }
+  .gr-method svg { width: 14px; height: 14px; flex: none; color: var(--blue); }
+  .gr-plan-btn { display: inline-block; margin-top: 13px; font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .02em; padding: 11px 18px; border: none; border-radius: 12px; cursor: pointer; background: var(--blue); color: #fff; }
+  .gr-plan-btn:hover { filter: brightness(1.08); }
+  .gr-plan-btn.big { font-size: 15px; padding: 14px 22px; width: 100%; margin-top: 16px; }
+  .plan-eyebrow { font-family: var(--mono, monospace); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .plan-title { font-family: var(--serif, Georgia, serif); font-size: 25px; font-weight: 600; color: var(--ink); margin: 7px 0 8px; line-height: 1.15; }
+  .plan-sub { font-size: 14px; color: var(--ink-soft); line-height: 1.5; margin: 0; }
+  .plan-list { list-style: none; padding: 0; margin: 15px 0 0; }
+  .plan-list li { position: relative; padding-left: 23px; margin: 8px 0; font-size: 14px; color: var(--ink-soft); }
+  .plan-list li::before { content: "\2713"; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
+  .plan-fineprint { font-size: 11.5px; color: var(--muted); margin-top: 11px; text-align: center; line-height: 1.4; }
+  @media (max-width: 720px) { .gr-card { padding: 16px; } .gr-name { font-size: 22px; } .gr-pred-val { font-size: 26px; } }
+
   .strip {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -2326,6 +2397,8 @@
     </div>
   </div>
 
+  <div class="goalrace" id="goalRace"></div>
+
   <div class="strip" id="strip"></div>
 
   <div class="picker" id="picker">
@@ -2445,6 +2518,23 @@
 <use href="#tstar_sp" transform="translate(25,17) scale(0.5)" fill="#FFD66B"/>
 <use href="#tstar_sp" fill="none" stroke="#7A4A0A" stroke-width="2.4" stroke-linejoin="round"/>
 <circle cx="42" cy="28" r="4" fill="#FFFFFF" opacity="0.85"/>
+</g>
+<g id="tgoal">
+<ellipse cx="51" cy="55" rx="44" ry="44" fill="#000000" opacity="0.16"/>
+<circle cx="50" cy="50" r="44" fill="#E8472B"/>
+<circle cx="50" cy="50" r="36" fill="#FBF7F2"/>
+<circle cx="50" cy="50" r="28" fill="#E8472B"/>
+<circle cx="50" cy="50" r="20" fill="#FBF7F2"/>
+<circle cx="50" cy="50" r="12" fill="#E8472B"/>
+<circle cx="50" cy="50" r="5.5" fill="#FBF7F2"/>
+<circle cx="50" cy="50" r="2.6" fill="#E8472B"/>
+<ellipse cx="37" cy="33" rx="19" ry="12" fill="#FFFFFF" opacity="0.16"/>
+<circle cx="50" cy="50" r="44" fill="none" stroke="#8E2417" stroke-width="2.2"/>
+<line x1="86" y1="16" x2="54" y2="48" stroke="#16357A" stroke-width="6.5" stroke-linecap="round"/>
+<line x1="86" y1="16" x2="54" y2="48" stroke="#2E5BD6" stroke-width="3" stroke-linecap="round"/>
+<path d="M50 50 L62.5 47 L57 60.5 Z" fill="#16357A"/>
+<path d="M85 17 L96 6 L93 19 Z" fill="#3B82F6"/>
+<path d="M85 17 L73 10 L86 8 Z" fill="#3B82F6"/>
 </g>
 </defs></svg>
 <div class="testimonials-section">
@@ -2792,12 +2882,190 @@ async function loadConditionsFor(names) {
           m.effTempC = d.effTempC;
           m.weather = d.summary || m.weather;
           m.condReal = true;
+          if (d.displayDate) m.displayDate = d.displayDate;  // next-edition date (for the goal-race countdown)
+          if (d.mode) m.condMode = d.mode;                   // "forecast" | "archive"
           changed = true;
         }
       }
     } catch (e) { /* offline / worker unreachable: keep the static tempC */ }
   }));
   if (changed) renderAll();
+}
+
+// ---- Goal race: the daily-use hook. Pin a race, see your predicted finish,
+// a countdown, and (as it nears) the live race-day conditions, every visit.
+let goalRace = null;
+function loadGoalFromStorage() {
+  try { const g = localStorage.getItem("pacelab_goal"); if (g && MARATHONS[g]) goalRace = g; } catch (e) {}
+}
+function setGoalRace(name) {
+  if (!MARATHONS[name]) return;
+  goalRace = name;
+  try { localStorage.setItem("pacelab_goal", name); } catch (e) {}
+  if (typeof loadConditionsFor === "function") loadConditionsFor([name]);  // fetch its date + conditions
+  renderGoal();
+}
+function clearGoalRace() {
+  goalRace = null;
+  try { localStorage.removeItem("pacelab_goal"); } catch (e) {}
+  renderGoal();
+}
+function _grDaysUntil(iso) {
+  if (!iso) return null;
+  const p = iso.split("-"); const target = Date.UTC(+p[0], +p[1] - 1, +p[2]);
+  const now = new Date(); const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.round((target - today) / 86400000);
+}
+function _grFmtDate(iso) {
+  if (!iso) return "";
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const p = iso.split("-"); return `${MON[+p[1] - 1]} ${+p[2]}, ${p[0]}`;
+}
+function _grCountdown(days) {
+  if (days === null) return "";
+  if (days < 0) return `${Math.abs(days)} days ago`;
+  if (days === 0) return "race day!";
+  if (days === 1) return "tomorrow";
+  if (days <= 14) return `${days} days \u00B7 race week`;
+  return `${days} days to go`;
+}
+function _hmsToSec(hms) {
+  if (!hms) return 0;
+  const p = String(hms).split(":").map(Number);
+  if (p.some(isNaN)) return 0;
+  if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
+  if (p.length === 2) return p[0] * 60 + p[1];
+  return 0;
+}
+function _grStravaConnected() {
+  try { const s = JSON.parse(localStorage.getItem("pacelab_strava") || "null"); return !!(s && s.connected); } catch (e) { return false; }
+}
+function _grProgressHistory() {
+  try { const h = JSON.parse(localStorage.getItem("pacelab_progress") || "[]"); return Array.isArray(h) ? h : []; } catch (e) { return []; }
+}
+// Record a fitness estimate. A genuinely new estimate (= a new training block /
+// fresh Strava sync) appends a progress point and advances the suggested session.
+function recordEstimate(sec) {
+  if (!sec || sec <= 0) return;
+  let h = _grProgressHistory();
+  const last = h.length ? h[h.length - 1] : null;
+  if (last && Math.abs(last.sec - sec) < 1) return;      // same estimate -> no new point (dedup)
+  h.push({ at: Date.now(), sec });
+  if (h.length > 30) h = h.slice(-30);
+  try { localStorage.setItem("pacelab_progress", JSON.stringify(h)); } catch (e) {}
+  if (last) { // only advance the session once there's real history (a completed block)
+    try { const i = parseInt(localStorage.getItem("pacelab_session_idx") || "0", 10) || 0; localStorage.setItem("pacelab_session_idx", String(i + 1)); } catch (e) {}
+  }
+}
+// Light, course-tuned "next session" suggestions (not a full plan).
+function _grSessions(m) {
+  const flatPaceSec = (userTime.flatMinutes * 60) / 42.195;        // your flat marathon pace, s/km
+  const fp = (off) => { const s = Math.max(60, Math.round(flatPaceSec + off)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+  const list = [
+    { title: "Long run", pace: fp(55), rpe: "RPE 3\u20134 \u00B7 easy", detail: `28\u201332 km easy at ~${fp(55)}/km \u2014 time on feet for ${goalRace}. Keep it conversational.` },
+    { title: "Goal-pace tempo", pace: fp(0), rpe: "RPE 6\u20137 \u00B7 steady", detail: `6\u20138 km at ${fp(0)}/km, your ${goalRace} goal pace. Lock in race rhythm.` },
+    { title: "Threshold intervals", pace: fp(-12), rpe: "RPE 8 \u00B7 hard", detail: `5 \u00D7 1 km at ~${fp(-12)}/km, 90 s jog between.` },
+    { title: "Easy recovery", pace: fp(70), rpe: "RPE 2\u20133 \u00B7 very easy", detail: `5\u20138 km relaxed at ~${fp(70)}/km \u2014 let the last hard session absorb.` },
+  ];
+  if ((m.gain || 0) >= 250) list.splice(2, 0, { title: "Hill repeats", pace: fp(-5), rpe: "RPE 7\u20138 \u00B7 hard", detail: `${goalRace} climbs ${m.gain} m \u2014 6 \u00D7 2 min uphill hard by effort, jog down.` });
+  return list;
+}
+function _grSparkline(hist) {
+  if (hist.length < 3) return "";
+  const w = 96, h = 26, pad = 3;
+  const secs = hist.map(p => p.sec), mn = Math.min(...secs), mx = Math.max(...secs), rng = (mx - mn) || 1;
+  const pts = hist.map((p, i) => {
+    const x = pad + i * (w - 2 * pad) / (hist.length - 1);
+    const y = pad + (p.sec - mn) / rng * (h - 2 * pad);   // faster (lower sec) sits higher
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return `<svg class="gr-spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+function renderGoal() {
+  const el = document.getElementById("goalRace"); if (!el) return;
+  if (!goalRace || !MARATHONS[goalRace]) {
+    const opts = Object.keys(MARATHONS).sort().map(n => `<option value="${n}">${n}</option>`).join("");
+    el.innerHTML = `<div class="gr-card"><div class="gr-prompt">`
+      + `<svg class="gr-goalicon" viewBox="0 0 100 100" aria-hidden="true"><use href="#tgoal"/></svg>`
+      + `<span class="gr-prompt-label">Set your goal race</span>`
+      + `<span>track your predicted time and your progress.</span>`
+      + `<select class="gr-select" id="goalSelect">${opts}</select>`
+      + `<button class="gr-btn" id="goalSetBtn">Set goal</button></div></div>`;
+    const btn = document.getElementById("goalSetBtn");
+    if (btn) btn.onclick = () => { const s = document.getElementById("goalSelect"); if (s) setGoalRace(s.value); };
+    return;
+  }
+  const m = MARATHONS[goalRace];
+  const pred = fmtClock(userTime.flatMinutes + timeAddedSeconds(m) / 60);
+  const days = _grDaysUntil(m.displayDate);
+  const cd = _grCountdown(days) || (m.displayDate ? _grFmtDate(m.displayDate) : (m.month || ""));
+  const hist = _grProgressHistory();
+  let trend = "", tCls = "flat";
+  if (hist.length >= 2) {
+    const d = hist[0].sec - hist[hist.length - 1].sec, a = Math.abs(Math.round(d));
+    const mm = Math.floor(a / 60), ss = a % 60, ds = mm ? `${mm}:${String(ss).padStart(2, "0")}` : `${a}s`;
+    if (d >= 15) { trend = `\u2193 ${ds} faster since you started`; tCls = "down"; }
+    else if (d <= -15) { trend = `\u25B2 ${ds} since you started`; tCls = "up"; }
+    else { trend = "holding steady"; }
+  } else if (_grStravaConnected()) {
+    trend = "tracking from today \u2014 log runs to watch this move";
+  } else {
+    trend = "connect Strava to track your progress";
+  }
+  const sessions = _grSessions(m);
+  let sidx = 0; try { sidx = parseInt(localStorage.getItem("pacelab_session_idx") || "0", 10) || 0; } catch (e) {}
+  const sess = sessions[sidx % sessions.length];
+  const cond = (m.condReal && m.weather) ? ` \u00B7 race day: ${m.weather}` : "";
+  el.innerHTML = `<div class="gr-card gr-loop">`
+    + `<div class="gr-top">`
+    + `<span class="gr-flag">${m.emoji || ""}</span>`
+    + `<div><span class="gr-eyebrow">Your goal race</span><span class="gr-name">${goalRace}</span></div>`
+    + `<span class="gr-cd">${cd}</span>`
+    + `<div class="gr-actions"><button class="gr-btn ghost" id="goalClearBtn">Change race</button></div>`
+    + `</div>`
+    + `<div class="gr-loop-row">`
+    + `<div class="gr-pred"><div><span class="gr-m-label">Predicted finish</span><span class="gr-pred-val">${pred}</span></div>`
+    + `<span class="gr-trend ${tCls}">${trend}</span></div>`
+    + _grSparkline(hist)
+    + `</div>`
+    + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>${_grStravaConnected() ? `Predicted from your Strava fitness, ${goalRace}\u2019s terrain and real race-day weather \u2014 on a research-backed model.` : `Predicted from your time, ${goalRace}\u2019s terrain and real race-day weather \u2014 on a research-backed model.`}</span></div>`
+    + `<div class="gr-next">`
+    + `<span class="gr-m-label">Your next workout</span>`
+    + `<div class="gr-next-title">${sess.title}</div>`
+    + `<div class="gr-next-meta"><span>\uD83C\uDFC3 ${sess.pace}/km</span><span class="rpe">${sess.rpe}</span></div>`
+    + `<div class="gr-next-detail">${sess.detail}</div>`
+    + `<div class="gr-loop-hint">${_grStravaConnected() ? "Based on your Strava training analysis. Want to see the future?" : `Want to see your whole plan to ${goalRace}?`}</div>`
+    + `<button class="gr-plan-btn" id="goalPlanBtn">See the whole plan \u2192</button>`
+    + `</div></div>`;
+  const cb = document.getElementById("goalClearBtn");
+  if (cb) cb.onclick = () => clearGoalRace();
+  const pb = document.getElementById("goalPlanBtn");
+  if (pb) pb.onclick = () => openPlanModal(goalRace);
+}
+
+// "See the whole plan" -> 7-day free-trial hook (reuses the existing modal).
+function openPlanModal(name) {
+  const m = MARATHONS[name];
+  const body = document.getElementById("modalBody");
+  if (!body) return;
+  body.innerHTML = `
+    <div class="plan-eyebrow">${m && m.emoji ? m.emoji + " " : ""}Full ${name} plan</div>
+    <h2 class="plan-title">Your whole road to <span class="it">${name}</span>.</h2>
+    <p class="plan-sub">A week-by-week, course-tuned plan that adapts as your Strava times come in \u2014 hills where ${name} climbs, the right taper into race week, and your predicted finish tracked the whole way.</p>
+    <ul class="plan-list">
+      <li>Every workout scheduled out to race day</li>
+      <li>Auto-adjusts to your fitness and the forecast</li>
+      <li>Cancel anytime</li>
+    </ul>
+    <button class="gr-plan-btn big" id="planTrialCta">Start 7-day free trial</button>
+    <div class="plan-fineprint">Free for 7 days, then billed monthly. Cancel before day 7 and you won\u2019t be charged.</div>`;
+  document.getElementById("modalBackdrop").classList.add("open");
+  const cta = document.getElementById("planTrialCta");
+  if (cta) cta.onclick = () => {
+    const link = STRIPE_LINKS.plan;
+    if (link && link.indexOf("REPLACE") === -1) { window.location.href = link; }
+    else { console.warn("STRIPE_LINKS.plan not configured"); const fp = body.querySelector(".plan-fineprint"); if (fp) fp.textContent = "Checkout link not set yet \u2014 add your Stripe trial URL to STRIPE_LINKS.plan."; }
+  };
 }
 // Payment-required model: giving an email no longer unlocks premium courses.
 // Entitlement now comes only from a verified pass. Kept as a no-op for safety.
@@ -4329,6 +4597,9 @@ const STRIPE_LINKS = {
   single: "https://buy.stripe.com/fZu9AV4wcaiy2tdbwZ8so01",
   promo:  "https://buy.stripe.com/dRm4gBd2I2Q62tdeJb8so02",
   bundle: "https://buy.stripe.com/aFaeVfe6M9eu1p930t8so03",
+  // Training-plan subscription with a 7-day free trial. Create this in Stripe as a
+  // recurring Payment Link with a 7-day trial, then paste its URL here:
+  plan:   "https://buy.stripe.com/REPLACE_WITH_TRIAL_SUBSCRIPTION_LINK",
 };
 
 async function confirmPurchase() {
@@ -4560,6 +4831,7 @@ function setStravaConnectedUI(connected, hms) {
 function applyStravaEstimate(data) {
   userTime.flatMinutes = data.estimateSeconds / 60;
   userTime.mode = 'real';
+  if (typeof recordEstimate === "function") recordEstimate(data.estimateSeconds);
   renderAll();
   const conf = data.confidence ? ` · ${data.confidence} confidence` : '';
   showStravaStatus(
@@ -4576,10 +4848,13 @@ function restoreStravaUI() {
     const s = JSON.parse(localStorage.getItem("pacelab_strava") || "null");
     if (s && s.connected) {
       // Re-apply the time they were estimated last time, so every visit reflects
-      // their real fitness (overwritten whenever they reconnect).
-      if (typeof s.estimateSeconds === "number" && s.estimateSeconds > 0) {
-        userTime.flatMinutes = s.estimateSeconds / 60;
+      // their real fitness (overwritten whenever they reconnect). Fall back to
+      // parsing the HMS string for sessions saved before estimateSeconds existed.
+      let sec = (typeof s.estimateSeconds === "number" && s.estimateSeconds > 0) ? s.estimateSeconds : _hmsToSec(s.estimateHMS);
+      if (sec > 0) {
+        userTime.flatMinutes = sec / 60;
         userTime.mode = 'real';
+        if (typeof recordEstimate === "function") recordEstimate(sec);
       }
       setStravaConnectedUI(true, s.estimateHMS);
     }
@@ -4857,9 +5132,12 @@ function renderAll() {
   if (typeof refreshUnlockUI === "function") refreshUnlockUI();
   if (typeof refreshUploadBox === "function") refreshUploadBox();
   if (typeof loadConditionsFor === "function") loadConditionsFor(Array.from(visible));
+  if (typeof renderGoal === "function") renderGoal();
 }
 
 wireCalibrator();
+loadGoalFromStorage();
+if (goalRace && typeof loadConditionsFor === "function") loadConditionsFor([goalRace]);
 renderAll();
 window.addEventListener("resize", () => renderChart());
 
