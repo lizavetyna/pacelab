@@ -5047,6 +5047,7 @@ function restoreStravaUI() {
         return;
       }
       setPass(d.pass);
+      if (d.email) persistEmail(d.email);
       applyUnlockedNames(d.unlocked || []);
       if (isSub || d.plan) {
         try { await ensurePaidData(true); } catch (e) {}
@@ -5081,18 +5082,45 @@ function restoreStravaUI() {
 // On load, reconcile entitlements from the verified pass. A returning buyer's pass
 // re-fetches their premium courses; without a pass, premium stays locked (no stale unlocks).
 (function reconcileEntitlements() {
-  function run() {
+  function lockPaid() {
+    let changed = false;
+    Object.keys(MARATHONS).forEach(n => {
+      if (MARATHONS[n].tier === 'paid' && unlocked.has(n)) { unlocked.delete(n); changed = true; }
+    });
+    if (changed) { persistUnlocked(); try { renderPicker(); } catch (e) {} try { renderAll(); } catch (e) {} }
+  }
+  async function run() {
+    // If we know the email used at checkout, fetch a fresh pass that reflects the
+    // CURRENT entitlement (active sub, one-time purchases, or a canceled sub -> none).
+    // This keeps a paying subscriber unlocked without any manual step, and lets a
+    // cancellation drop access on the next load.
+    if (userEmail) {
+      try {
+        const res = await fetch(STRAVA_WORKER_URL + "/restore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: userEmail }),
+        });
+        const d = await res.json().catch(() => null);
+        if (d && d.ok && d.pass) {
+          setPass(d.pass);
+          applyUnlockedNames(d.unlocked || []);
+          await ensurePaidData(true);
+          try { renderPicker(); } catch (e) {}
+          try { renderAll(); } catch (e) {}
+          return;
+        }
+        if (d && d.ok === false) { clearPass(); lockPaid(); return; } // email known but nothing active
+      } catch (e) { /* offline: fall back to the cached pass below */ }
+    }
+    // No email on file (or restore unreachable): use a cached pass if we still have one.
     const pass = getPass();
     if (pass) {
       ensurePaidData(true).then(ok => {
         if (ok) { try { renderPicker(); } catch (e) {} try { renderAll(); } catch (e) {} }
       });
     } else {
-      let changed = false;
-      Object.keys(MARATHONS).forEach(n => {
-        if (MARATHONS[n].tier === 'paid' && unlocked.has(n)) { unlocked.delete(n); changed = true; }
-      });
-      if (changed) { persistUnlocked(); try { renderPicker(); } catch (e) {} try { renderAll(); } catch (e) {} }
+      lockPaid();
     }
   }
   if (document.readyState === 'loading') {
@@ -5122,6 +5150,7 @@ async function doRestorePurchase() {
       return;
     }
     setPass(d.pass);
+    persistEmail(email);
     applyUnlockedNames(d.unlocked || []);
     await ensurePaidData(true);
     try { renderPicker(); } catch (e) {}
