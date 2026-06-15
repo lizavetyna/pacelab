@@ -18,6 +18,7 @@
     --line: #e2e0d8;
     --line-soft: #ecebe4;
     --blue: #0033ff;
+    --orange: #ff5a1f;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: var(--bg); color: var(--ink); }
@@ -625,14 +626,43 @@
   .gr-method svg { width: 14px; height: 14px; flex: none; color: var(--blue); }
   .gr-plan-btn { display: inline-block; margin-top: 13px; font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .02em; padding: 11px 18px; border: none; border-radius: 12px; cursor: pointer; background: var(--blue); color: #fff; }
   .gr-plan-btn:hover { filter: brightness(1.08); }
-  .gr-plan-btn.big { font-size: 15px; padding: 14px 22px; width: 100%; margin-top: 16px; }
+  .gr-plan-btn.big { font-size: 15px; padding: 14px 22px; width: 100%; margin-top: 12px; }
   .plan-eyebrow { font-family: var(--mono, monospace); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .plan-title { font-family: var(--serif, Georgia, serif); font-size: 25px; font-weight: 600; color: var(--ink); margin: 7px 0 8px; line-height: 1.15; }
   .plan-sub { font-size: 14px; color: var(--ink-soft); line-height: 1.5; margin: 0; }
-  .plan-list { list-style: none; padding: 0; margin: 15px 0 0; }
-  .plan-list li { position: relative; padding-left: 23px; margin: 8px 0; font-size: 14px; color: var(--ink-soft); }
+  .plan-list { list-style: none; padding: 0; margin: 12px 0 0; }
+  .plan-list li { position: relative; padding-left: 23px; margin: 6px 0; font-size: 14px; color: var(--ink-soft); }
   .plan-list li::before { content: "\2713"; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
   .plan-fineprint { font-size: 11.5px; color: var(--muted); margin-top: 11px; text-align: center; line-height: 1.4; }
+
+  /* Trial modal: week-by-week plan preview with locked (blurred) weeks */
+  .plan-preview { position: relative; margin: 13px 0 2px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper-2); }
+  .plan-preview-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--line-soft); }
+  .plan-preview-head .pph-title { font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--ink); }
+  .plan-preview-head .pph-meta { font-family: var(--mono, monospace); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .ppw { display: flex; align-items: center; gap: 12px; padding: 6px 14px; border-top: 1px solid var(--line-soft); }
+  .ppw:first-child { border-top: none; }
+  .ppw-wk { font-family: var(--mono, monospace); font-size: 10.5px; letter-spacing: .04em; color: var(--muted); width: 30px; flex: none; }
+  .ppw-focus { font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
+  .ppw-dots { display: flex; gap: 5px; margin-left: auto; }
+  .ppw-dot { width: 9px; height: 9px; border-radius: 3px; background: var(--line); }
+  .ppw-dot.run { background: rgba(0,51,255,.28); }
+  .ppw-dot.key { background: var(--blue); }
+  .ppw-dot.hill { background: var(--orange); }
+  .ppw-dot.long { background: var(--orange); border-radius: 50%; }
+  .plan-locked { position: relative; }
+  .plan-locked .ppw { filter: blur(4.5px); opacity: .9; user-select: none; pointer-events: none; }
+  .plan-lock-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center; padding: 0 16px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,.5) 42%, rgba(255,255,255,.93) 100%); }
+  .plan-lock-overlay svg { width: 20px; height: 20px; color: var(--blue); }
+  .plan-lock-overlay .pl-txt { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .plan-lock-overlay .pl-sub { font-size: 11px; color: var(--muted); }
+  .plan-preview-legend { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .plan-preview-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .plan-preview-legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .plan-preview-legend i.key { background: var(--blue); }
+  .plan-preview-legend i.long { background: var(--orange); border-radius: 50%; }
+  .plan-preview-legend i.hill { background: var(--orange); }
   @media (max-width: 720px) { .gr-card { padding: 16px; } .gr-name { font-size: 22px; } .gr-pred-val { font-size: 26px; } }
 
   .strip {
@@ -2309,8 +2339,7 @@
   <div class="top">
     <h1>We know the <span class="it">future.</span><br>No bullshit. Just science.</h1>
     <div class="meta">
-      <strong>5 of 10</strong> selected<br>
-      Elevation × Effective Temperature = your real finish time
+      Heat × Elevation = your real finish time
     </div>
   </div>
 
@@ -2521,20 +2550,20 @@
 </g>
 <g id="tgoal">
 <ellipse cx="51" cy="55" rx="44" ry="44" fill="#000000" opacity="0.16"/>
-<circle cx="50" cy="50" r="44" fill="#E8472B"/>
+<circle cx="50" cy="50" r="44" fill="#FF5A1F"/>
 <circle cx="50" cy="50" r="36" fill="#FBF7F2"/>
-<circle cx="50" cy="50" r="28" fill="#E8472B"/>
+<circle cx="50" cy="50" r="28" fill="#FF5A1F"/>
 <circle cx="50" cy="50" r="20" fill="#FBF7F2"/>
-<circle cx="50" cy="50" r="12" fill="#E8472B"/>
+<circle cx="50" cy="50" r="12" fill="#FF5A1F"/>
 <circle cx="50" cy="50" r="5.5" fill="#FBF7F2"/>
-<circle cx="50" cy="50" r="2.6" fill="#E8472B"/>
-<ellipse cx="37" cy="33" rx="19" ry="12" fill="#FFFFFF" opacity="0.16"/>
-<circle cx="50" cy="50" r="44" fill="none" stroke="#8E2417" stroke-width="2.2"/>
-<line x1="86" y1="16" x2="54" y2="48" stroke="#16357A" stroke-width="6.5" stroke-linecap="round"/>
-<line x1="86" y1="16" x2="54" y2="48" stroke="#2E5BD6" stroke-width="3" stroke-linecap="round"/>
-<path d="M50 50 L62.5 47 L57 60.5 Z" fill="#16357A"/>
-<path d="M85 17 L96 6 L93 19 Z" fill="#3B82F6"/>
-<path d="M85 17 L73 10 L86 8 Z" fill="#3B82F6"/>
+<circle cx="50" cy="50" r="2.6" fill="#FF5A1F"/>
+<ellipse cx="37" cy="33" rx="19" ry="12" fill="#FFFFFF" opacity="0.18"/>
+<circle cx="50" cy="50" r="44" fill="none" stroke="#C23A0A" stroke-width="2.2"/>
+<line x1="86" y1="16" x2="54" y2="48" stroke="#0026B8" stroke-width="6.5" stroke-linecap="round"/>
+<line x1="86" y1="16" x2="54" y2="48" stroke="#0033ff" stroke-width="3" stroke-linecap="round"/>
+<path d="M50 50 L62.5 47 L57 60.5 Z" fill="#0026B8"/>
+<path d="M85 17 L96 6 L93 19 Z" fill="#3358FF"/>
+<path d="M85 17 L73 10 L86 8 Z" fill="#3358FF"/>
 </g>
 </defs></svg>
 <div class="testimonials-section">
@@ -3028,13 +3057,13 @@ function renderGoal() {
     + `<span class="gr-trend ${tCls}">${trend}</span></div>`
     + _grSparkline(hist)
     + `</div>`
-    + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>${_grStravaConnected() ? `Predicted from your Strava fitness, ${goalRace}\u2019s terrain and real race-day weather \u2014 on a research-backed model.` : `Predicted from your time, ${goalRace}\u2019s terrain and real race-day weather \u2014 on a research-backed model.`}</span></div>`
+    + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>This is your finish time today \u2014 ${_grStravaConnected() ? "from your Strava analysis, " : ""}aligned with effective temperature and race elevation.</span></div>`
     + `<div class="gr-next">`
     + `<span class="gr-m-label">Your next workout</span>`
     + `<div class="gr-next-title">${sess.title}</div>`
-    + `<div class="gr-next-meta"><span>\uD83C\uDFC3 ${sess.pace}/km</span><span class="rpe">${sess.rpe}</span></div>`
+    + `<div class="gr-next-meta"><span class="rpe">${sess.rpe}</span></div>`
     + `<div class="gr-next-detail">${sess.detail}</div>`
-    + `<div class="gr-loop-hint">${_grStravaConnected() ? "Based on your Strava training analysis. Want to see the future?" : `Want to see your whole plan to ${goalRace}?`}</div>`
+    + `<div class="gr-loop-hint">${_grStravaConnected() ? "Based on your Strava training analysis. Want to see the future?" : `Wondering what the future holds? Take your whole plan to ${goalRace}.`}</div>`
     + `<button class="gr-plan-btn" id="goalPlanBtn">See the whole plan \u2192</button>`
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
@@ -3044,6 +3073,52 @@ function renderGoal() {
 }
 
 // "See the whole plan" -> 7-day free-trial hook (reuses the existing modal).
+const PLAN_PRICE_MONTHLY = "\u20AC9.99"; // billed after the 7-day free trial
+
+// Build a teaser of the week-by-week plan: first weeks clear, the rest blurred
+// behind an unlock overlay. The arc (base -> build -> peak -> taper) and any hill
+// emphasis are derived from the chosen race so the preview feels real.
+function _grPlanPreview(name, m) {
+  const hilly = (m.gain || 0) >= 250;
+  const N = 14;
+  const phaseOf = (i) => i < 4 ? "Base" : i < 9 ? "Build" : i < 12 ? "Peak" : "Taper";
+  const rowHtml = (i) => {
+    const ph = phaseOf(i);
+    const taper = ph === "Taper";
+    const dots = [];
+    const easy = taper ? 2 : 3;
+    for (let e = 0; e < easy; e++) dots.push("run");
+    if (!taper) dots.push(hilly && ph === "Build" && i % 2 === 1 ? "hill" : "key");
+    if (!(taper && i === N - 1)) dots.push("long");
+    let focus = ph + " block";
+    if (ph === "Base") focus = "Aerobic base";
+    else if (ph === "Build") focus = hilly && i % 2 === 1 ? `Hills \u2014 ${name}` : "Threshold + long";
+    else if (ph === "Peak") focus = "Goal-pace work";
+    else if (taper) focus = i === N - 1 ? "Race week" : "Sharpen + taper";
+    const dotsHtml = dots.map(d => `<span class="ppw-dot ${d}"></span>`).join("");
+    return `<div class="ppw"><span class="ppw-wk">W${i + 1}</span><span class="ppw-focus">${focus}</span><span class="ppw-dots">${dotsHtml}</span></div>`;
+  };
+  const clearCount = 3;
+  const lockedShown = 4; // render a short slice; the overlay states the true remaining count
+  let clear = "", locked = "";
+  for (let i = 0; i < clearCount; i++) clear += rowHtml(i);
+  for (let i = clearCount; i < clearCount + lockedShown; i++) locked += rowHtml(i);
+  return `
+    <div class="plan-preview">
+      <div class="plan-preview-head"><span class="pph-title">Week-by-week to ${name}</span><span class="pph-meta">${N} weeks</span></div>
+      ${clear}
+      <div class="plan-locked">
+        ${locked}
+        <div class="plan-lock-overlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span class="pl-txt">${N - clearCount} more weeks in your full plan</span>
+          <span class="pl-sub">Unlock the whole road to ${name} with your free trial</span>
+        </div>
+      </div>
+    </div>
+    <div class="plan-preview-legend"><span><i class="key"></i> Key session</span><span><i class="long"></i> Long run</span>${hilly ? '<span><i class="hill"></i> Hill work</span>' : ""}</div>`;
+}
+
 function openPlanModal(name) {
   const m = MARATHONS[name];
   const body = document.getElementById("modalBody");
@@ -3051,14 +3126,15 @@ function openPlanModal(name) {
   body.innerHTML = `
     <div class="plan-eyebrow">${m && m.emoji ? m.emoji + " " : ""}Full ${name} plan</div>
     <h2 class="plan-title">Your whole road to <span class="it">${name}</span>.</h2>
-    <p class="plan-sub">A week-by-week, course-tuned plan that adapts as your Strava times come in \u2014 hills where ${name} climbs, the right taper into race week, and your predicted finish tracked the whole way.</p>
+    <p class="plan-sub">A week-by-week plan tuned to ${name}\u2019s course \u2014 the right hills, the right taper, and your predicted finish tracked the whole way.</p>
+    ${m ? _grPlanPreview(name, m) : ""}
     <ul class="plan-list">
       <li>Every workout scheduled out to race day</li>
       <li>Auto-adjusts to your fitness and the forecast</li>
       <li>Cancel anytime</li>
     </ul>
     <button class="gr-plan-btn big" id="planTrialCta">Start 7-day free trial</button>
-    <div class="plan-fineprint">Free for 7 days, then billed monthly. Cancel before day 7 and you won\u2019t be charged.</div>`;
+    <div class="plan-fineprint">Free for 7 days, then ${PLAN_PRICE_MONTHLY}/month. Cancel before day 7 and you won\u2019t be charged.</div>`;
   document.getElementById("modalBackdrop").classList.add("open");
   const cta = document.getElementById("planTrialCta");
   if (cta) cta.onclick = () => {
@@ -4141,9 +4217,11 @@ function renderChips() {
 
 /* ================== META ================== */
 function renderMeta() {
+  const strong = document.querySelector(".top .meta strong");
+  if (!strong) return; // counter removed from the header
   const total = Object.keys(MARATHONS).length;
   const sel = visible.size;
-  document.querySelector(".top .meta strong").textContent = `${sel} of ${total}`;
+  strong.textContent = `${sel} of ${total}`;
 }
 
 /* ================== CALIBRATOR ================== */
