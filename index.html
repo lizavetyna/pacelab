@@ -3134,13 +3134,27 @@ function openPlanModal(name) {
       <li>Cancel anytime</li>
     </ul>
     <button class="gr-plan-btn big" id="planTrialCta">Start 7-day free trial</button>
-    <div class="plan-fineprint">Free for 7 days, then ${PLAN_PRICE_MONTHLY}/month. Cancel before day 7 and you won\u2019t be charged.</div>`;
+    <div class="plan-fineprint">Free for 7 days, then ${PLAN_PRICE_MONTHLY}/month. Cancel anytime.</div>`;
   document.getElementById("modalBackdrop").classList.add("open");
   const cta = document.getElementById("planTrialCta");
-  if (cta) cta.onclick = () => {
-    const link = STRIPE_LINKS.plan;
-    if (link && link.indexOf("REPLACE") === -1) { window.location.href = link; }
-    else { console.warn("STRIPE_LINKS.plan not configured"); const fp = body.querySelector(".plan-fineprint"); if (fp) fp.textContent = "Checkout link not set yet \u2014 add your Stripe trial URL to STRIPE_LINKS.plan."; }
+  if (cta) cta.onclick = async () => {
+    if (cta.disabled) return;
+    const original = cta.textContent;
+    cta.disabled = true; cta.textContent = "Starting\u2026";
+    try {
+      const res = await fetch(STRAVA_WORKER_URL + "/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userEmail ? { email: userEmail } : {}),
+      });
+      const d = await res.json().catch(() => null);
+      if (d && d.ok && d.url) { window.location.href = d.url; return; }
+      throw new Error((d && d.reason) || "no_url");
+    } catch (e) {
+      cta.disabled = false; cta.textContent = original;
+      const fp = body.querySelector(".plan-fineprint");
+      if (fp) fp.textContent = "Couldn\u2019t start checkout just now \u2014 please try again.";
+    }
   };
 }
 // Payment-required model: giving an email no longer unlocks premium courses.
@@ -4994,7 +5008,12 @@ function restoreStravaUI() {
 (function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   const payment = params.get("payment");
-  if (payment !== "success") return;
+  const subParam = params.get("sub");
+  const isSub = subParam === "success";
+  if (payment !== "success" && !isSub) {
+    if (subParam === "cancel") window.history.replaceState({}, "", window.location.pathname);
+    return;
+  }
   const sessionId = params.get("session_id");
   const tier = params.get("tier") || "";
 
@@ -5029,6 +5048,13 @@ function restoreStravaUI() {
       }
       setPass(d.pass);
       applyUnlockedNames(d.unlocked || []);
+      if (isSub || d.plan) {
+        try { await ensurePaidData(true); } catch (e) {}
+        try { renderPicker(); } catch (e) {}
+        renderAll();
+        notifyRestore("Your 7-day free trial is active \u2014 your full plan is unlocked.");
+        return;
+      }
       if (savedCtx.context && savedCtx.context.type === 'gpx-upload') persistGpxPaid();
       await ensurePaidData(true);
 
