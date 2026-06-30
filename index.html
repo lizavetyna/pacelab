@@ -1891,6 +1891,10 @@
   }
   .yl-copy:hover { filter: brightness(0.95); }
   .yl-copy.done { background: #1b8a4b; }
+  .yl-email { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .yl-email-label { font-size: 11.5px; line-height: 1.5; color: var(--muted); margin-bottom: 8px; }
+  .yl-send:disabled { opacity: 0.6; cursor: default; }
+  .yl-email-msg { font-size: 11.5px; line-height: 1.4; color: var(--ink); margin-top: 8px; min-height: 1em; }
   .ft-fine {
     font-size: 10px;
     letter-spacing: 0.06em;
@@ -2662,6 +2666,14 @@
     <div class="yl-row">
       <input class="yl-input" id="yourLinkInput" type="text" readonly aria-label="Your personal Pacelab link" />
       <button class="yl-copy" id="yourLinkCopy" type="button">Copy link</button>
+    </div>
+    <div class="yl-email">
+      <div class="yl-email-label">Email yourself this link so you never lose it — or recover it on a new device:</div>
+      <div class="yl-row">
+        <input class="yl-input" id="yourLinkEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Your email" />
+        <button class="yl-copy yl-send" id="yourLinkEmailBtn" type="button">Email me my link</button>
+      </div>
+      <div class="yl-email-msg" id="yourLinkEmailMsg" aria-live="polite"></div>
     </div>
   </div>
 
@@ -5215,6 +5227,29 @@ function restoreStravaUI() {
       btn.textContent = "Copied!"; btn.classList.add("done");
       setTimeout(() => { btn.textContent = orig; btn.classList.remove("done"); }, 1600);
     });
+
+    // "Email me my link" — backs up the link to an email (and recovers it on a new device).
+    const emailInput = document.getElementById("yourLinkEmail");
+    const emailBtn = document.getElementById("yourLinkEmailBtn");
+    const emailMsg = document.getElementById("yourLinkEmailMsg");
+    if (emailInput && emailBtn) {
+      try { if (typeof userEmail !== "undefined" && userEmail && !emailInput.value) emailInput.value = userEmail; } catch (e) {}
+      emailBtn.addEventListener("click", async () => {
+        const email = (emailInput.value || "").trim();
+        if (email.indexOf("@") <= 0) { if (emailMsg) emailMsg.textContent = "Please enter a valid email address."; return; }
+        const orig = emailBtn.textContent;
+        emailBtn.disabled = true; emailBtn.textContent = "Sending…"; if (emailMsg) emailMsg.textContent = "";
+        try {
+          await fetch(STRAVA_WORKER_URL + "/page/email", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email, pid: window.PACELAB_PID }),
+          });
+        } catch (e) {}
+        if (emailMsg) emailMsg.textContent = "Check your inbox — if there's a Pacelab linked to that email, your link is on its way.";
+        emailBtn.textContent = "Sent";
+        setTimeout(() => { emailBtn.textContent = orig; emailBtn.disabled = false; }, 2500);
+      });
+    }
   }
   if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", init, { once: true });
   else init();
