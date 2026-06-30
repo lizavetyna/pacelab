@@ -1864,6 +1864,33 @@
     color: var(--muted);
     text-align: center;
   }
+  .ft-yourlink {
+    width: 100%;
+    margin-top: 28px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--orange);
+    border-radius: 12px;
+    background: rgba(255, 90, 31, 0.04);
+    box-sizing: border-box;
+  }
+  .yl-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .yl-star { color: var(--orange); font-size: 14px; line-height: 1; }
+  .yl-title { font-weight: 700; font-size: 13px; letter-spacing: 0.01em; color: var(--ink); }
+  .yl-note { font-size: 11.5px; line-height: 1.5; color: var(--muted); margin: 0 0 11px; max-width: 62ch; }
+  .yl-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .yl-input {
+    flex: 1; min-width: 200px; font-size: 12px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff;
+    color: var(--ink); font-family: inherit;
+  }
+  .yl-copy {
+    flex: 0 0 auto; font-size: 12px; font-weight: 600; padding: 9px 16px;
+    border: none; border-radius: 8px; background: var(--orange); color: #fff;
+    cursor: pointer; transition: background .15s, filter .15s;
+  }
+  .yl-copy:hover { filter: brightness(0.95); }
+  .yl-copy.done { background: #1b8a4b; }
   .ft-fine {
     font-size: 10px;
     letter-spacing: 0.06em;
@@ -2626,6 +2653,15 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <div class="ft-yourlink" id="yourLinkCard">
+    <div class="yl-head"><span class="yl-star">★</span><span class="yl-title">This is your Pacelab</span></div>
+    <p class="yl-note">Bookmark this link to keep your goal race, plan and progress — even on a new phone or after clearing your browser. It's your private link, so keep it to yourself: anyone who opens it can see your plan.</p>
+    <div class="yl-row">
+      <input class="yl-input" id="yourLinkInput" type="text" readonly aria-label="Your personal Pacelab link" />
+      <button class="yl-copy" id="yourLinkCopy" type="button">Copy link</button>
     </div>
   </div>
 
@@ -5079,6 +5115,111 @@ function restoreStravaUI() {
   }
 })();
 
+// ===== Personal page sync: a bookmarkable ?p= link that carries progress + unlock =====
+// No registration: the token in the URL is the identity. Progress and the chosen goal
+// live on the server, so they survive cleared cookies and follow the link to any device.
+(function pageSyncSetup() {
+  const PID_KEY = "pacelab_pid";
+  const SYNC_KEYS = ["pacelab_goal", "pacelab_progress", "pacelab_session_idx", "pacelab_strava"];
+  const origSet = localStorage.setItem.bind(localStorage);
+  let ready = false, saveTimer = null;
+
+  function validPid(p) { return typeof p === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(p); }
+  function newPid() {
+    const a = new Uint8Array(18); crypto.getRandomValues(a);
+    return btoa(String.fromCharCode.apply(null, a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function resolvePid() {
+    let pid = new URLSearchParams(location.search).get("p");
+    if (!validPid(pid)) { try { pid = localStorage.getItem(PID_KEY); } catch (e) {} }
+    if (!validPid(pid)) pid = newPid();
+    try { origSet(PID_KEY, pid); } catch (e) {}
+    const u = new URL(location.href);
+    if (u.searchParams.get("p") !== pid) {
+      u.searchParams.set("p", pid);
+      try { history.replaceState({}, "", u.toString()); } catch (e) {}
+    }
+    return pid;
+  }
+  const PID = resolvePid();
+  window.PACELAB_PID = PID;
+
+  function snapshot() {
+    const s = {};
+    SYNC_KEYS.forEach(k => { try { const v = localStorage.getItem(k); if (v != null) s[k] = v; } catch (e) {} });
+    return s;
+  }
+  async function doSave() {
+    saveTimer = null;
+    const state = snapshot();
+    const email = (typeof userEmail !== "undefined" && userEmail) ? userEmail : undefined;
+    if (Object.keys(state).length === 0 && !email) return; // nothing worth storing yet
+    try {
+      await fetch(STRAVA_WORKER_URL + "/page/save", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pid: PID, state, email }),
+      });
+    } catch (e) {}
+  }
+  function schedule() {
+    if (!ready) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(doSave, 2500);
+  }
+  // Capture writes to the synced keys without touching every call site.
+  localStorage.setItem = function (k, v) { origSet(k, v); if (SYNC_KEYS.indexOf(k) !== -1) schedule(); };
+  window.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && saveTimer) { clearTimeout(saveTimer); doSave(); } });
+  window.addEventListener("pagehide", () => { if (saveTimer) { clearTimeout(saveTimer); doSave(); } });
+
+  window.__pacelabReady = function () { ready = true; };
+  window.__pacelabLoadPage = async function () {
+    let d = null;
+    try {
+      const res = await fetch(STRAVA_WORKER_URL + "/page/load", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pid: PID }),
+      });
+      d = await res.json().catch(() => null);
+    } catch (e) { return null; }
+    if (!d || !d.ok) return d;
+    // Entitlement first, so opening the link on a new device unlocks the paid plan.
+    try { if (d.pass) setPass(d.pass); } catch (e) {}
+    try { if (d.email) persistEmail(d.email); } catch (e) {}
+    try { if (d.unlocked) applyUnlockedNames(d.unlocked); } catch (e) {}
+    // Saved app state -> localStorage (bypass the patch so it doesn't echo back as a save).
+    if (d.state && typeof d.state === "object") {
+      SYNC_KEYS.forEach(k => { if (typeof d.state[k] === "string") { try { origSet(k, d.state[k]); } catch (e) {} } });
+      try { loadGoalFromStorage(); } catch (e) {}
+      try { if (goalRace && typeof loadConditionsFor === "function") loadConditionsFor([goalRace]); } catch (e) {}
+      try { await ensurePaidData(true); } catch (e) {}
+      try { renderPicker(); } catch (e) {}
+      try { renderAll(); } catch (e) {}
+    }
+    return d;
+  };
+})();
+
+// Footer "your personal link" card: shows the bookmarkable ?p= link and copies it.
+(function personalLinkUI() {
+  function init() {
+    const input = document.getElementById("yourLinkInput");
+    const btn = document.getElementById("yourLinkCopy");
+    if (!input || !btn) return;
+    const pid = window.PACELAB_PID || new URLSearchParams(location.search).get("p") || "";
+    const link = location.origin + location.pathname + (pid ? "?p=" + pid : "");
+    input.value = link;
+    btn.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(link); }
+      catch (e) { try { input.focus(); input.select(); document.execCommand("copy"); } catch (e2) {} }
+      const orig = btn.textContent;
+      btn.textContent = "Copied!"; btn.classList.add("done");
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove("done"); }, 1600);
+    });
+  }
+  if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", init, { once: true });
+  else init();
+})();
+
 // On load, reconcile entitlements from the verified pass. A returning buyer's pass
 // re-fetches their premium courses; without a pass, premium stays locked (no stale unlocks).
 (function reconcileEntitlements() {
@@ -5090,37 +5231,44 @@ function restoreStravaUI() {
     if (changed) { persistUnlocked(); try { renderPicker(); } catch (e) {} try { renderAll(); } catch (e) {} }
   }
   async function run() {
-    // If we know the email used at checkout, fetch a fresh pass that reflects the
-    // CURRENT entitlement (active sub, one-time purchases, or a canceled sub -> none).
-    // This keeps a paying subscriber unlocked without any manual step, and lets a
-    // cancellation drop access on the next load.
-    if (userEmail) {
-      try {
-        const res = await fetch(STRAVA_WORKER_URL + "/restore", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: userEmail }),
+    // Pull the personal page first: applies saved progress/goal and (if the page is
+    // linked to an email) the current entitlement, so a fresh device is fully restored.
+    if (window.__pacelabLoadPage) { try { await window.__pacelabLoadPage(); } catch (e) {} }
+    try {
+      // If we know the email used at checkout, fetch a fresh pass that reflects the
+      // CURRENT entitlement (active sub, one-time purchases, or a canceled sub -> none).
+      // This keeps a paying subscriber unlocked without any manual step, and lets a
+      // cancellation drop access on the next load.
+      if (userEmail) {
+        try {
+          const res = await fetch(STRAVA_WORKER_URL + "/restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: userEmail }),
+          });
+          const d = await res.json().catch(() => null);
+          if (d && d.ok && d.pass) {
+            setPass(d.pass);
+            applyUnlockedNames(d.unlocked || []);
+            await ensurePaidData(true);
+            try { renderPicker(); } catch (e) {}
+            try { renderAll(); } catch (e) {}
+            return;
+          }
+          if (d && d.ok === false) { clearPass(); lockPaid(); return; } // email known but nothing active
+        } catch (e) { /* offline: fall back to the cached pass below */ }
+      }
+      // No email on file (or restore unreachable): use a cached pass if we still have one.
+      const pass = getPass();
+      if (pass) {
+        await ensurePaidData(true).then(ok => {
+          if (ok) { try { renderPicker(); } catch (e) {} try { renderAll(); } catch (e) {} }
         });
-        const d = await res.json().catch(() => null);
-        if (d && d.ok && d.pass) {
-          setPass(d.pass);
-          applyUnlockedNames(d.unlocked || []);
-          await ensurePaidData(true);
-          try { renderPicker(); } catch (e) {}
-          try { renderAll(); } catch (e) {}
-          return;
-        }
-        if (d && d.ok === false) { clearPass(); lockPaid(); return; } // email known but nothing active
-      } catch (e) { /* offline: fall back to the cached pass below */ }
-    }
-    // No email on file (or restore unreachable): use a cached pass if we still have one.
-    const pass = getPass();
-    if (pass) {
-      ensurePaidData(true).then(ok => {
-        if (ok) { try { renderPicker(); } catch (e) {} try { renderAll(); } catch (e) {} }
-      });
-    } else {
-      lockPaid();
+      } else {
+        lockPaid();
+      }
+    } finally {
+      if (window.__pacelabReady) window.__pacelabReady(); // start syncing only after the initial load settles
     }
   }
   if (document.readyState === 'loading') {
