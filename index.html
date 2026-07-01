@@ -657,6 +657,21 @@
   .plw-vol { font-size: 12px; text-align: right; color: var(--ink); font-weight: 500; }
   .plw-long { color: var(--muted); font-weight: 400; font-size: 11px; }
   .plw-note { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
+  .gr-next-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .gr-feel { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper-2); color: var(--orange); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+  .gr-feel:hover { border-color: var(--orange); }
+  .gr-why.adj { color: var(--ink); background: #fff3ee; border-left: 2px solid var(--orange); padding: 9px 11px; border-radius: 8px; }
+  .gr-reset { background: none; border: none; color: var(--muted); font: inherit; font-size: 11.5px; text-decoration: underline; cursor: pointer; padding: 4px 0; margin-bottom: 4px; }
+  .gr-feel-panel { margin: 10px 0 4px; }
+  .gr-feel-wrap { position: relative; }
+  .gr-feel-panel textarea { font: inherit; width: 100%; min-height: 74px; resize: vertical; font-size: 13.5px; line-height: 1.5; padding: 11px 46px 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-2); color: var(--ink); }
+  .gr-feel-panel textarea:focus { outline: none; border-color: var(--orange); }
+  .gr-feel-mic { position: absolute; right: 9px; bottom: 9px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper-2); color: var(--orange); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .gr-feel-mic.rec { background: var(--orange); color: #fff; border-color: var(--orange); animation: grpulse 1.3s ease-in-out infinite; }
+  @keyframes grpulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(255,90,31,.35); } 50%{ box-shadow: 0 0 0 7px rgba(255,90,31,0); } }
+  .gr-feel-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 9px; }
+  .gr-feel-note { font-size: 10.5px; color: var(--muted); }
+  .gr-feel-err { font-size: 12px; color: #c0392b; margin-top: 8px; }
 
   /* Trial modal: week-by-week plan preview with locked (blurred) weeks */
   .plan-preview { position: relative; margin: 13px 0 2px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper-2); }
@@ -3112,7 +3127,7 @@ function _plDescribe(type, wk, z, name){
     default: return { type:"easy", title:"Easy run", rpe:"RPE 3 \u00B7 aerobic", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}.` };
   }
 }
-function _plNextFor(m){
+function _plNextFor(m, ignoreAdjust){
   const plan=_plBuildPlan(m), wk=plan.weeks[0], all=_plWeekSessions(wk);
   const t0=new Date(_plTodayISO()+"T00:00:00"), dow=(t0.getDay()+6)%7, ws=new Date(t0); ws.setDate(t0.getDate()-dow);
   const done=[]; let hardY=false;
@@ -3128,7 +3143,57 @@ function _plNextFor(m){
     : hardY ? "You ran hard yesterday, so today is easy to let it absorb."
     : (isHard(pick)||pick==="long") ? `Week ${wk.week} (${wk.phase}): ${wk.focus.charAt(0).toLowerCase()+wk.focus.slice(1)}`
     : "Filling in aerobic volume between key sessions.";
-  return { session, why, week:wk, plan };
+  if(!ignoreAdjust){ const adj=_plTodayAdjust(); if(adj){ return { session:_plAdjustSession(session, wk, adj.action, plan.zones), why:adj.message, week:wk, plan, adjusted:true, action:adj.action }; } }
+  return { session, why, week:wk, plan, adjusted:false };
+}
+/* ---- "How are you feeling?" daily adjustment (stored per-day, synced, never the raw words) ---- */
+function _plTodayAdjust(){ try { const a=JSON.parse(localStorage.getItem("pacelab_adjust")||"null"); if(a&&a.date===_plTodayISO()) return a; } catch(e){} return null; }
+function _plSetAdjust(action,message,baseType){ try { localStorage.setItem("pacelab_adjust", JSON.stringify({date:_plTodayISO(),action,message,baseType})); } catch(e){} }
+function _plClearAdjust(){ try { localStorage.removeItem("pacelab_adjust"); } catch(e){} }
+function _plAdjustSession(base, wk, action, z){
+  const P=(k)=>_plFmtPace(z[k])+"/km";
+  if(action==="keep") return base;
+  if(action==="rest") return { type:"rest", title:"Rest day", rpe:"\u2014", detail:"Full rest, or a gentle walk or stretch. Recovery is part of the plan \u2014 you lose nothing by taking it." };
+  if(action==="easier") return { type:"recovery", title:"Easy / recovery run", rpe:"RPE 2\u20133 \u00B7 very easy", detail:`30\u201340 min very easy at ${P("recovery")}. Keep it gentle \u2014 it still counts as training.` };
+  const bt=base.type;
+  if(bt==="threshold") return { type:"threshold", title:"Threshold intervals (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 3 \u00D7 1 km at ${P("threshold")} with 90 s jog. Cool down. Half the reps.` };
+  if(bt==="interval") return { type:"interval", title:"VO\u2082 intervals (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 3 \u00D7 3 min at ${P("interval")} with 2 min jog. Cool down.` };
+  if(bt==="hill") return { type:"hill", title:"Hill repeats (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 4 \u00D7 90 s uphill hard, jog down.` };
+  if(bt==="long"||bt==="mp_long"){ const s=Math.max(8,Math.round(wk.longKm*0.6)); return { type:"long", title:"Long run (shortened)", rpe:"RPE 3 \u00B7 easy", detail:`${s} km at ${P("long")} \u2014 shorter than planned, still good time on feet.` }; }
+  return { type:"easy", title:base.title+" (shortened)", rpe:"lighter than planned", detail:`Cut it back today \u2014 about half the planned volume at an easy effort.` };
+}
+let _feelRec=null, _feelRecording=false;
+function _feelSR(){ return window.SpeechRecognition||window.webkitSpeechRecognition; }
+function _feelToggleRec(){
+  const SR=_feelSR(), mic=document.getElementById("goalFeelMic"), inp=document.getElementById("goalFeelInput");
+  if(!SR||!mic||!inp) return;
+  try {
+    if(_feelRecording){ _feelRec&&_feelRec.stop(); return; }
+    _feelRec=new SR(); _feelRec.lang="en-US"; _feelRec.interimResults=true; _feelRec.continuous=false;
+    const base=inp.value?inp.value+" ":"";
+    _feelRec.onresult=(e)=>{ let t=""; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript; inp.value=base+t; };
+    _feelRec.onend=()=>{ _feelRecording=false; mic.classList.remove("rec"); };
+    _feelRec.onerror=()=>{ _feelRecording=false; mic.classList.remove("rec"); };
+    _feelRec.start(); _feelRecording=true; mic.classList.add("rec");
+  } catch(e){ mic.style.display="none"; }
+}
+async function _feelSubmit(){
+  const inp=document.getElementById("goalFeelInput"), err=document.getElementById("goalFeelErr"), go=document.getElementById("goalFeelGo");
+  const words=((inp&&inp.value)||"").trim();
+  if(err) err.textContent="";
+  if(!words){ if(err) err.textContent="Tell me how you\u2019re doing first."; return; }
+  const m=MARATHONS[goalRace]; if(!m) return;
+  try{ if(_feelRecording&&_feelRec) _feelRec.stop(); }catch(e){}
+  const base=_plNextFor(m, true).session;   // natural planned session (ignore any existing adjust)
+  if(go){ go.disabled=true; go.textContent="Adjusting\u2026"; }
+  try {
+    const res=await fetch(STRAVA_WORKER_URL+"/adjust", { method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ transcript:words, planned:{ title:base.title, detail:base.detail, type:base.type } }) });
+    const d=await res.json();
+    if(d&&d.ok){ _plSetAdjust(d.action, d.message, base.type); renderGoal(); return; }
+    if(err) err.textContent = (d&&d.reason==="server_unconfigured") ? "The coach isn\u2019t configured yet." : "Couldn\u2019t reach the coach \u2014 try again.";
+  } catch(e){ if(err) err.textContent="Couldn\u2019t reach the coach \u2014 try again."; }
+  if(go){ go.disabled=false; go.textContent="Adjust my workout"; }
 }
 function _plHasFullPlan(){ try { const paid=Object.keys(MARATHONS).filter(n=>{const mm=MARATHONS[n];return mm&&mm.tier!=="free"&&mm.tier!=="custom";}); return paid.length>0 && paid.every(n=>unlocked.has(n)); } catch(e){ return false; } }
 function _plFullPlanHtml(m){
@@ -3219,13 +3284,23 @@ function renderGoal() {
     + `</div>`
     + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>This is your finish time today \u2014 ${_grStravaConnected() ? "from your Strava analysis, " : ""}aligned with effective temperature and race elevation.</span></div>`
     + `<div class="gr-next">`
-    + `<span class="gr-m-label">Your next workout <span class="gr-wk">\u00B7 wk ${nw.week.week} ${nw.week.phase}</span></span>`
+    + `<div class="gr-next-head">`
+    +   `<span class="gr-m-label">Your next workout <span class="gr-wk">\u00B7 wk ${nw.week.week} ${nw.week.phase}</span></span>`
+    +   `<button class="gr-feel" id="goalFeelBtn" title="Not feeling it? Adjust today" aria-label="Adjust from how you feel"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>`
+    + `</div>`
     + `<div class="gr-next-title">${sess.title}</div>`
     + `<div class="gr-next-meta"><span class="rpe">${sess.rpe}</span></div>`
     + `<div class="gr-next-detail">${sess.detail}</div>`
-    + `<div class="gr-why">${nw.why}</div>`
+    + `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
+    + (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
+    + `<div class="gr-feel-panel" id="goalFeelPanel" hidden>`
+    +   `<div class="gr-feel-wrap"><textarea id="goalFeelInput" placeholder="First day of my period, cramps \u2014 not up for the hard stuff today\u2026"></textarea>`
+    +     `<button class="gr-feel-mic" id="goalFeelMic" title="Record" aria-label="Record"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button></div>`
+    +   `<div class="gr-feel-row"><button class="gr-btn" id="goalFeelGo">Adjust my workout</button><span class="gr-feel-note">Not stored \u00B7 guidance, not medical advice</span></div>`
+    +   `<div class="gr-feel-err" id="goalFeelErr"></div>`
+    + `</div>`
     + `<div class="gr-next-row">`
-    +   `<button class="gr-btn" id="goalNextBtn" data-type="${sess.type}">Receive next workout</button>`
+    +   `<button class="gr-btn ghost" id="goalNextBtn" data-type="${sess.type}">Receive next workout</button>`
     +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
     + `</div>`
     + `<div class="gr-loop-hint">Marks this done and shows the next. ${_grStravaConnected() ? "Volume is tuned to your Strava training." : "Connect Strava to tune volume to your real training."}</div>`
@@ -3236,9 +3311,22 @@ function renderGoal() {
   const pb = document.getElementById("goalPlanBtn");
   if (pb) pb.onclick = () => openPlanModal(goalRace);
   const nb = document.getElementById("goalNextBtn");
-  if (nb) nb.onclick = () => { _plMarkDone(nb.getAttribute("data-type")); renderGoal(); };
+  if (nb) nb.onclick = () => { _plClearAdjust(); _plMarkDone(nb.getAttribute("data-type")); renderGoal(); };
   const ds = document.getElementById("goalDaysSel");
   if (ds) ds.onchange = () => { _plSetDays(ds.value); renderGoal(); };
+  const feelBtn = document.getElementById("goalFeelBtn");
+  const feelPanel = document.getElementById("goalFeelPanel");
+  if (feelBtn && feelPanel) feelBtn.onclick = () => {
+    const open = !feelPanel.hasAttribute("hidden");
+    if (open) { feelPanel.setAttribute("hidden", ""); }
+    else { feelPanel.removeAttribute("hidden"); const inp = document.getElementById("goalFeelInput"); if (inp) inp.focus(); _feelToggleRec(); }
+  };
+  const feelMic = document.getElementById("goalFeelMic");
+  if (feelMic) { if (!_feelSR()) feelMic.style.display = "none"; else feelMic.onclick = _feelToggleRec; }
+  const feelGo = document.getElementById("goalFeelGo");
+  if (feelGo) feelGo.onclick = _feelSubmit;
+  const rs = document.getElementById("goalResetBtn");
+  if (rs) rs.onclick = () => { _plClearAdjust(); renderGoal(); };
 }
 
 // "See the whole plan" -> 7-day free-trial hook (reuses the existing modal).
@@ -5262,7 +5350,7 @@ function restoreStravaUI() {
 // live on the server, so they survive cleared cookies and follow the link to any device.
 (function pageSyncSetup() {
   const PID_KEY = "pacelab_pid";
-  const SYNC_KEYS = ["pacelab_goal", "pacelab_progress", "pacelab_session_idx", "pacelab_strava", "pacelab_plan_cfg", "pacelab_workout_log"];
+  const SYNC_KEYS = ["pacelab_goal", "pacelab_progress", "pacelab_session_idx", "pacelab_strava", "pacelab_plan_cfg", "pacelab_workout_log", "pacelab_adjust"];
   const origSet = localStorage.setItem.bind(localStorage);
   let ready = false, saveTimer = null;
 
