@@ -634,6 +634,29 @@
   .plan-list li { position: relative; padding-left: 23px; margin: 6px 0; font-size: 14px; color: var(--ink-soft); }
   .plan-list li::before { content: "\2713"; position: absolute; left: 0; color: var(--blue); font-weight: 700; }
   .plan-fineprint { font-size: 11.5px; color: var(--muted); margin-top: 11px; text-align: center; line-height: 1.4; }
+  .gr-wk { color: var(--muted); font-weight: 500; font-size: 11px; }
+  .gr-why { font-size: 12px; color: var(--muted); margin: 6px 0 10px; line-height: 1.45; }
+  .gr-next-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .gr-days { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .gr-days select { font: inherit; font-size: 12px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+  .plw-wrap { margin: 14px 0; }
+  .plw-head { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .plw-zones { font-size: 12px; color: var(--ink); background: #f7f7f5; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+  .plw-row { display: grid; grid-template-columns: 30px 74px minmax(0,1fr) 80px; gap: 10px; align-items: center; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
+  .plw-wk { font-size: 12px; color: var(--muted); }
+  .plw-ph { font-size: 11px; font-weight: 600; text-align: center; border-radius: 6px; padding: 3px 0; }
+  .plw-base { background: #e6f1fb; color: #0c447c; }
+  .plw-build { background: #faeeda; color: #633806; }
+  .plw-peak { background: #faece7; color: #712b13; }
+  .plw-taper { background: #e1f5ee; color: #085041; }
+  .plw-mid { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .plw-bar { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+  .plw-bar i { display: block; height: 100%; background: var(--orange); }
+  .plw-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .plw-tag { font-size: 10.5px; background: #f2f2f0; border-radius: 5px; padding: 2px 6px; color: var(--muted); }
+  .plw-vol { font-size: 12px; text-align: right; color: var(--ink); font-weight: 500; }
+  .plw-long { color: var(--muted); font-weight: 400; font-size: 11px; }
+  .plw-note { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
 
   /* Trial modal: week-by-week plan preview with locked (blurred) weeks */
   .plan-preview { position: relative; margin: 13px 0 2px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper-2); }
@@ -3035,6 +3058,95 @@ function recordEstimate(sec) {
   }
 }
 // Light, course-tuned "next session" suggestions (not a full plan).
+/* ================== TRAINING PLAN ENGINE (rule-based, approximate v1) ==================
+   Derives a periodized plan + today's workout from the goal time (userTime.flatMinutes),
+   the race date (m.displayDate) and the course profile (m.gain). Numbers are approximate
+   for now and safe by construction: capped weekly ramp, deloads, taper, rest. */
+function _plFmtPace(s){ s = Math.max(150, Math.round(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); }
+function _plZones(flatMin){ const mp=(flatMin*60)/42.195; const z=(o)=>Math.max(150,Math.round(mp+o));
+  return { recovery:z(75), easy:z(55), long:z(50), mp:z(0), threshold:z(-15), interval:z(-40), hill:z(-5) }; }
+function _plCfg(){ try { const c=JSON.parse(localStorage.getItem("pacelab_plan_cfg")||"{}")||{}; return { daysPerWeek: Math.max(3,Math.min(6,parseInt(c.daysPerWeek,10)||4)) }; } catch(e){ return { daysPerWeek:4 }; } }
+function _plSetDays(n){ try { localStorage.setItem("pacelab_plan_cfg", JSON.stringify({ daysPerWeek: Math.max(3,Math.min(6,parseInt(n,10)||4)) })); } catch(e){} }
+function _plLog(){ try { const l=JSON.parse(localStorage.getItem("pacelab_workout_log")||"[]"); return Array.isArray(l)?l:[]; } catch(e){ return []; } }
+function _plTodayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function _plMarkDone(type){ try { const l=_plLog(); l.push({date:_plTodayISO(),type:type}); localStorage.setItem("pacelab_workout_log", JSON.stringify(l.slice(-60))); } catch(e){} }
+function _plBaseKm(flatMin){ try { const s=JSON.parse(localStorage.getItem("pacelab_strava")||"null"); if(s&&s.connected&&s.weeklyKm&&s.weeklyKm>=10) return Math.round(s.weeklyKm); } catch(e){} return Math.max(20,Math.round(flatMin*0.18)); }
+function _plWeeksToRace(m){ let d=84; try { const dd=_grDaysUntil(m.displayDate); if(dd>0) d=dd; } catch(e){} return Math.max(1,Math.round(d/7)); }
+function _plBuildPlan(m){
+  const flatMin=userTime.flatMinutes||225, daysPerWeek=_plCfg().daysPerWeek, hilly=(m.gain||0)>=250;
+  const W=Math.max(1,Math.min(_plWeeksToRace(m),24)), zones=_plZones(flatMin);
+  const taper=W>=10?3:(W>=6?2:1), remA=Math.max(0,W-taper);
+  const peak=Math.min(3,Math.max(remA>=2?1:0,Math.round(remA*0.30))), remB=Math.max(0,remA-peak);
+  const build=Math.round(remB*0.55), base=Math.max(0,remB-build);
+  const phaseAt=(i)=> i<base?"Base":i<base+build?"Build":i<base+build+peak?"Peak":"Taper";
+  const V0=_plBaseKm(flatMin), peakKm=Math.min(Math.round(V0*1.55),V0+45), rampWeeks=base+build+peak;
+  const weeks=[]; let trend=V0;
+  for(let i=0;i<W;i++){
+    const phase=phaseAt(i), isTaper=phase==="Taper", idxT=i-(base+build+peak);
+    const isDeload=!isTaper && i>0 && (i+1)%4===0; let vol, longKm;
+    if(isTaper){ const tf=taper===3?[0.85,0.68,0.52]:(taper===2?[0.75,0.55]:[0.6]); vol=Math.round(peakKm*(tf[idxT]!=null?tf[idxT]:0.5)); }
+    else { const frac=rampWeeks<=1?1:i/(rampWeeks-1); const target=V0+(peakKm-V0)*frac; trend=Math.min(target,trend*1.10); vol=Math.round(isDeload?trend*0.82:trend); }
+    if(isTaper){ longKm=Math.max(10,Math.round(Math.min(vol*0.42,24-idxT*5))); }
+    else { const f2=rampWeeks<=1?1:i/(rampWeeks-1); longKm=Math.round(Math.min(14+f2*20,34,vol*0.45)); }
+    let qc=phase==="Base"?1:(phase==="Taper"?1:2); while(1+qc+1>daysPerWeek && qc>0) qc--;
+    const easyDays=Math.max(0,daysPerWeek-1-qc);
+    let quality=phase==="Base"?["strides"]:phase==="Build"?(hilly?["hill","threshold"]:["threshold","interval"]):phase==="Peak"?["mp_long","threshold"]:["sharpener"];
+    quality=quality.slice(0,qc);
+    const focus=({Base:"Aerobic base \u2014 easy volume + strides, stretch the long run", Build:hilly?"Threshold + hill strength for the climbs":"Threshold + VO\u2082 \u2014 raise the ceiling", Peak:"Race specificity \u2014 marathon pace inside the long run", Taper:"Freshen up \u2014 hold sharpness, drop fatigue"})[phase];
+    weeks.push({ week:i+1, weeksToGo:W-i, phase, focus, targetKm:vol, longKm, quality, easyDays, isDeload });
+  }
+  return { weeks, zones, meta:{ W, base, build, peak, taper, peakKm, V0, daysPerWeek, hilly } };
+}
+function _plWeekSessions(wk){ const l=["long"]; wk.quality.forEach(q=>l.push(q)); for(let i=0;i<wk.easyDays;i++) l.push(i===0?"recovery":"easy"); return l; }
+function _plDescribe(type, wk, z, name){
+  const P=(k)=>_plFmtPace(z[k])+"/km", race=name||"your race";
+  switch(type){
+    case "long": return { type, title:"Long run", rpe:"RPE 3\u20134 \u00B7 easy", detail:`${wk.longKm} km at ${P("long")} \u2014 conversational. Time on feet for ${race}.` };
+    case "mp_long": { const c=Math.min(Math.round(wk.longKm*0.4),16); return { type, title:"Long run with race pace", rpe:"RPE 4\u20136 \u00B7 progressive", detail:`${wk.longKm} km: settle at ${P("long")}, last ${c} km at goal pace ${P("mp")}.` }; }
+    case "threshold": return { type, title:"Threshold intervals", rpe:"RPE 7\u20138 \u00B7 hard", detail:`Warm up 15 min, then 5 \u00D7 1 km at ${P("threshold")} with 90 s jog. Cool down 10 min.` };
+    case "interval": return { type, title:"VO\u2082 intervals", rpe:"RPE 8\u20139 \u00B7 very hard", detail:`Warm up 15 min, then 6 \u00D7 3 min at ${P("interval")} with 2 min jog. Cool down 10 min.` };
+    case "hill": return { type, title:"Hill repeats", rpe:"RPE 7\u20138 \u00B7 hard by effort", detail:`Warm up 15 min, then 8 \u00D7 90 s uphill hard, jog down. Strength for the climbs.` };
+    case "strides": return { type, title:"Easy run + strides", rpe:"RPE 3 + surges", detail:`${Math.max(5,Math.round(wk.targetKm*0.18))} km easy at ${P("easy")}, then 6 \u00D7 20 s strides.` };
+    case "sharpener": return { type, title:"Taper sharpener", rpe:"RPE 6 \u00B7 crisp", detail:`Warm up, then 3 \u00D7 1 km at goal pace ${P("mp")} with 2 min jog. Crisp, not tiring.` };
+    case "recovery": return { type, title:"Recovery run", rpe:"RPE 2 \u00B7 very easy", detail:`4\u20136 km very easy at ${P("recovery")} \u2014 let the last hard day absorb.` };
+    default: return { type:"easy", title:"Easy run", rpe:"RPE 3 \u00B7 aerobic", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}.` };
+  }
+}
+function _plNextFor(m){
+  const plan=_plBuildPlan(m), wk=plan.weeks[0], all=_plWeekSessions(wk);
+  const t0=new Date(_plTodayISO()+"T00:00:00"), dow=(t0.getDay()+6)%7, ws=new Date(t0); ws.setDate(t0.getDate()-dow);
+  const done=[]; let hardY=false;
+  _plLog().forEach(e=>{ const d=new Date(e.date+"T00:00:00"); if(d>=ws&&d<=t0) done.push(e.type); const diff=(t0-d)/86400000; if(diff>0&&diff<=1&&["threshold","interval","hill","mp_long","long"].indexOf(e.type)>=0) hardY=true; });
+  const remaining=all.slice(); done.forEach(t=>{ const i=remaining.indexOf(t); if(i>=0) remaining.splice(i,1); });
+  const isHard=(t)=>["threshold","interval","hill","mp_long"].indexOf(t)>=0;
+  let pick;
+  if(remaining.length===0) pick="recovery";
+  else if(hardY) pick=remaining.filter(t=>!isHard(t)&&t!=="long")[0]||"recovery";
+  else pick=remaining.filter(isHard)[0]||(remaining.indexOf("long")>=0?"long":remaining[0]);
+  const session=_plDescribe(pick,wk,plan.zones,goalRace);
+  const why = remaining.length===0 ? "You\u2019ve hit this week\u2019s sessions \u2014 keep it easy or rest."
+    : hardY ? "You ran hard yesterday, so today is easy to let it absorb."
+    : (isHard(pick)||pick==="long") ? `Week ${wk.week} (${wk.phase}): ${wk.focus.charAt(0).toLowerCase()+wk.focus.slice(1)}`
+    : "Filling in aerobic volume between key sessions.";
+  return { session, why, week:wk, plan };
+}
+function _plHasFullPlan(){ try { const paid=Object.keys(MARATHONS).filter(n=>{const mm=MARATHONS[n];return mm&&mm.tier!=="free"&&mm.tier!=="custom";}); return paid.length>0 && paid.every(n=>unlocked.has(n)); } catch(e){ return false; } }
+function _plFullPlanHtml(m){
+  const plan=_plBuildPlan(m), z=plan.zones;
+  const LABEL={strides:"Strides",threshold:"Threshold",interval:"VO\u2082",hill:"Hills",mp_long:"MP long run",sharpener:"Sharpener"};
+  const rows=plan.weeks.map(w=>{
+    const tags=w.quality.map(q=>`<span class="plw-tag">${LABEL[q]||q}</span>`).join(" ");
+    const bar=Math.round(w.targetKm/plan.meta.peakKm*100);
+    return `<div class="plw-row"><span class="plw-wk">W${w.week}</span>`
+      + `<span class="plw-ph plw-${w.phase.toLowerCase()}">${w.phase}${w.isDeload?" \u00B7 ease":""}</span>`
+      + `<div class="plw-mid"><div class="plw-bar"><i style="width:${bar}%"></i></div><div class="plw-tags">${tags}</div></div>`
+      + `<span class="plw-vol">${w.targetKm} km<br><span class="plw-long">long ${w.longKm} km</span></span></div>`;
+  }).join("");
+  const zline=`Easy ${_plFmtPace(z.easy)} \u00B7 MP ${_plFmtPace(z.mp)} \u00B7 Threshold ${_plFmtPace(z.threshold)} \u00B7 VO\u2082 ${_plFmtPace(z.interval)} /km`;
+  return `<div class="plw-wrap"><div class="plw-head">${plan.meta.W}-week plan \u2014 ${plan.meta.base} base \u00B7 ${plan.meta.build} build \u00B7 ${plan.meta.peak} peak \u00B7 ${plan.meta.taper} taper</div>`
+    + `<div class="plw-zones">${zline}</div>${rows}`
+    + `<div class="plw-note">Approximate starter plan. It\u2019s guidance \u2014 listen to your body, and ease off if something hurts.</div></div>`;
+}
 function _grSessions(m) {
   const flatPaceSec = (userTime.flatMinutes * 60) / 42.195;        // your flat marathon pace, s/km
   const fp = (off) => { const s = Math.max(60, Math.round(flatPaceSec + off)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -3089,9 +3201,9 @@ function renderGoal() {
   } else {
     trend = "connect Strava to track your progress";
   }
-  const sessions = _grSessions(m);
-  let sidx = 0; try { sidx = parseInt(localStorage.getItem("pacelab_session_idx") || "0", 10) || 0; } catch (e) {}
-  const sess = sessions[sidx % sessions.length];
+  const nw = _plNextFor(m);
+  const sess = nw.session;
+  const plDays = _plCfg().daysPerWeek;
   const cond = (m.condReal && m.weather) ? ` \u00B7 race day: ${m.weather}` : "";
   el.innerHTML = `<div class="gr-card gr-loop">`
     + `<div class="gr-top">`
@@ -3107,17 +3219,26 @@ function renderGoal() {
     + `</div>`
     + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>This is your finish time today \u2014 ${_grStravaConnected() ? "from your Strava analysis, " : ""}aligned with effective temperature and race elevation.</span></div>`
     + `<div class="gr-next">`
-    + `<span class="gr-m-label">Your next workout</span>`
+    + `<span class="gr-m-label">Your next workout <span class="gr-wk">\u00B7 wk ${nw.week.week} ${nw.week.phase}</span></span>`
     + `<div class="gr-next-title">${sess.title}</div>`
     + `<div class="gr-next-meta"><span class="rpe">${sess.rpe}</span></div>`
     + `<div class="gr-next-detail">${sess.detail}</div>`
-    + `<div class="gr-loop-hint">${_grStravaConnected() ? "Based on your Strava training analysis. Want to see the future?" : `Wondering what the future holds? Take your whole plan to ${goalRace}.`}</div>`
+    + `<div class="gr-why">${nw.why}</div>`
+    + `<div class="gr-next-row">`
+    +   `<button class="gr-btn" id="goalNextBtn" data-type="${sess.type}">Receive next workout</button>`
+    +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
+    + `</div>`
+    + `<div class="gr-loop-hint">Marks this done and shows the next. ${_grStravaConnected() ? "Volume is tuned to your Strava training." : "Connect Strava to tune volume to your real training."}</div>`
     + `<button class="gr-plan-btn" id="goalPlanBtn">See the whole plan \u2192</button>`
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
   const pb = document.getElementById("goalPlanBtn");
   if (pb) pb.onclick = () => openPlanModal(goalRace);
+  const nb = document.getElementById("goalNextBtn");
+  if (nb) nb.onclick = () => { _plMarkDone(nb.getAttribute("data-type")); renderGoal(); };
+  const ds = document.getElementById("goalDaysSel");
+  if (ds) ds.onchange = () => { _plSetDays(ds.value); renderGoal(); };
 }
 
 // "See the whole plan" -> 7-day free-trial hook (reuses the existing modal).
@@ -3171,6 +3292,15 @@ function openPlanModal(name) {
   const m = MARATHONS[name];
   const body = document.getElementById("modalBody");
   if (!body) return;
+  if (m && _plHasFullPlan()) {
+    body.innerHTML = `
+    <div class="plan-eyebrow">${m.emoji ? m.emoji + " " : ""}Your ${name} plan</div>
+    <h2 class="plan-title">Your whole road to <span class="it">${name}</span>.</h2>
+    <p class="plan-sub">Tuned to ${name}\u2019s course and your ${fmtClock(userTime.flatMinutes)} goal \u2014 the right build, the right taper.</p>
+    ${_plFullPlanHtml(m)}`;
+    document.getElementById("modalBackdrop").classList.add("open");
+    return;
+  }
   body.innerHTML = `
     <div class="plan-eyebrow">${m && m.emoji ? m.emoji + " " : ""}Full ${name} plan</div>
     <h2 class="plan-title">Your whole road to <span class="it">${name}</span>.</h2>
@@ -4978,7 +5108,7 @@ function applyStravaEstimate(data) {
     `Analyzed ${data.runsAnalyzed} runs — your realistic marathon time looks like ${data.estimateHMS}${conf}. We've set it above; tweak it anytime.`,
     true
   );
-  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, at: Date.now() })); } catch (e) {}
+  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, weeklyKm: data.weeklyKm, at: Date.now() })); } catch (e) {}
   setStravaConnectedUI(true, data.estimateHMS);
 }
 
@@ -5132,7 +5262,7 @@ function restoreStravaUI() {
 // live on the server, so they survive cleared cookies and follow the link to any device.
 (function pageSyncSetup() {
   const PID_KEY = "pacelab_pid";
-  const SYNC_KEYS = ["pacelab_goal", "pacelab_progress", "pacelab_session_idx", "pacelab_strava"];
+  const SYNC_KEYS = ["pacelab_goal", "pacelab_progress", "pacelab_session_idx", "pacelab_strava", "pacelab_plan_cfg", "pacelab_workout_log"];
   const origSet = localStorage.setItem.bind(localStorage);
   let ready = false, saveTimer = null;
 
