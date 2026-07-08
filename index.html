@@ -658,7 +658,11 @@
   .plw-long { color: var(--muted); font-weight: 400; font-size: 11px; }
   .plw-note { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
   .gr-next-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .gr-feel-cta { display: flex; align-items: center; gap: 11px; width: auto; max-width: 320px; margin: 13px 0 2px auto; text-align: left; padding: 11px 13px; border: 1px solid rgba(255,90,31,.30); background: rgba(255,90,31,.06); border-radius: 13px; cursor: pointer; font: inherit; transition: border-color .15s, box-shadow .15s, background .15s; }
+  .gr-coach { margin: 14px 0 16px; }
+  .gr-feel-cta { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 13px 15px; border: 1px solid rgba(255,90,31,.30); background: rgba(255,90,31,.06); border-radius: 13px; cursor: pointer; font: inherit; transition: border-color .15s, box-shadow .15s, background .15s; }
+  .gr-coach-badge { font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; background: var(--orange); color: #fff; border-radius: 5px; padding: 1px 6px; margin-left: 7px; font-weight: 700; vertical-align: middle; }
+  .gr-coach-lock { margin-left: auto; color: var(--orange); flex: none; display: flex; }
+  .gr-quip { font-size: 12.5px; line-height: 1.5; color: var(--ink); font-style: italic; opacity: .82; margin: 7px 0 12px; padding-left: 11px; border-left: 2px solid rgba(255,90,31,.35); }
   .gr-feel-cta:hover { border-color: var(--orange); background: rgba(255,90,31,.09); box-shadow: 0 3px 12px rgba(255,90,31,.13); }
   .gr-feel-cta-ic { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; }
   .gr-feel-cta-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
@@ -3200,7 +3204,46 @@ async function _feelSubmit(){
     if(d&&d.ok){ _plSetAdjust(d.action, d.message, base.type); renderGoal(); return; }
     if(err) err.textContent = (d&&d.reason==="server_unconfigured") ? "The coach isn\u2019t configured yet." : "Couldn\u2019t reach the coach \u2014 try again.";
   } catch(e){ if(err) err.textContent="Couldn\u2019t reach the coach \u2014 try again."; }
-  if(go){ go.disabled=false; go.textContent="Adjust my workout"; }
+  if(go){ go.disabled=false; go.textContent="Send to coach"; }
+}
+function _grCoachQuip(m){
+  let days=60; try { const d=_grDaysUntil(m.displayDate); if(d>0) days=d; } catch(e){}
+  let n=30; try { const plan=_plBuildPlan(m); n=plan.weeks.reduce((s,w)=> s + 1 + w.quality.length + w.easyDays, 0); } catch(e){}
+  const goal=goalRace||"race day";
+  const quips=[
+    `${days} days out, ${n} sessions to go \u2014 that\u2019s ${n} more chances to make me look like a genius. Off you go.`,
+    `Assuming you actually did the last one (I\u2019m choosing to believe you): ${days} days, ${n} workouts to ${goal}. Lovely.`,
+    `Well done. ${n} to go. Remember the deal \u2014 you run these, I sit here looking clever.`,
+    `${days} days, ${n} workouts. I\u2019d run them for you, but the legs aren\u2019t transferable.`,
+    `Look at you, showing up. ${n} left, ${days} days \u2014 keep being the good runner we both know you are.`,
+    `${n} sessions between you and ${goal}. I did the maths; you do the running. Deal?`,
+    `Great job (I\u2019m assuming). ${days} days, ${n} to go \u2014 don\u2019t make me say it twice.`,
+    `${days} days out, ${n} workouts left. Basically nothing. That\u2019s a lie, but a motivating one.`,
+  ];
+  let i=0; try { i=_plLog().length % quips.length; } catch(e){}
+  return quips[i];
+}
+function _grCoachBlock(coachOn){
+  const mic = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+  if (coachOn) {
+    return `<div class="gr-coach">`
+      + `<button class="gr-feel-cta" id="goalFeelBtn">`
+      +   `<span class="gr-feel-cta-ic">${mic}</span>`
+      +   `<span class="gr-feel-cta-tx"><b>Talk to your live coach</b><i>Tell your coach how you\u2019re feeling and today\u2019s session is tuned to your best effort.</i></span>`
+      + `</button>`
+      + `<div class="gr-feel-panel" id="goalFeelPanel" hidden>`
+      +   `<div class="gr-feel-wrap"><textarea id="goalFeelInput" placeholder="First day of my period, cramps \u2014 not up for the hard stuff today\u2026"></textarea>`
+      +     `<button class="gr-feel-mic" id="goalFeelMic" title="Record" aria-label="Record">${mic}</button></div>`
+      +   `<div class="gr-feel-row"><button class="gr-btn" id="goalFeelGo">Send to coach</button><span class="gr-feel-note">Not stored \u00B7 guidance, not medical advice</span></div>`
+      +   `<div class="gr-feel-err" id="goalFeelErr"></div>`
+      + `</div></div>`;
+  }
+  return `<div class="gr-coach">`
+    + `<button class="gr-feel-cta locked" id="goalCoachLockBtn">`
+    +   `<span class="gr-feel-cta-ic">${mic}</span>`
+    +   `<span class="gr-feel-cta-tx"><b>Train with a live coach <span class="gr-coach-badge">Plan</span></b><i>Talk to a coach that reshapes every session around how you feel. Unlock it with your 7-day free trial.</i></span>`
+    +   `<span class="gr-coach-lock"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+    + `</button></div>`;
 }
 function _plHasFullPlan(){ try { const paid=Object.keys(MARATHONS).filter(n=>{const mm=MARATHONS[n];return mm&&mm.tier!=="free"&&mm.tier!=="custom";}); return paid.length>0 && paid.every(n=>unlocked.has(n)); } catch(e){ return false; } }
 function _plFullPlanHtml(m){
@@ -3271,11 +3314,12 @@ function renderGoal() {
   } else if (_grStravaConnected()) {
     trend = "tracking from today \u2014 log runs to watch this move";
   } else {
-    trend = "connect Strava to track your progress";
+    trend = "";
   }
   const nw = _plNextFor(m);
   const sess = nw.session;
   const plDays = _plCfg().daysPerWeek;
+  const coachOn = _plHasFullPlan();
   const cond = (m.condReal && m.weather) ? ` \u00B7 race day: ${m.weather}` : "";
   el.innerHTML = `<div class="gr-card gr-loop">`
     + `<div class="gr-top">`
@@ -3290,28 +3334,20 @@ function renderGoal() {
     + _grSparkline(hist)
     + `</div>`
     + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>This is your finish time today \u2014 ${_grStravaConnected() ? "from your Strava analysis, " : ""}aligned with effective temperature and race elevation.</span></div>`
+    + _grCoachBlock(coachOn)
     + `<div class="gr-next">`
     + `<span class="gr-m-label">Your next workout <span class="gr-wk">\u00B7 wk ${nw.week.week} ${nw.week.phase}</span></span>`
+    + `<div class="gr-quip">${_grCoachQuip(m)}</div>`
     + `<div class="gr-next-title">${sess.title}</div>`
     + `<div class="gr-next-meta"><span class="rpe">${sess.rpe}</span></div>`
     + `<div class="gr-next-detail">${sess.detail}</div>`
     + `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
     + (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
-    + `<button class="gr-feel-cta" id="goalFeelBtn">`
-    +   `<span class="gr-feel-cta-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>`
-    +   `<span class="gr-feel-cta-tx"><b>How are you feeling today?</b><i>Tell us and we\u2019ll sharpen today\u2019s workout to your best effort.</i></span>`
-    + `</button>`
-    + `<div class="gr-feel-panel" id="goalFeelPanel" hidden>`
-    +   `<div class="gr-feel-wrap"><textarea id="goalFeelInput" placeholder="First day of my period, cramps \u2014 not up for the hard stuff today\u2026"></textarea>`
-    +     `<button class="gr-feel-mic" id="goalFeelMic" title="Record" aria-label="Record"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button></div>`
-    +   `<div class="gr-feel-row"><button class="gr-btn" id="goalFeelGo">Adjust my workout</button><span class="gr-feel-note">Not stored \u00B7 guidance, not medical advice</span></div>`
-    +   `<div class="gr-feel-err" id="goalFeelErr"></div>`
-    + `</div>`
     + `<div class="gr-next-row">`
-    +   `<button class="gr-btn ghost" id="goalNextBtn" data-type="${sess.type}">Receive next workout</button>`
+    +   `<button class="gr-btn ghost" id="goalNextBtn" data-type="${sess.type}">Next workout</button>`
     +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
     + `</div>`
-    + `<div class="gr-loop-hint">Marks this done and shows the next. ${_grStravaConnected() ? "Volume is tuned to your Strava training." : "Connect Strava to tune volume to your real training."}</div>`
+    + `<div class="gr-loop-hint">${_grStravaConnected() ? "Marks this done and shows the next." : "Don\u2019t forget to reconnect Strava \u2014 I use it to see how you\u2019re getting on with my advice."}</div>`
     + `<button class="gr-plan-btn" id="goalPlanBtn">See the whole plan \u2192</button>`
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
@@ -3335,6 +3371,8 @@ function renderGoal() {
   if (feelGo) feelGo.onclick = _feelSubmit;
   const rs = document.getElementById("goalResetBtn");
   if (rs) rs.onclick = () => { _plClearAdjust(); renderGoal(); };
+  const coachLock = document.getElementById("goalCoachLockBtn");
+  if (coachLock) coachLock.onclick = () => openPlanModal(goalRace);
 }
 
 // "See the whole plan" -> 7-day free-trial hook (reuses the existing modal).
