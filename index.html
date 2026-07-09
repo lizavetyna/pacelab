@@ -5104,8 +5104,19 @@ async function confirmPurchase() {
   // Strip the code from the URL so it isn't kept on refresh or accidentally shared.
   window.history.replaceState({}, "", window.location.pathname);
 
+  // ?unlock=off clears the tester unlock so you can see the non-subscriber view again.
+  if (code === "off") {
+    try { localStorage.removeItem("pacelab_comp"); } catch (e) {}
+    Object.keys(MARATHONS).forEach(n => { if (MARATHONS[n].tier === 'paid') unlocked.delete(n); });
+    try { persistUnlocked(); } catch (e) {}
+    try { renderPicker(); } catch (e) {}
+    try { renderAll(); } catch (e) {}
+    return;
+  }
+
   async function unlockAll(pass, names) {
     if (pass) setPass(pass);
+    try { localStorage.setItem("pacelab_comp", "1"); } catch (e) {}   // durable tester unlock
     applyUnlockedNames((names && names.length) ? names : Object.keys(MARATHONS).filter(n => MARATHONS[n].tier === 'paid'));
     persistGpxPaid();
     await ensurePaidData(true);
@@ -5523,6 +5534,7 @@ function restoreStravaUI() {
 // re-fetches their premium courses; without a pass, premium stays locked (no stale unlocks).
 (function reconcileEntitlements() {
   function lockPaid() {
+    if (localStorage.getItem("pacelab_comp") === "1") return;   // tester unlock stays put
     let changed = false;
     Object.keys(MARATHONS).forEach(n => {
       if (MARATHONS[n].tier === 'paid' && unlocked.has(n)) { unlocked.delete(n); changed = true; }
@@ -5534,6 +5546,14 @@ function restoreStravaUI() {
     // linked to an email) the current entitlement, so a fresh device is fully restored.
     if (window.__pacelabLoadPage) { try { await window.__pacelabLoadPage(); } catch (e) {} }
     try {
+      // Tester/comp unlock: keep everything unlocked and skip the entitlement check.
+      if (localStorage.getItem("pacelab_comp") === "1") {
+        applyUnlockedNames(Object.keys(MARATHONS).filter(n => MARATHONS[n].tier === 'paid'));
+        try { await ensurePaidData(true); } catch (e) {}
+        try { renderPicker(); } catch (e) {}
+        try { renderAll(); } catch (e) {}
+        return;
+      }
       // If we know the email used at checkout, fetch a fresh pass that reflects the
       // CURRENT entitlement (active sub, one-time purchases, or a canceled sub -> none).
       // This keeps a paying subscriber unlocked without any manual step, and lets a
