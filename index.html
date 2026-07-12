@@ -644,6 +644,7 @@
   .plw-wrap { margin: 14px 0; }
   .plw-head { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   .plw-zones { font-size: 12px; color: var(--ink); background: #f7f7f5; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+  .plw-vdot { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
   .plw-row { display: grid; grid-template-columns: 30px 74px minmax(0,1fr) 80px; gap: 10px; align-items: center; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
   .plw-wk { font-size: 12px; color: var(--muted); }
   .plw-ph { font-size: 11px; font-weight: 600; text-align: center; border-radius: 6px; padding: 3px 0; }
@@ -3120,8 +3121,31 @@ function recordEstimate(sec) {
    the race date (m.displayDate) and the course profile (m.gain). Numbers are approximate
    for now and safe by construction: capped weekly ramp, deloads, taper, rest. */
 function _plFmtPace(s){ s = Math.max(150, Math.round(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); }
-function _plZones(flatMin){ const mp=(flatMin*60)/42.195; const z=(o)=>Math.max(150,Math.round(mp+o));
-  return { recovery:z(75), easy:z(55), long:z(50), mp:z(0), threshold:z(-15), interval:z(-40), hill:z(-5) }; }
+// --- Daniels VDOT engine (validated against Daniels' Running Formula, Tables 5.1/5.2) ---
+function _vo2(v){ return -4.60 + 0.182258*v + 0.000104*v*v; }                              // v in m/min -> O2 cost
+function _pctMax(t){ return 0.8 + 0.1894393*Math.exp(-0.012778*t) + 0.2989558*Math.exp(-0.1932605*t); } // t in min
+function _velFromVo2(o){ return (-0.182258 + Math.sqrt(0.182258*0.182258 + 4*0.000104*(4.60+o)))/(2*0.000104); }
+function _vdotFromPerf(distM, timeSec){ const t=timeSec/60, v=distM/t; return _vo2(v)/_pctMax(t); }
+function _vdotRaceSec(vdot, distM){ let lo=distM/600, hi=distM/50; for(let i=0;i<80;i++){ const t=(lo+hi)/2, est=_vo2(distM/t)/_pctMax(t); if(est>vdot) lo=t; else hi=t; } return ((lo+hi)/2)*60; }
+function _vdotPaceKm(vdot, pct){ return 1000/_velFromVo2(pct*vdot)*60; }                   // training pace, sec/km
+function _currentVdot(flatMin){
+  try { const s=JSON.parse(localStorage.getItem("pacelab_strava")||"null"); if(s&&s.connected&&s.vdot&&s.vdot>=20&&s.vdot<=85) return s.vdot; } catch(e){}
+  return Math.max(20, Math.min(85, _vdotFromPerf(42195, (flatMin||225)*60)));
+}
+function _plZones(flatMin){
+  const vdot = _currentVdot(flatMin);
+  const mp = _vdotRaceSec(vdot, 42195)/42.195;                                             // M = predicted marathon pace
+  return {
+    recovery: Math.max(150, Math.round(_vdotPaceKm(vdot, 0.62))),
+    easy:     Math.max(150, Math.round(_vdotPaceKm(vdot, 0.685))),
+    long:     Math.max(150, Math.round(_vdotPaceKm(vdot, 0.66))),
+    mp:       Math.max(150, Math.round(mp)),
+    threshold:Math.max(150, Math.round(_vdotPaceKm(vdot, 0.88))),
+    interval: Math.max(150, Math.round(_vdotPaceKm(vdot, 0.975))),
+    hill:     Math.max(150, Math.round(_vdotPaceKm(vdot, 0.86))),
+    vdot:     Math.round(vdot * 10) / 10,
+  };
+}
 function _plCfg(){ try { const c=JSON.parse(localStorage.getItem("pacelab_plan_cfg")||"{}")||{}; return { daysPerWeek: Math.max(3,Math.min(6,parseInt(c.daysPerWeek,10)||4)) }; } catch(e){ return { daysPerWeek:4 }; } }
 function _plSetDays(n){ try { localStorage.setItem("pacelab_plan_cfg", JSON.stringify({ daysPerWeek: Math.max(3,Math.min(6,parseInt(n,10)||4)) })); } catch(e){} }
 function _plLog(){ try { const l=JSON.parse(localStorage.getItem("pacelab_workout_log")||"[]"); return Array.isArray(l)?l:[]; } catch(e){ return []; } }
@@ -3316,8 +3340,11 @@ function _plFullPlanHtml(m){
       + `<span class="plw-vol">${w.targetKm} km<br><span class="plw-long">long ${w.longKm} km</span></span></div>`;
   }).join("");
   const zline=`Easy ${_plFmtPace(z.easy)} \u00B7 MP ${_plFmtPace(z.mp)} \u00B7 Threshold ${_plFmtPace(z.threshold)} \u00B7 VO\u2082 ${_plFmtPace(z.interval)} /km`;
+  const _hms=(s)=>{ s=Math.round(s); const h=Math.floor(s/3600),mm=Math.floor((s%3600)/60),ss=s%60; return (h?h+":":"")+(h?String(mm).padStart(2,"0"):mm)+":"+String(ss).padStart(2,"0"); };
+  const vline=`VDOT ${z.vdot} \u2014 on this fitness your equivalents are 5K ${_hms(_vdotRaceSec(z.vdot,5000))} \u00B7 10K ${_hms(_vdotRaceSec(z.vdot,10000))} \u00B7 half ${_hms(_vdotRaceSec(z.vdot,21097.5))} \u00B7 marathon ${_hms(_vdotRaceSec(z.vdot,42195))}`;
   return `<div class="plw-wrap"><div class="plw-head">${plan.meta.W}-week plan \u2014 ${plan.meta.base} base \u00B7 ${plan.meta.build} build \u00B7 ${plan.meta.peak} peak \u00B7 ${plan.meta.taper} taper</div>`
-    + `<div class="plw-zones">${zline}</div>${rows}</div>`;
+    + `<div class="plw-zones">${zline}</div>`
+    + `<div class="plw-zones plw-vdot">${vline}</div>${rows}</div>`;
 }
 function _grSessions(m) {
   const flatPaceSec = (userTime.flatMinutes * 60) / 42.195;        // your flat marathon pace, s/km
@@ -5305,17 +5332,19 @@ function setStravaConnectedUI(connected, hms) {
 
 // Apply an estimate (from the worker, or from demo mode) to the UI + remember it.
 function applyStravaEstimate(data) {
-  userTime.flatMinutes = data.estimateSeconds / 60;
+  const best = data.vdotMarathonSeconds || data.estimateSeconds;
+  userTime.flatMinutes = best / 60;
   userTime.mode = 'real';
-  if (typeof recordEstimate === "function") recordEstimate(data.estimateSeconds);
+  if (typeof recordEstimate === "function") recordEstimate(best);
   renderAll();
   const conf = data.confidence ? ` · ${data.confidence} confidence` : '';
+  const vtxt = data.vdot ? ` Your VDOT is about ${data.vdot}.` : '';
   showStravaStatus(
-    `Analyzed ${data.runsAnalyzed} runs — your realistic marathon time looks like ${data.estimateHMS}${conf}. We've set it above; tweak it anytime.`,
+    `Analyzed ${data.runsAnalyzed} runs — on your current fitness your realistic best marathon is ${data.vdotMarathonHMS || data.estimateHMS}${conf}.${vtxt} We've set it above; tweak it anytime.`,
     true
   );
-  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, weeklyKm: data.weeklyKm, at: Date.now() })); } catch (e) {}
-  setStravaConnectedUI(true, data.estimateHMS);
+  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, weeklyKm: data.weeklyKm, vdot: data.vdot || 0, vdotMarathonSeconds: data.vdotMarathonSeconds || 0, lastActivity: data.lastActivity || null, at: Date.now() })); } catch (e) {}
+  setStravaConnectedUI(true, data.vdotMarathonHMS || data.estimateHMS);
 }
 
 // Restore the "connected" look on load if they've connected before.
@@ -5373,7 +5402,7 @@ function restoreStravaUI() {
       const res = await fetch(STRAVA_WORKER_URL + "/exchange", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, pid: window.PACELAB_PID || undefined }),
       });
       const data = await res.json();
       if (data && data.estimateSeconds) {
