@@ -646,6 +646,18 @@
   .plw-zones { font-size: 12px; color: var(--ink); background: #f7f7f5; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
   .plw-vdot { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
   .plw-row { display: grid; grid-template-columns: 30px 74px minmax(0,1fr) 80px; gap: 10px; align-items: center; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
+  .plw-item { margin-bottom: 6px; }
+  .plw-item .plw-row { margin-bottom: 0; cursor: pointer; grid-template-columns: 28px 74px minmax(0,1fr) 78px 14px; transition: border-color .15s ease, background .15s ease; }
+  .plw-item .plw-row:hover { border-color: rgba(255,90,31,.4); background: rgba(255,90,31,.03); }
+  .plw-item.open .plw-row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-color: rgba(255,90,31,.4); }
+  .plw-chev { color: var(--muted); text-align: center; transition: transform .2s ease; font-size: 18px; line-height: 1; }
+  .plw-item.open .plw-chev { transform: rotate(90deg); }
+  .plw-detail { display: none; border: 1px solid rgba(255,90,31,.4); border-top: none; border-radius: 0 0 8px 8px; padding: 6px 10px 10px; background: #fdfcfb; }
+  .plw-item.open .plw-detail { display: block; }
+  .plw-sess { padding: 8px 0 8px 11px; border-left: 2px solid rgba(255,90,31,.3); margin: 8px 0; }
+  .plw-sess-t { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .plw-sess-rpe { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+  .plw-sess-d { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
   .plw-wk { font-size: 12px; color: var(--muted); }
   .plw-ph { font-size: 11px; font-weight: 600; text-align: center; border-radius: 6px; padding: 3px 0; }
   .plw-base { background: #e6f1fb; color: #0c447c; }
@@ -2476,7 +2488,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       <div class="yl-corner" id="yourLinkTop">
         <div class="ylt-top">
           <div class="ylt-qr" id="yourLinkQR"></div>
-          <div class="ylt-cap"><span class="yl-star">★</span> This is your Pacelab<span class="ylt-sub">Scan to open your plan on your phone.</span></div>
+          <div class="ylt-cap"><span class="yl-star">★</span> This is your unique Pacelab ID<span class="ylt-sub">Don’t lose it! Send it to yourself.</span></div>
         </div>
         <div class="ylt-email">
           <input class="yl-input" id="yourLinkTopEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Your email" />
@@ -2573,8 +2585,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
   </div>
 
-  <div class="goalrace" id="goalRace"></div>
-
   <div class="strip" id="strip"></div>
 
   <div class="picker" id="picker">
@@ -2652,6 +2662,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
   </div>
 
+  <div class="goalrace" id="goalRace"></div>
 
   <div class="coaching-hook">
     <div class="ch-left">
@@ -3403,16 +3414,23 @@ function _grCoachBlock(coachOn){
     + `</button></div>`;
 }
 function _plHasFullPlan(){ try { const paid=Object.keys(MARATHONS).filter(n=>{const mm=MARATHONS[n];return mm&&mm.tier!=="free"&&mm.tier!=="custom";}); return paid.length>0 && paid.every(n=>unlocked.has(n)); } catch(e){ return false; } }
-function _plFullPlanHtml(m){
+function _plFullPlanHtml(m, name){
   const plan=_plBuildPlan(m), z=plan.zones;
   const LABEL={strides:"Strides",threshold:"Threshold",interval:"VO\u2082",hill:"Hills",mp_long:"MP long run",sharpener:"Sharpener"};
   const rows=plan.weeks.map(w=>{
     const tags=w.quality.map(q=>`<span class="plw-tag">${LABEL[q]||q}</span>`).join(" ");
     const bar=Math.round(w.targetKm/plan.meta.peakKm*100);
-    return `<div class="plw-row"><span class="plw-wk">W${w.week}</span>`
-      + `<span class="plw-ph plw-${w.phase.toLowerCase()}">${w.phase}${w.isDeload?" \u00B7 ease":""}</span>`
-      + `<div class="plw-mid"><div class="plw-bar"><i style="width:${bar}%"></i></div><div class="plw-tags">${tags}</div></div>`
-      + `<span class="plw-vol">${w.targetKm} km<br><span class="plw-long">long ${w.longKm} km</span></span></div>`;
+    const sessions=_plWeekSessions(w).map(t=>{ const d=_plDescribe(t,w,z,name); return `<div class="plw-sess"><div class="plw-sess-t">${d.title} <span class="plw-sess-rpe">${d.rpe}</span></div><div class="plw-sess-d">${d.detail}</div></div>`; }).join("");
+    return `<div class="plw-item">`
+      + `<div class="plw-row" role="button" tabindex="0" aria-expanded="false" onclick="this.closest('.plw-item').classList.toggle('open')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.closest('.plw-item').classList.toggle('open');}">`
+      +   `<span class="plw-wk">W${w.week}</span>`
+      +   `<span class="plw-ph plw-${w.phase.toLowerCase()}">${w.phase}${w.isDeload?" \u00B7 ease":""}</span>`
+      +   `<div class="plw-mid"><div class="plw-bar"><i style="width:${bar}%"></i></div><div class="plw-tags">${tags}</div></div>`
+      +   `<span class="plw-vol">${w.targetKm} km<br><span class="plw-long">long ${w.longKm} km</span></span>`
+      +   `<span class="plw-chev" aria-hidden="true">\u203A</span>`
+      + `</div>`
+      + `<div class="plw-detail">${sessions}</div>`
+      + `</div>`;
   }).join("");
   const zline=`Easy ${_plFmtPace(z.easy)} \u00B7 MP ${_plFmtPace(z.mp)} \u00B7 Threshold ${_plFmtPace(z.threshold)} \u00B7 VO\u2082 ${_plFmtPace(z.interval)} /km`;
   const _hms=(s)=>{ s=Math.round(s); const h=Math.floor(s/3600),mm=Math.floor((s%3600)/60),ss=s%60; return (h?h+":":"")+(h?String(mm).padStart(2,"0"):mm)+":"+String(ss).padStart(2,"0"); };
@@ -3594,7 +3612,7 @@ function openPlanModal(name) {
     <div class="plan-eyebrow">${m.emoji ? m.emoji + " " : ""}Your ${name} plan</div>
     <h2 class="plan-title">Your whole road to <span class="it">${name}</span>.</h2>
     <p class="plan-sub">Tuned to ${name}\u2019s course and your ${fmtClock(userTime.flatMinutes)} goal \u2014 the right build, the right taper.</p>
-    ${_plFullPlanHtml(m)}`;
+    ${_plFullPlanHtml(m, name)}`;
     document.getElementById("modalBackdrop").classList.add("open");
     return;
   }
