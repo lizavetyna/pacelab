@@ -702,6 +702,9 @@
   .grc-sub { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: clamp(14px, 2vw, 19px); color: var(--muted); }
   .grc-cta { margin-top: 8px; background: #0033ff; color: #fff; border: none; border-radius: 12px; padding: 13px 22px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 24px rgba(0,51,255,.25); transition: filter .15s ease, transform .12s ease; }
   .grc-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .grc-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  .grc-cta.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+  .grc-cta.ghost:hover { border-color: #0033ff; color: #0033ff; filter: none; }
   .gr-celebrate.reduce .grc-analysis { animation: grCelebFade .3s ease both; }
   .gr-celebrate.reduce .grc-msg { animation: grCelebFade .3s ease both; }
   @keyframes grCelebFade { from { opacity: 0 } to { opacity: 1 } }
@@ -1969,6 +1972,8 @@
   .yl-corner .ylt-qr svg { display: block; width: 100%; height: 100%; }
   .yl-corner.no-qr .ylt-qr { display: none; }
   .ylt-cap { font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.3; text-align: left; }
+  .ylt-title { font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.3; display: flex; align-items: center; gap: 6px; }
+  .yl-corner .ylt-sub { margin-top: 0; }
   .ylt-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.45; margin-top: 4px; }
   .ylt-email { display: flex; gap: 8px; width: 100%; }
   .ylt-email .yl-input { flex: 1; min-width: 0; }
@@ -2486,9 +2491,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     <h1>We know the <span class="it">future.</span><br>No bullshit. Just science.</h1>
     <div class="top-right">
       <div class="yl-corner" id="yourLinkTop">
+        <div class="ylt-title"><span class="yl-star">★</span> This is your unique Pacelab ID</div>
         <div class="ylt-top">
           <div class="ylt-qr" id="yourLinkQR"></div>
-          <div class="ylt-cap"><span class="yl-star">★</span> This is your unique Pacelab ID<span class="ylt-sub">Don’t lose it! Send it to yourself.</span></div>
+          <div class="ylt-sub">Don’t lose it! Send it to yourself.</div>
         </div>
         <div class="ylt-email">
           <input class="yl-input" id="yourLinkTopEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Your email" />
@@ -3220,19 +3226,22 @@ function _grCelebrate(){
 function _grFmtHMS(sec){ sec=Math.round(sec||0); const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; return (h?h+":":"")+(h?String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0"); }
 function _grStravaInfo(){ try { return JSON.parse(localStorage.getItem("pacelab_strava")||"null"); } catch(e){ return null; } }
 function _grFirstConnectMessage(data){
-  const runs = data.runsAnalyzed || 0;
-  const km = data.weeklyKm ? `~${Math.round(data.weeklyKm)} km a week` : "your recent training";
   const best = data.vdotMarathonHMS || data.estimateHMS || "";
-  const vtxt = data.vdot ? ` \u2014 that\u2019s about VDOT ${data.vdot}` : "";
-  const line = `You\u2019re running ${km}${vtxt}${best ? `, with a ${best} marathon already in your legs` : ""}.`;
+  const vtxt = data.vdot ? ` (VDOT ${data.vdot})` : "";
+  const line = best ? `I\u2019ve worked out your real pace \u2014 about a ${best} marathon${vtxt}.` : `I\u2019ve worked out your real pace from your runs.`;
   const html = `<div class="grc-analysis" data-grkeep>`
-    + `<div class="grc-eyebrow">I went through ${runs ? "your last " + runs + " runs" : "your training"}</div>`
+    + `<div class="grc-eyebrow">Coach speaking</div>`
     + `<div class="grc-msg">${line}</div>`
-    + `<div class="grc-sub">Now let\u2019s point it at a race.</div>`
-    + `<button class="grc-cta" id="grPickRace" data-grdismiss>Choose your marathon \u2192</button></div>`;
-  const ov = _grOverlay(html, { hold: 0, fallback: 14000 });
-  const btn = document.getElementById("grPickRace");
-  if (btn) btn.onclick = () => { if (ov.wrap) { try { ov.wrap.remove(); } catch(e){} } const t = document.getElementById("goalRace") || document.getElementById("calibrator"); if (t) t.scrollIntoView({ behavior:"smooth", block:"start" }); };
+    + `<div class="grc-sub">Now you can see how you stack up against other runners \u2014 or take your own plan for your next marathon.</div>`
+    + `<div class="grc-ctas">`
+    +   `<button class="grc-cta ghost" id="grCompare" data-grdismiss>Compare with others</button>`
+    +   `<button class="grc-cta" id="grGetPlan" data-grdismiss>Take my plan \u2192</button>`
+    + `</div></div>`;
+  const ov = _grOverlay(html, { hold: 0, fallback: 16000 });
+  const cmp = document.getElementById("grCompare");
+  if (cmp) cmp.onclick = () => { if (ov.wrap) { try { ov.wrap.remove(); } catch(e){} } const t = document.getElementById("picker") || document.getElementById("strip"); if (t) t.scrollIntoView({ behavior:"smooth", block:"start" }); };
+  const gp = document.getElementById("grGetPlan");
+  if (gp) gp.onclick = () => { if (ov.wrap) { try { ov.wrap.remove(); } catch(e){} } const t = document.getElementById("goalRace"); if (t) t.scrollIntoView({ behavior:"smooth", block:"start" }); };
 }
 function _grGoalSetMessage(name){
   const m = MARATHONS[name]; if(!m) return;
@@ -3273,7 +3282,8 @@ function _plBuildPlan(m){
   const peak=Math.min(3,Math.max(remA>=2?1:0,Math.round(remA*0.30))), remB=Math.max(0,remA-peak);
   const build=Math.round(remB*0.55), base=Math.max(0,remB-build);
   const phaseAt=(i)=> i<base?"Base":i<base+build?"Build":i<base+build+peak?"Peak":"Taper";
-  const V0=_plBaseKm(flatMin), peakKm=Math.min(Math.round(V0*1.55),V0+45), rampWeeks=base+build+peak;
+  const dayFactor=daysPerWeek/4;   // more days trained ⇒ more total weekly volume (recalculated, not padded)
+  const V0=Math.max(15,Math.round(_plBaseKm(flatMin)*dayFactor)), peakKm=Math.min(Math.round(V0*1.55),V0+Math.round(45*dayFactor)), rampWeeks=base+build+peak;
   const weeks=[]; let trend=V0;
   for(let i=0;i<W;i++){
     const phase=phaseAt(i), isTaper=phase==="Taper", idxT=i-(base+build+peak);
@@ -3295,35 +3305,34 @@ function _plWeekSessions(wk){ const l=["long"]; wk.quality.forEach(q=>l.push(q))
 function _plDescribe(type, wk, z, name){
   const P=(k)=>_plFmtPace(z[k])+"/km", race=name||"your race";
   switch(type){
-    case "long": return { type, title:"Long run", rpe:"RPE 3\u20134 \u00B7 easy", detail:`${wk.longKm} km at ${P("long")} \u2014 conversational. Time on feet for ${race}.` };
-    case "mp_long": { const c=Math.min(Math.round(wk.longKm*0.4),16); return { type, title:"Long run with race pace", rpe:"RPE 4\u20136 \u00B7 progressive", detail:`${wk.longKm} km: settle at ${P("long")}, last ${c} km at goal pace ${P("mp")}.` }; }
-    case "threshold": return { type, title:"Threshold intervals", rpe:"RPE 7\u20138 \u00B7 hard", detail:`Warm up 15 min, then 5 \u00D7 1 km at ${P("threshold")} with 90 s jog. Cool down 10 min.` };
-    case "interval": return { type, title:"VO\u2082 intervals", rpe:"RPE 8\u20139 \u00B7 very hard", detail:`Warm up 15 min, then 6 \u00D7 3 min at ${P("interval")} with 2 min jog. Cool down 10 min.` };
-    case "hill": return { type, title:"Hill repeats", rpe:"RPE 7\u20138 \u00B7 hard by effort", detail:`Warm up 15 min, then 8 \u00D7 90 s uphill hard, jog down. Strength for the climbs.` };
-    case "strides": return { type, title:"Easy run + strides", rpe:"RPE 3 + surges", detail:`${Math.max(5,Math.round(wk.targetKm*0.18))} km easy at ${P("easy")}, then 6 \u00D7 20 s strides.` };
-    case "sharpener": return { type, title:"Taper sharpener", rpe:"RPE 6 \u00B7 crisp", detail:`Warm up, then 3 \u00D7 1 km at goal pace ${P("mp")} with 2 min jog. Crisp, not tiring.` };
-    case "recovery": return { type, title:"Recovery run", rpe:"RPE 2 \u00B7 very easy", detail:`4\u20136 km very easy at ${P("recovery")} \u2014 let the last hard day absorb.` };
-    default: return { type:"easy", title:"Easy run", rpe:"RPE 3 \u00B7 aerobic", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}.` };
+    case "long": return { type, title:"Long run", rpe:"easy \u00B7 you can chat", detail:`Run ${wk.longKm} km slow and relaxed at ${P("long")}. Just time on your feet \u2014 don\u2019t push it.` };
+    case "mp_long": { const c=Math.min(Math.round(wk.longKm*0.4),16); return { type, title:"Long run, faster at the end", rpe:"builds through", detail:`${wk.longKm} km easy at ${P("long")}, then pick it up to your goal pace ${P("mp")} for the last ${c} km.` }; }
+    case "threshold": return { type, title:"Tempo run", rpe:"comfortably hard", detail:`Warm up 15 min easy. Then run 5 \u00D7 1 km at ${P("threshold")}, jogging 90 sec between each. Easy 10 min to finish.` };
+    case "interval": return { type, title:"Speed intervals", rpe:"hard, but short", detail:`Warm up 15 min easy. Then 6 \u00D7 3 min fast at ${P("interval")}, jogging 2 min between each. Easy 10 min to finish.` };
+    case "hill": return { type, title:"Hill repeats", rpe:"hard by feel", detail:`Warm up 15 min easy. Then run 8 \u00D7 90 sec hard up a hill, jogging back down to recover. Builds strong legs.` };
+    case "strides": return { type, title:"Easy run + a few pickups", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.18))} km easy at ${P("easy")}, then 6 short 20-sec pickups \u2014 quick feet, stay relaxed.` };
+    case "sharpener": return { type, title:"Short, sharp tune-up", rpe:"crisp, not tiring", detail:`Warm up, then 3 \u00D7 1 km at goal pace ${P("mp")} with 2 min jog between. Just enough to feel fast.` };
+    case "recovery": return { type, title:"Recovery run", rpe:"very easy", detail:`4\u20136 km nice and slow at ${P("recovery")}. It should feel almost too easy \u2014 that\u2019s the point.` };
+    default: return { type:"easy", title:"Easy run", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}. Keep it comfortable the whole way.` };
   }
 }
 function _plNextFor(m, ignoreAdjust){
-  const plan=_plBuildPlan(m), wk=plan.weeks[0], all=_plWeekSessions(wk);
-  const t0=new Date(_plTodayISO()+"T00:00:00"), dow=(t0.getDay()+6)%7, ws=new Date(t0); ws.setDate(t0.getDate()-dow);
-  const done=[]; let hardY=false;
-  _plLog().forEach(e=>{ const d=new Date(e.date+"T00:00:00"); if(d>=ws&&d<=t0) done.push(e.type); const diff=(t0-d)/86400000; if(diff>0&&diff<=1&&["threshold","interval","hill","mp_long","long"].indexOf(e.type)>=0) hardY=true; });
-  const remaining=all.slice(); done.forEach(t=>{ const i=remaining.indexOf(t); if(i>=0) remaining.splice(i,1); });
-  const isHard=(t)=>["threshold","interval","hill","mp_long"].indexOf(t)>=0;
-  let pick;
-  if(remaining.length===0) pick="recovery";
-  else if(hardY) pick=remaining.filter(t=>!isHard(t)&&t!=="long")[0]||"recovery";
-  else pick=remaining.filter(isHard)[0]||(remaining.indexOf("long")>=0?"long":remaining[0]);
+  const plan=_plBuildPlan(m);
+  // One ordered sequence of every session across every week. Position = how many you've
+  // marked done, so finishing this week's sessions rolls straight into next week.
+  const seq=[]; plan.weeks.forEach(w=>{ _plWeekSessions(w).forEach(t=>seq.push({type:t, wk:w})); });
+  const total=seq.length, doneCount=Math.max(0, Math.min(_plLog().length, total));
+  if(total===0){ const wk=plan.weeks[0]||{week:1,phase:"Base",focus:"",targetKm:0,longKm:0}; return { session:_plDescribe("easy",wk,plan.zones,goalRace), why:"", week:wk, plan, adjusted:false, done:0, total:0 }; }
+  if(doneCount>=total){
+    const wk=plan.weeks[plan.weeks.length-1];
+    const session={ type:"done", title:"Plan complete \u2014 you\u2019re ready", rpe:"", detail:`That\u2019s every session done. Trust the work you\u2019ve put in, rest up, and go run ${goalRace||"your race"}.` };
+    return { session, why:"", week:wk, plan, adjusted:false, complete:true, done:doneCount, total };
+  }
+  const cur=seq[doneCount], pick=cur.type, wk=cur.wk;
   const session=_plDescribe(pick,wk,plan.zones,goalRace);
-  const why = remaining.length===0 ? "You\u2019ve hit this week\u2019s sessions \u2014 keep it easy or rest."
-    : hardY ? "You ran hard yesterday, so today is easy to let it absorb."
-    : (isHard(pick)||pick==="long") ? `Week ${wk.week} (${wk.phase}): ${wk.focus.charAt(0).toLowerCase()+wk.focus.slice(1)}`
-    : "Filling in aerobic volume between key sessions.";
-  if(!ignoreAdjust){ const adj=_plTodayAdjust(); if(adj){ return { session:_plAdjustSession(session, wk, adj.action, plan.zones), why:adj.message, week:wk, plan, adjusted:true, action:adj.action }; } }
-  return { session, why, week:wk, plan, adjusted:false };
+  const why=`Week ${wk.week} of ${plan.meta.W} (${wk.phase}): ${wk.focus.charAt(0).toLowerCase()+wk.focus.slice(1)}`;
+  if(!ignoreAdjust){ const adj=_plTodayAdjust(); if(adj){ return { session:_plAdjustSession(session, wk, adj.action, plan.zones), why:adj.message, week:wk, plan, adjusted:true, action:adj.action, done:doneCount, total }; } }
+  return { session, why, week:wk, plan, adjusted:false, done:doneCount, total };
 }
 /* ---- "How are you feeling?" daily adjustment (stored per-day, synced, never the raw words) ---- */
 function _plTodayAdjust(){ try { const a=JSON.parse(localStorage.getItem("pacelab_adjust")||"null"); if(a&&a.date===_plTodayISO()) return a; } catch(e){} return null; }
@@ -3333,12 +3342,12 @@ function _plAdjustSession(base, wk, action, z){
   const P=(k)=>_plFmtPace(z[k])+"/km";
   if(action==="keep") return base;
   if(action==="rest") return { type:"rest", title:"Rest day", rpe:"\u2014", detail:"Full rest, or a gentle walk or stretch. Recovery is part of the plan \u2014 you lose nothing by taking it." };
-  if(action==="easier") return { type:"recovery", title:"Easy / recovery run", rpe:"RPE 2\u20133 \u00B7 very easy", detail:`30\u201340 min very easy at ${P("recovery")}. Keep it gentle \u2014 it still counts as training.` };
+  if(action==="easier") return { type:"recovery", title:"Easy / recovery run", rpe:"very easy", detail:`30\u201340 min nice and slow at ${P("recovery")}. Keep it gentle \u2014 it still counts as training.` };
   const bt=base.type;
   if(bt==="threshold") return { type:"threshold", title:"Threshold intervals (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 3 \u00D7 1 km at ${P("threshold")} with 90 s jog. Cool down. Half the reps.` };
   if(bt==="interval") return { type:"interval", title:"VO\u2082 intervals (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 3 \u00D7 3 min at ${P("interval")} with 2 min jog. Cool down.` };
   if(bt==="hill") return { type:"hill", title:"Hill repeats (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 4 \u00D7 90 s uphill hard, jog down.` };
-  if(bt==="long"||bt==="mp_long"){ const s=Math.max(8,Math.round(wk.longKm*0.6)); return { type:"long", title:"Long run (shortened)", rpe:"RPE 3 \u00B7 easy", detail:`${s} km at ${P("long")} \u2014 shorter than planned, still good time on feet.` }; }
+  if(bt==="long"||bt==="mp_long"){ const s=Math.max(8,Math.round(wk.longKm*0.6)); return { type:"long", title:"Long run (shortened)", rpe:"easy", detail:`${s} km easy at ${P("long")} \u2014 shorter than planned, still good time on your feet.` }; }
   return { type:"easy", title:base.title+" (shortened)", rpe:"lighter than planned", detail:`Cut it back today \u2014 about half the planned volume at an easy effort.` };
 }
 let _feelRec=null, _feelRecording=false;
@@ -3369,7 +3378,10 @@ async function _feelSubmit(){
     const res=await fetch(STRAVA_WORKER_URL+"/adjust", { method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ transcript:words, planned:{ title:base.title, detail:base.detail, type:base.type } }) });
     const d=await res.json();
-    if(d&&d.ok){ _plSetAdjust(d.action, d.message, base.type); renderGoal(); return; }
+    if(d&&d.ok){ _plSetAdjust(d.action, d.message, base.type); renderGoal();
+      const msg=(d.message||"Let me tune today\u2019s session around that.").replace(/</g,"&lt;");
+      _grOverlay(`<div class="grc-analysis"><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">Thank you for sharing with me.</div><div class="grc-sub">${msg}</div></div>`, { hold: 6000 });
+      return; }
     if(err) err.textContent = (d&&d.reason==="server_unconfigured") ? "The coach isn\u2019t configured yet." : "Couldn\u2019t reach the coach \u2014 try again.";
   } catch(e){ if(err) err.textContent="Couldn\u2019t reach the coach \u2014 try again."; }
   if(go){ go.disabled=false; go.textContent="Send to coach"; }
@@ -3522,11 +3534,11 @@ function renderGoal() {
     + (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
     + `<div class="gr-next-row">`
     +   `<button class="gr-navbtn ghost" id="goalBackBtn" type="button" title="Go back a workout (undo the last one)" aria-label="Previous workout"${_plLog().length ? "" : " disabled"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>`
-    +   `<button class="gr-navbtn primary" id="goalNextBtn" type="button" data-type="${sess.type}" title="Mark done &amp; go to the next workout" aria-label="Mark done and go to the next workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>`
+    +   `<button class="gr-navbtn primary" id="goalNextBtn" type="button" data-type="${sess.type}"${nw.complete?" disabled":""} title="Mark done &amp; go to the next workout" aria-label="Mark done and go to the next workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>`
     +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
     + `</div>`
     + `<div class="gr-weekline">This week (${plDays} days): ${_grWeekSummary(nw.week)}</div>`
-    + `<div class="gr-loop-hint">${_grStravaConnected() ? "\u2192 marks this done and shows the next \u00B7 \u2190 steps you back." : "Don\u2019t forget to reconnect Strava \u2014 I use it to see how you\u2019re getting on with my advice."}</div>`
+    + `<div class="gr-loop-hint">${_grStravaConnected() ? "\u2192 marks this done and shows the next \u00B7 \u2190 steps you back." : "Don\u2019t forget to reconnect Strava."}</div>`
     + `<button class="gr-plan-btn" id="goalPlanBtn">See the whole plan \u2192</button>`
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
