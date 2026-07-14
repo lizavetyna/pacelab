@@ -3223,6 +3223,76 @@ function _grCelebrate(){
   const msg = ((q && q.textContent) || "").trim() || "Another one in the bank.";
   _grOverlay(`<div class="grc-msg">${msg}</div>`);
 }
+/* ---- Strava check-in: pull recent activity (cached ~45 min) and react to it ---- */
+async function _svRecent(force){
+  const pid = window.PACELAB_PID; if(!pid) return null;
+  if(!force){ try { const c=JSON.parse(localStorage.getItem("pacelab_strava_recent")||"null"); if(c&&c.at&&(Date.now()-c.at)<2700000&&c.data) return c.data; } catch(e){} }
+  try {
+    const res=await fetch(STRAVA_WORKER_URL+"/strava/recent",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ pid }) });
+    const d=await res.json();
+    if(d&&d.ok){ try { localStorage.setItem("pacelab_strava_recent", JSON.stringify({ at:Date.now(), data:d })); } catch(e){} }
+    return d||null;
+  } catch(e){ return null; }
+}
+function _svDaysAgo(iso){ try { const d=new Date(iso+"T00:00:00"), t=new Date(_plTodayISO()+"T00:00:00"); return Math.round((t-d)/86400000); } catch(e){ return 999; } }
+function _svPace(sec){ return _plFmtPace(sec)+"/km"; }
+function _svPick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function _svExpPace(type,z){ const m={easy:z.easy,recovery:z.recovery,long:z.long,strides:z.easy,mp_long:z.long,threshold:z.threshold,interval:z.interval,hill:z.threshold,sharpener:z.mp}; return m[type]!=null?m[type]:z.easy; }
+function _svExpDist(type,wk){ if(type==="long"||type==="mp_long") return wk.longKm; if(type==="recovery") return 5; if(type==="threshold"||type==="interval"||type==="hill") return 9; if(type==="sharpener") return 8; return Math.max(5,Math.round(wk.targetKm*0.16)); }
+// Compare what they actually ran (Strava) to the session they just ticked off, and speak like a human coach:
+// warm when it's right, gently firm when an easy day was hammered, caring (never shaming) when a run's missing.
+function _svBuildReaction(done, wk, z, data){
+  const runs=(data.runs||[]), other=(data.other||[]);
+  const recent = runs.find(r=>_svDaysAgo(r.date)<=3) || null;
+  const footballs = other.filter(o=>/soccer|football/i.test(o.type||"") && _svDaysAgo(o.date)<=7);
+  const fbNote = footballs.length ? ` Also \u2014 I clocked ${footballs.length>1?footballs.length+" football sessions":"football"} this week. That\u2019s real load on the legs, so I\u2019m keeping your easy days genuinely easy. Play hard, recover harder.` : "";
+  const easyType = ["easy","recovery","long","strides","mp_long"].indexOf(done.type)>=0;
+  const hardType = ["threshold","interval","hill","sharpener"].indexOf(done.type)>=0;
+  const isLong = done.type==="long"||done.type==="mp_long";
+  let head, body;
+  if(!recent){
+    head=_svPick(["I don\u2019t see this one.","Nothing on Strava yet.","Can\u2019t find that run."]);
+    body=_svPick([
+      "Maybe you logged it elsewhere, maybe the day got away from you \u2014 either way, no drama and no lecture. But if something\u2019s sore or you\u2019re wiped, tell me and we\u2019ll adjust. I\u2019d rather know than guess.",
+      "I\u2019m not cross \u2014 I just care more that you\u2019re okay than that a box gets ticked. Was it a skip, a rest day, or just a busy one?"
+    ]);
+    return { head, body: body+fbNote, hold:7000 };
+  }
+  const pace=recent.avgPaceSec, exp=_svExpPace(done.type,z), dist=recent.distanceKm, expD=_svExpDist(done.type,wk), pStr=_svPace(pace);
+  if(easyType && pace < exp-20){
+    head=_svPick(["Easy means easy.","Whoa there.","I saw that."]);
+    body=_svPick([
+      `That one was meant to be easy, and you ran ${pStr}. I get it \u2014 the legs feel good and want to go. But easy days are the reason the hard days land. Rein it in a touch next time, for me.`,
+      `${pStr} on an easy day isn\u2019t easy \u2014 it\u2019s a workout in disguise. Nothing broken today, but this is exactly how runners reach the start line already tired. Slower next time, kindly meant.`
+    ]);
+    return { head, body: body+fbNote, hold:7000 };
+  }
+  if(isLong && dist < expD*0.6){
+    head=_svPick(["Bit short, that one.","Cut it early?"]);
+    body=`You logged ${dist} km \u2014 I\u2019d pencilled in about ${expD}. Life happens and I won\u2019t fuss over it once. Just know the long run is the one session I\u2019d fight you to protect.`;
+    return { head, body: body+fbNote, hold:6800 };
+  }
+  if(hardType && pace > exp+40){
+    head=_svPick(["Hmm.","Let\u2019s be honest."]);
+    body=`Today was meant to have some bite, and ${pStr} is more of a gentle jog. If you were tired or sore, good call \u2014 rest beats junk miles. If you just weren\u2019t feeling it, give the next quality day its due.`;
+    return { head, body: body+fbNote, hold:6800 };
+  }
+  head=_svPick(["That\u2019s the one.","Logged and lovely.","Bang on."]);
+  body=_svPick([
+    `I saw ${dist} km at ${pStr} on Strava \u2014 right where I wanted you. This is what the good weeks are made of.`,
+    `${dist} km, ${pStr}. Exactly the assignment. Keep making me look clever.`,
+    `Saw it land \u2014 ${dist} km at ${pStr}. No notes. Well, one: do it again next time.`
+  ]);
+  return { head, body: body+fbNote, hold:6000 };
+}
+async function _grReactToActivity(done, wk, z){
+  if(!done || done.type==="rest" || done.type==="done"){ _grCelebrate(); return; }
+  const data = await _svRecent();
+  if(!data || !data.ok || !Array.isArray(data.runs)){ _grCelebrate(); return; }
+  const r = _svBuildReaction(done, wk, z, data);
+  if(!r){ _grCelebrate(); return; }
+  _grOverlay(`<div class="grc-analysis"><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">${r.head}</div><div class="grc-sub">${r.body}</div></div>`, { hold: r.hold||6500 });
+}
 function _grFmtHMS(sec){ sec=Math.round(sec||0); const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; return (h?h+":":"")+(h?String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0"); }
 function _grStravaInfo(){ try { return JSON.parse(localStorage.getItem("pacelab_strava")||"null"); } catch(e){ return null; } }
 function _grFirstConnectMessage(data){
@@ -3546,7 +3616,13 @@ function renderGoal() {
   const pb = document.getElementById("goalPlanBtn");
   if (pb) pb.onclick = () => openPlanModal(goalRace);
   const nb = document.getElementById("goalNextBtn");
-  if (nb) nb.onclick = () => { _plClearAdjust(); _plMarkDone(nb.getAttribute("data-type")); renderGoal(); _grCelebrate(); };
+  if (nb) nb.onclick = () => {
+    const mm = MARATHONS[goalRace];
+    const before = mm ? _plNextFor(mm) : null;
+    _plClearAdjust(); _plMarkDone(nb.getAttribute("data-type")); renderGoal();
+    if (before && !before.complete && _grStravaConnected()) _grReactToActivity(before.session, before.week, before.plan.zones);
+    else _grCelebrate();
+  };
   const bb = document.getElementById("goalBackBtn");
   if (bb) bb.onclick = () => { _plClearAdjust(); _plUndoLast(); renderGoal(); };
   const ds = document.getElementById("goalDaysSel");
