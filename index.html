@@ -644,7 +644,14 @@
   .plw-wrap { margin: 14px 0; }
   .plw-head { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   .plw-zones { font-size: 12px; color: var(--ink); background: #f7f7f5; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
-  .plw-vdot { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+  .gr-strava-refresh { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 2px 5px; line-height: 1; border-radius: 8px; }
+  .gr-strava-refresh svg { width: 20px; height: 20px; transition: transform .55s ease; }
+  .gr-strava-refresh span { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 9px; letter-spacing: .06em; }
+  .gr-strava-refresh:hover { color: #FC4C02; }
+  .gr-strava-refresh:hover svg { transform: rotate(-180deg); }
+  .gr-strava-refresh:disabled { opacity: .55; cursor: default; }
+  .gr-strava-refresh.spinning svg { animation: grSpin .8s linear infinite; }
+  @keyframes grSpin { to { transform: rotate(360deg); } }
   .plw-row { display: grid; grid-template-columns: 30px 74px minmax(0,1fr) 80px; gap: 10px; align-items: center; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
   .plw-item { margin-bottom: 6px; }
   .plw-item .plw-row { margin-bottom: 0; cursor: pointer; grid-template-columns: 28px 74px minmax(0,1fr) 78px 14px; transition: border-color .15s ease, background .15s ease; }
@@ -705,6 +712,24 @@
   .grc-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
   .grc-cta.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
   .grc-cta.ghost:hover { border-color: #0033ff; color: #0033ff; filter: none; }
+  /* Reminder-from-coach pop-up: cooler, calmer, clearly not the celebration */
+  .gr-celebrate.grc-reminder .grc-blob { filter: hue-rotate(188deg) saturate(0.9); opacity: .38; }
+  .gr-celebrate.grc-reminder .grc-eyebrow { color: #3b5bdb; }
+  .gr-celebrate.grc-reminder .grc-msg { color: #26324d; }
+  .gr-celebrate.grc-reminder .grc-cta { background: #3b5bdb; }
+  /* Small Strava sync / connect control on the goal card */
+  .gr-sync { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .04em; white-space: nowrap; }
+  .gr-sync-connect { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; background: #FC4C02; color: #fff; border-color: #FC4C02; white-space: nowrap; }
+  .gr-sync-connect:hover { filter: brightness(1.06); }
+  /* Pinned coach note at the bottom of the page */
+  .coach-pin { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; z-index: 4000; max-width: min(560px, calc(100vw - 32px)); display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px 11px 14px; background: #14110E; color: #F7F3EC; border-radius: 14px; box-shadow: 0 10px 34px rgba(0,0,0,0.28); font-size: 13px; line-height: 1.45; }
+  .coach-pin.reminder { background: #26324d; }
+  .coach-pin .cp-label { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #FF8A5C; padding-top: 2px; flex: 0 0 auto; }
+  .coach-pin.reminder .cp-label { color: #9db4ff; }
+  .coach-pin .cp-text { flex: 1 1 auto; }
+  .coach-pin .cp-x { flex: 0 0 auto; background: transparent; border: none; color: rgba(247,243,236,0.6); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+  .coach-pin .cp-x:hover { color: #fff; }
+  @media (max-width: 720px) { .coach-pin { bottom: 10px; font-size: 12.5px; } }
   .gr-celebrate.reduce .grc-analysis { animation: grCelebFade .3s ease both; }
   .gr-celebrate.reduce .grc-msg { animation: grCelebFade .3s ease both; }
   @keyframes grCelebFade { from { opacity: 0 } to { opacity: 1 } }
@@ -3193,14 +3218,16 @@ function _grOverlay(innerHTML, opts){
     const prev = document.getElementById("grCelebrate"); if (prev) prev.remove();
     const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     const wrap = document.createElement("div");
-    wrap.id = "grCelebrate"; wrap.className = "gr-celebrate" + (reduce ? " reduce" : "");
+    wrap.id = "grCelebrate"; wrap.className = "gr-celebrate" + (reduce ? " reduce" : "") + (opts.theme ? " grc-" + opts.theme : "");
     const glyphs = ["\u{1F44F}","\u2728","\u{1F3C3}","\u2B50","\u{1F389}"];
     let parts = "";
     if (!reduce) {
       parts += '<div class="grc-blob b1"></div><div class="grc-blob b2"></div><div class="grc-blob b3"></div>';
-      let pts = "";
-      for (let i=0;i<10;i++){ const g=glyphs[i%glyphs.length]; const left=(5+Math.random()*90).toFixed(1); const delay=(Math.random()*2.4).toFixed(2); const dur=(2.4+Math.random()*1.8).toFixed(2); const sz=(20+Math.random()*24).toFixed(0); pts += `<span style="left:${left}%;font-size:${sz}px;animation-delay:${delay}s;animation-duration:${dur}s">${g}</span>`; }
-      parts += `<div class="grc-particles">${pts}</div>`;
+      if (opts.theme !== "reminder") {                         // reminders stay calm — no confetti
+        let pts = "";
+        for (let i=0;i<10;i++){ const g=glyphs[i%glyphs.length]; const left=(5+Math.random()*90).toFixed(1); const delay=(Math.random()*2.4).toFixed(2); const dur=(2.4+Math.random()*1.8).toFixed(2); const sz=(20+Math.random()*24).toFixed(0); pts += `<span style="left:${left}%;font-size:${sz}px;animation-delay:${delay}s;animation-duration:${dur}s">${g}</span>`; }
+        parts += `<div class="grc-particles">${pts}</div>`;
+      }
     }
     parts += innerHTML;
     wrap.innerHTML = parts;
@@ -3212,7 +3239,7 @@ function _grOverlay(innerHTML, opts){
       if (keep && !dis) return;   // clicking the message body doesn't dismiss; backdrop / CTA does
       done();
     });
-    const hold = (opts.hold === undefined) ? (reduce ? 1600 : 5000) : opts.hold;
+    const hold = (opts.hold === undefined) ? (reduce ? 1800 : 6500) : opts.hold;
     if (hold > 0) setTimeout(done, hold);
     if (opts.fallback) setTimeout(done, opts.fallback);
     return { wrap, done };
@@ -3222,6 +3249,41 @@ function _grCelebrate(){
   const q = document.querySelector(".gr-quip");
   const msg = ((q && q.textContent) || "").trim() || "Another one in the bank.";
   _grOverlay(`<div class="grc-msg">${msg}</div>`);
+}
+// A calmer, differently-coloured "reminder from coach" pop-up (blue, no confetti).
+function _grReminder(head, body){
+  _grOverlay(`<div class="grc-analysis"><div class="grc-eyebrow">Reminder from coach</div><div class="grc-msg">${head}</div>${body?`<div class="grc-sub">${body}</div>`:""}</div>`, { hold: 8500, theme:"reminder" });
+  _grPin(body ? head + " " + body : head, "reminder");
+}
+// Open the live-coach panel (used by "tell me what happened?" prompts).
+function _grOpenCoach(){
+  try {
+    const card = document.getElementById("goalRace"); if (card) card.scrollIntoView({ behavior:"smooth", block:"start" });
+    const panel = document.getElementById("goalFeelPanel"); if (panel) panel.removeAttribute("hidden");
+    const inp = document.getElementById("goalFeelInput"); if (inp) setTimeout(()=>{ try{ inp.focus(); }catch(e){} }, 350);
+    if (typeof _feelToggleRec === "function") { try { _feelToggleRec(); } catch(e){} }
+  } catch(e){}
+}
+/* ---- Pinned coach note at the bottom of the page (persists until replaced/dismissed) ---- */
+function _grPin(text, kind){
+  if(!text) return;
+  try { localStorage.setItem("pacelab_coach_pin", JSON.stringify({ text:String(text), kind:kind||"coach", at:Date.now() })); } catch(e){}
+  _grPinRender();
+}
+function _grPinRender(){
+  let rec=null; try { rec=JSON.parse(localStorage.getItem("pacelab_coach_pin")||"null"); } catch(e){}
+  let bar=document.getElementById("coachPin");
+  if(!rec || !rec.text){ if(bar) bar.remove(); return; }
+  if(!bar){
+    bar=document.createElement("div"); bar.id="coachPin"; bar.className="coach-pin";
+    document.body.appendChild(bar);
+  }
+  bar.classList.toggle("reminder", rec.kind==="reminder");
+  bar.innerHTML = `<span class="cp-label">Coach</span><span class="cp-text"></span>`
+    + `<button class="cp-x" id="coachPinX" title="Dismiss" aria-label="Dismiss coach note">\u00D7</button>`;
+  bar.querySelector(".cp-text").textContent = rec.text;
+  const x=document.getElementById("coachPinX");
+  if(x) x.onclick=()=>{ try{ localStorage.removeItem("pacelab_coach_pin"); }catch(e){} bar.remove(); };
 }
 /* ---- Strava check-in: pull recent activity (cached ~45 min) and react to it ---- */
 async function _svRecent(force){
@@ -3246,52 +3308,66 @@ function _svBuildReaction(done, wk, z, data){
   const recent = runs.find(r=>_svDaysAgo(r.date)<=3) || null;
   const footballs = other.filter(o=>/soccer|football/i.test(o.type||"") && _svDaysAgo(o.date)<=7);
   const fbNote = footballs.length ? ` Also \u2014 I clocked ${footballs.length>1?footballs.length+" football sessions":"football"} this week. That\u2019s real load on the legs, so I\u2019m keeping your easy days genuinely easy. Play hard, recover harder.` : "";
+  const askCta = { label:"Tell me what happened \u2192", action:"coach" };
   const easyType = ["easy","recovery","long","strides","mp_long"].indexOf(done.type)>=0;
-  const hardType = ["threshold","interval","hill","sharpener"].indexOf(done.type)>=0;
-  const isLong = done.type==="long"||done.type==="mp_long";
   let head, body;
+  // No run logged near this session — caring check-in, never a scolding.
   if(!recent){
     head=_svPick(["I don\u2019t see this one.","Nothing on Strava yet.","Can\u2019t find that run."]);
     body=_svPick([
-      "Maybe you logged it elsewhere, maybe the day got away from you \u2014 either way, no drama and no lecture. But if something\u2019s sore or you\u2019re wiped, tell me and we\u2019ll adjust. I\u2019d rather know than guess.",
-      "I\u2019m not cross \u2014 I just care more that you\u2019re okay than that a box gets ticked. Was it a skip, a rest day, or just a busy one?"
+      "Maybe you logged it elsewhere, maybe the day got away from you \u2014 either way, no drama. But if something\u2019s sore or you\u2019re wiped, tell me and we\u2019ll adjust.",
+      "I\u2019m not cross \u2014 I just care more that you\u2019re okay than that a box gets ticked. Skip, rest, or just a busy one?"
     ]);
-    return { head, body: body+fbNote, hold:7000 };
+    return { head, body: body+fbNote, hold:9000, cta:askCta };
   }
   const pace=recent.avgPaceSec, exp=_svExpPace(done.type,z), dist=recent.distanceKm, expD=_svExpDist(done.type,wk), pStr=_svPace(pace);
-  if(easyType && pace < exp-20){
-    head=_svPick(["Easy means easy.","Whoa there.","I saw that."]);
+  const paceDelta = pace-exp, distRatio = expD>0 ? dist/expD : 1;
+  // Wildly different from anything I planned — ask, don't assume.
+  if(distRatio>2.2 || distRatio<0.35){
+    head=_svPick(["That\u2019s a different session.","Not quite what I drew up."]);
+    body=`I saw ${dist} km at ${pStr}, which doesn\u2019t really line up with what I had for you today. No problem at all \u2014 plans bend around real life. Tell me what happened and I\u2019ll fit the rest of the week around it.`;
+    return { head, body: body+fbNote, hold:9500, cta:askCta };
+  }
+  // Easy day run too hard — the one thing worth gently protecting you from.
+  if(easyType && paceDelta < -25){
+    head=_svPick(["Easy means easy.","Gently, now.","I saw that."]);
     body=_svPick([
-      `That one was meant to be easy, and you ran ${pStr}. I get it \u2014 the legs feel good and want to go. But easy days are the reason the hard days land. Rein it in a touch next time, for me.`,
-      `${pStr} on an easy day isn\u2019t easy \u2014 it\u2019s a workout in disguise. Nothing broken today, but this is exactly how runners reach the start line already tired. Slower next time, kindly meant.`
+      `That one was meant to be easy and you ran ${pStr}. I get it \u2014 the legs feel good. But easy days are the reason the hard days land, so rein it in a touch next time, for me.`,
+      `${pStr} on an easy day isn\u2019t easy \u2014 it\u2019s a workout in disguise. Nothing broken today, but this is how runners reach the start line already tired. A little slower next time, kindly meant.`
     ]);
-    return { head, body: body+fbNote, hold:7000 };
+    return { head, body: body+fbNote, hold:9000 };
   }
-  if(isLong && dist < expD*0.6){
-    head=_svPick(["Bit short, that one.","Cut it early?"]);
-    body=`You logged ${dist} km \u2014 I\u2019d pencilled in about ${expD}. Life happens and I won\u2019t fuss over it once. Just know the long run is the one session I\u2019d fight you to protect.`;
-    return { head, body: body+fbNote, hold:6800 };
+  // Nearby match — right ballpark on pace and distance. Warm, supportive.
+  if(Math.abs(paceDelta)<=40 && distRatio>=0.6 && distRatio<=1.6){
+    head=_svPick(["That\u2019s the one.","Right on the money.","Bang on."]);
+    body=_svPick([
+      `${dist} km at ${pStr} \u2014 right where I wanted you. This is what the good weeks are made of.`,
+      `${dist} km, ${pStr}. That lines up nicely with today\u2019s session. Keep making me look clever.`,
+      `Saw it land \u2014 ${dist} km at ${pStr}. That\u2019ll do very nicely. Same again next time.`
+    ]);
+    return { head, body: body+fbNote, hold:7500 };
   }
-  if(hardType && pace > exp+40){
-    head=_svPick(["Hmm.","Let\u2019s be honest."]);
-    body=`Today was meant to have some bite, and ${pStr} is more of a gentle jog. If you were tired or sore, good call \u2014 rest beats junk miles. If you just weren\u2019t feeling it, give the next quality day its due.`;
-    return { head, body: body+fbNote, hold:6800 };
-  }
-  head=_svPick(["That\u2019s the one.","Logged and lovely.","Bang on."]);
-  body=_svPick([
-    `I saw ${dist} km at ${pStr} on Strava \u2014 right where I wanted you. This is what the good weeks are made of.`,
-    `${dist} km, ${pStr}. Exactly the assignment. Keep making me look clever.`,
-    `Saw it land \u2014 ${dist} km at ${pStr}. No notes. Well, one: do it again next time.`
-  ]);
-  return { head, body: body+fbNote, hold:6000 };
+  // In the right spirit but a bit off — supportive, no nagging.
+  head=_svPick(["Close enough.","You got out the door."]);
+  body=`${dist} km at ${pStr} \u2014 not textbook for today, but you moved and that counts more than perfect. If something felt off, tell me; otherwise onward.`;
+  return { head, body: body+fbNote, hold:8500, cta:askCta };
 }
 async function _grReactToActivity(done, wk, z){
   if(!done || done.type==="rest" || done.type==="done"){ _grCelebrate(); return; }
   const data = await _svRecent();
-  if(!data || !data.ok || !Array.isArray(data.runs)){ _grCelebrate(); return; }
+  if(!data){ _grCelebrate(); return; }                                   // transient hiccup — don't nag
+  if(data.ok===false){
+    if(data.reason==="reauth"||data.reason==="not_connected") _grReminder("Reconnect Strava when you get a sec.", "I\u2019ve lost my Strava link, so I can\u2019t see your runs right now. Reconnect up top and I\u2019ll pick straight back up.");
+    else _grCelebrate();
+    return;
+  }
+  if(!Array.isArray(data.runs)){ _grCelebrate(); return; }
   const r = _svBuildReaction(done, wk, z, data);
   if(!r){ _grCelebrate(); return; }
-  _grOverlay(`<div class="grc-analysis"><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">${r.head}</div><div class="grc-sub">${r.body}</div></div>`, { hold: r.hold||6500 });
+  const ctaHtml = r.cta ? `<div class="grc-ctas"><button class="grc-cta" id="grReactCta" data-grdismiss>${r.cta.label}</button></div>` : "";
+  const ov = _grOverlay(`<div class="grc-analysis" data-grkeep><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">${r.head}</div><div class="grc-sub">${r.body}</div>${ctaHtml}</div>`, { hold: r.hold||8500 });
+  _grPin(r.head + " " + r.body);
+  if(r.cta){ const c=document.getElementById("grReactCta"); if(c) c.onclick=()=>{ if(ov.wrap){ try{ ov.wrap.remove(); }catch(e){} } if(r.cta.action==="coach") _grOpenCoach(); }; }
 }
 function _grFmtHMS(sec){ sec=Math.round(sec||0); const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; return (h?h+":":"")+(h?String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0"); }
 function _grStravaInfo(){ try { return JSON.parse(localStorage.getItem("pacelab_strava")||"null"); } catch(e){ return null; } }
@@ -3371,7 +3447,26 @@ function _plBuildPlan(m){
   }
   return { weeks, zones, meta:{ W, base, build, peak, taper, peakKm, V0, daysPerWeek, hilly } };
 }
-function _plWeekSessions(wk){ const l=["long"]; wk.quality.forEach(q=>l.push(q)); for(let i=0;i<wk.easyDays;i++) l.push(i===0?"recovery":"easy"); return l; }
+function _plWeekSessions(wk){
+  // Exactly one long run a week (the marathon-pace long IS the long run — never both), and
+  // the week laid out so the hard days sit apart with easy/recovery between them, long run last.
+  const q=(wk.quality||[]).slice();
+  let longRun="long"; const mi=q.indexOf("mp_long"); if(mi>=0){ longRun="mp_long"; q.splice(mi,1); }
+  const HARD=["threshold","interval","hill"];
+  const hard=q.filter(t=>HARD.indexOf(t)>=0);
+  const light=q.filter(t=>HARD.indexOf(t)<0);                 // strides / sharpener — easy-ish
+  const days=Math.max(3,_plCfg().daysPerWeek);
+  const easyCount=Math.max(0, days - (1 + hard.length + light.length));
+  const easies=[]; for(let i=0;i<easyCount;i++) easies.push(i===0?"recovery":"easy");
+  const easyPool=light.concat(easies);                         // fill material, light quality first
+  const S=Math.max(0, days-1);                                 // slots before the long run
+  const head=new Array(S).fill(null);
+  const H=hard.length;
+  if(H===1){ head[Math.max(0,Math.floor((S-1)/2))]=hard[0]; }  // one hard day → mid-week
+  else if(H>=2){ const last=Math.max(0,S-2); for(let k=0;k<H;k++){ let idx=Math.round(k*last/(H-1)); if(idx<0)idx=0; if(idx>last)idx=last; while(idx<S&&head[idx]!==null) idx++; if(idx>=S) idx=head.indexOf(null); if(idx>=0) head[idx]=hard[k]; } }  // spread, but leave the day before the long run easy
+  let ei=0; for(let s=0;s<S;s++){ if(head[s]===null) head[s]= ei<easyPool.length?easyPool[ei++]:"easy"; }
+  return head.concat([longRun]);
+}
 function _plDescribe(type, wk, z, name){
   const P=(k)=>_plFmtPace(z[k])+"/km", race=name||"your race";
   switch(type){
@@ -3450,7 +3545,8 @@ async function _feelSubmit(){
     const d=await res.json();
     if(d&&d.ok){ _plSetAdjust(d.action, d.message, base.type); renderGoal();
       const msg=(d.message||"Let me tune today\u2019s session around that.").replace(/</g,"&lt;");
-      _grOverlay(`<div class="grc-analysis"><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">Thank you for sharing with me.</div><div class="grc-sub">${msg}</div></div>`, { hold: 6000 });
+      _grOverlay(`<div class="grc-analysis"><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">Thank you for sharing with me.</div><div class="grc-sub">${msg}</div></div>`, { hold: 8500 });
+      _grPin("Thank you for sharing with me. " + msg);
       return; }
     if(err) err.textContent = (d&&d.reason==="server_unconfigured") ? "The coach isn\u2019t configured yet." : "Couldn\u2019t reach the coach \u2014 try again.";
   } catch(e){ if(err) err.textContent="Couldn\u2019t reach the coach \u2014 try again."; }
@@ -3515,11 +3611,8 @@ function _plFullPlanHtml(m, name){
       + `</div>`;
   }).join("");
   const zline=`Easy ${_plFmtPace(z.easy)} \u00B7 MP ${_plFmtPace(z.mp)} \u00B7 Threshold ${_plFmtPace(z.threshold)} \u00B7 VO\u2082 ${_plFmtPace(z.interval)} /km`;
-  const _hms=(s)=>{ s=Math.round(s); const h=Math.floor(s/3600),mm=Math.floor((s%3600)/60),ss=s%60; return (h?h+":":"")+(h?String(mm).padStart(2,"0"):mm)+":"+String(ss).padStart(2,"0"); };
-  const vline=`VDOT ${z.vdot} \u2014 on this fitness your equivalents are 5K ${_hms(_vdotRaceSec(z.vdot,5000))} \u00B7 10K ${_hms(_vdotRaceSec(z.vdot,10000))} \u00B7 half ${_hms(_vdotRaceSec(z.vdot,21097.5))} \u00B7 marathon ${_hms(_vdotRaceSec(z.vdot,42195))}`;
   return `<div class="plw-wrap"><div class="plw-head">${plan.meta.W}-week plan \u2014 ${plan.meta.base} base \u00B7 ${plan.meta.build} build \u00B7 ${plan.meta.peak} peak \u00B7 ${plan.meta.taper} taper</div>`
-    + `<div class="plw-zones">${zline}</div>`
-    + `<div class="plw-zones plw-vdot">${vline}</div>${rows}</div>`;
+    + `<div class="plw-zones">${zline}</div>${rows}</div>`;
 }
 function _grSessions(m) {
   const flatPaceSec = (userTime.flatMinutes * 60) / 42.195;        // your flat marathon pace, s/km
@@ -3585,7 +3678,9 @@ function renderGoal() {
     + `<span class="gr-flag">${m.emoji || ""}</span>`
     + `<div><span class="gr-eyebrow">Your goal race</span><span class="gr-name">${goalRace}</span></div>`
     + `<span class="gr-cd">${cd}</span>`
-    + `<div class="gr-actions"><button class="gr-btn ghost" id="goalClearBtn">Change race</button></div>`
+    + `<div class="gr-actions">`
+    +   `<button class="gr-btn ghost" id="goalClearBtn">Change race</button>`
+    +   `</div>`
     + `</div>`
     + `<div class="gr-loop-row">`
     + `<div class="gr-pred"><div><span class="gr-m-label">Predicted finish</span><span class="gr-pred-val">${pred}</span></div>`
@@ -3608,11 +3703,21 @@ function renderGoal() {
     +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
     + `</div>`
     + `<div class="gr-weekline">This week (${plDays} days): ${_grWeekSummary(nw.week)}</div>`
-    + `<div class="gr-loop-hint">${_grStravaConnected() ? "\u2192 marks this done and shows the next \u00B7 \u2190 steps you back." : "Don\u2019t forget to reconnect Strava."}</div>`
+    + `<div class="gr-loop-hint">${_grStravaConnected() ? "\u2192 marks this done and shows the next \u00B7 \u2190 steps you back." : "Connect Strava up top and I\u2019ll check your runs against the plan."}</div>`
     + `<button class="gr-plan-btn" id="goalPlanBtn">See the whole plan \u2192</button>`
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
+  const gsc = document.getElementById("goalStravaConnect");
+  if (gsc) gsc.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
+  const gss = document.getElementById("goalStravaSync");
+  if (gss) gss.onclick = async () => {
+    gss.disabled = true; gss.classList.add("spinning");
+    const data = await _svRecent(true);
+    gss.disabled = false; gss.classList.remove("spinning");
+    if (data && data.ok) { const n = (data.runs||[]).length; _grReminder("I\u2019m up to date.", `Pulled your latest runs from Strava${n?` \u2014 I can see your last ${n} ${n===1?"activity":"activities"}`:""}. Tick a workout off and I\u2019ll tell you how it looked.`); }
+    else { _grReminder("Couldn\u2019t reach Strava just now.", "No worries \u2014 it\u2019ll refresh on its own next time you open the page, or tap again in a moment."); }
+  };
   const pb = document.getElementById("goalPlanBtn");
   if (pb) pb.onclick = () => openPlanModal(goalRace);
   const nb = document.getElementById("goalNextBtn");
@@ -3621,6 +3726,7 @@ function renderGoal() {
     const before = mm ? _plNextFor(mm) : null;
     _plClearAdjust(); _plMarkDone(nb.getAttribute("data-type")); renderGoal();
     if (before && !before.complete && _grStravaConnected()) _grReactToActivity(before.session, before.week, before.plan.zones);
+    else if (before && !before.complete) _grReminder("Nice \u2014 another one done.", "Connect Strava and I\u2019ll actually check these against your plan next time, not just take your word for it.");
     else _grCelebrate();
   };
   const bb = document.getElementById("goalBackBtn");
@@ -4871,6 +4977,15 @@ function wireCalibrator() {
   const sn = $("calStravaNudge");
   if (sn) sn.addEventListener("click", connectStrava);
   restoreStravaUI();
+  try { _grPinRender(); } catch(e){}
+  // Token lives server-side, so we don't ask people to reconnect — just quietly pull the
+  // latest runs on load if what we have is more than a few hours old.
+  try {
+    if (_grStravaConnected() && typeof _svRecent === "function") {
+      let stale = true; try { const c = JSON.parse(localStorage.getItem("pacelab_strava_recent")||"null"); if (c && c.at && (Date.now()-c.at) < 6*3600*1000) stale = false; } catch(e){}
+      if (stale) _svRecent(true);
+    }
+  } catch(e){}
   // Tabs
   document.querySelectorAll(".cf-tab").forEach(t => {
     t.addEventListener("click", () => {
