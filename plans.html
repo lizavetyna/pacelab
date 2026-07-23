@@ -652,8 +652,20 @@
   .pb-title { font-family: "Fraunces", serif; font-size: 26px; line-height: 1.15; color: var(--ink); }
   .pb-title .it { font-style: italic; }
   .pb-sub { color: var(--muted); font-size: 13.5px; margin-top: 8px; max-width: 520px; }
-  .pb-btn { flex: 0 0 auto; background: #FF5A1F; color: #fff; font-weight: 700; text-decoration: none; border-radius: 12px; padding: 14px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(255,90,31,.28); transition: transform .15s ease, filter .15s ease; }
+  .pb-btn { flex: 0 0 auto; background: #FF5A1F; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 14px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(255,90,31,.28); transition: transform .15s ease, filter .15s ease; }
   .pb-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+  /* Pick-your-marathon chooser + revealing the plan inline on the compare page */
+  .view-compare #goalRace.revealed { display: block; }
+  #goalRace.revealed { margin-bottom: 26px; }
+  .pm-search { width: 100%; box-sizing: border-box; margin-top: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 14px; color: var(--ink); background: #fff; }
+  .pm-search:focus { outline: none; border-color: #FF5A1F; }
+  .pm-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .pm-empty { color: var(--muted); font-size: 13px; padding: 14px 4px; }
+  .pm-item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; cursor: pointer; font-family: inherit; font-size: 15px; color: var(--ink); transition: border-color .15s ease, background .15s ease; }
+  .pm-item:hover { border-color: #FF5A1F; background: rgba(255,90,31,.05); }
+  .pm-flag { font-size: 20px; line-height: 1; }
+  .pm-name { font-weight: 600; flex: 1; }
+  .pm-go { color: #FF5A1F; font-weight: 700; font-family: "JetBrains Mono", ui-monospace, monospace; }
   .compare-back { margin: 4px 0 14px; }
   .compare-back a { color: var(--muted); font-size: 13px; text-decoration: none; border-bottom: 1px dotted var(--line); }
   .compare-back a:hover { color: #0033ff; border-bottom-color: #0033ff; }
@@ -2719,7 +2731,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       <div class="pb-title">You’ve seen your finish time. <span class="it">Now go earn a better one.</span></div>
       <div class="pb-sub">A week-by-week plan tuned to your pace and your race — with a coach that reshapes it around how you feel.</div>
     </div>
-    <a class="pb-btn" id="planBridgeBtn" href="plans.html">Take my plan →</a>
+    <button class="pb-btn" id="planBridgeBtn" type="button">Next most-effective workout →</button>
   </div>
 
   <div class="compare-back" id="compareBack"><a href="index.html">← Compare marathon paces — see how you stack up against other runners</a></div>
@@ -3424,7 +3436,7 @@ function _grFirstConnectMessage(data){
     const t = document.getElementById("picker") || document.getElementById("strip"); if (t) t.scrollIntoView({ behavior:"smooth", block:"start" }); };
   const gp = document.getElementById("grGetPlan");
   if (gp) gp.onclick = () => { if (ov.wrap) { try { ov.wrap.remove(); } catch(e){} }
-    if (!onPlans) { location.href = "plans.html" + q; return; }
+    if (!onPlans) { try { _openPickMarathon(); } catch(e){ location.href = "plans.html" + q; } return; }
     const t = document.getElementById("goalRace"); if (t) t.scrollIntoView({ behavior:"smooth", block:"start" }); };
 }
 function _grGoalSetMessage(name){
@@ -3835,6 +3847,45 @@ function _grPlanPreview(name, m) {
     <div class="plan-preview-legend"><span><i class="key"></i> Key session</span><span><i class="long"></i> Long run</span>${hilly ? '<span><i class="hill"></i> Hill work</span>' : ""}</div>`;
 }
 
+// "Next most-effective workout" on the compare page: pick a goal race, then reveal the
+// plan card inline as the first card below the hero (no navigation).
+function _openPickMarathon(){
+  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
+  if(!body||!bd){ location.href = "plans.html?p=" + (window.PACELAB_PID||""); return; }
+  const names=Object.keys(MARATHONS).filter(n=>{ const mm=MARATHONS[n]; return mm && mm.tier!=="custom"; });
+  const items=names.map(n=>{ const mm=MARATHONS[n]; return `<button class="pm-item" type="button" data-race="${n}" data-name="${n.toLowerCase()}"><span class="pm-flag">${mm.emoji||"\uD83C\uDFC1"}</span><span class="pm-name">${n}</span><span class="pm-go">\u2192</span></button>`; }).join("");
+  body.innerHTML = `<div class="plan-eyebrow">Pick your marathon</div>`
+    + `<h2 class="plan-title">Which race are we <span class="it">training for?</span></h2>`
+    + `<p class="plan-sub">Choose your goal race \u2014 I\u2019ll build the plan around its course and your pace, right here.</p>`
+    + `<input class="pm-search" id="pmSearch" type="text" inputmode="search" autocomplete="off" placeholder="Search marathons\u2026" aria-label="Search marathons" />`
+    + `<div class="pm-list" id="pmList">${items}</div>`
+    + `<div class="pm-empty" id="pmEmpty" hidden>No marathon matches that \u2014 try another name.</div>`;
+  bd.classList.add("open");
+  const list=[...body.querySelectorAll(".pm-item")];
+  list.forEach(btn=>{ btn.onclick=()=>{ _pickRaceAndReveal(btn.getAttribute("data-race")); }; });
+  const search=document.getElementById("pmSearch"), empty=document.getElementById("pmEmpty");
+  if(search){
+    search.oninput=()=>{ const q=search.value.trim().toLowerCase(); let shown=0; list.forEach(btn=>{ const ok=!q||btn.getAttribute("data-name").indexOf(q)>=0; btn.style.display=ok?"":"none"; if(ok)shown++; }); if(empty) empty.hidden=shown>0; };
+    setTimeout(()=>{ try{ search.focus(); }catch(e){} }, 60);
+  }
+}
+function _pickRaceAndReveal(race){
+  if(!race||!MARATHONS[race]) return;
+  try{ setGoalRace(race); }catch(e){}
+  try{ localStorage.setItem("pacelab_reveal_plan","1"); }catch(e){}
+  const bd=document.getElementById("modalBackdrop"); if(bd) bd.classList.remove("open");
+  _revealPlanTop();
+}
+function _revealPlanTop(){
+  if(window.PACELAB_VIEW==="plans") return;                 // plans page already shows the card in place
+  const gr=document.getElementById("goalRace"), top=document.querySelector(".top");
+  if(!gr||!top) return;
+  gr.classList.add("revealed");
+  if(top.nextElementSibling!==gr) top.parentNode.insertBefore(gr, top.nextElementSibling);  // first card below the hero
+  const pb=document.getElementById("planBridge"); if(pb) pb.style.display="none";            // handoff card no longer needed
+  try{ renderGoal(); }catch(e){}
+  try{ gr.scrollIntoView({behavior:"smooth", block:"start"}); }catch(e){}
+}
 function openPlanModal(name) {
   const m = MARATHONS[name];
   const body = document.getElementById("modalBody");
@@ -5029,9 +5080,12 @@ function wireCalibrator() {
   try {
     const _pid = localStorage.getItem("pacelab_pid") || "";
     if (_pid) {
-      const bb = document.getElementById("planBridgeBtn"); if (bb) bb.href = "plans.html?p=" + _pid;
       const cb = document.querySelector("#compareBack a"); if (cb) cb.href = "index.html?p=" + _pid;
     }
+    // On the compare page, "next most-effective workout" lets you pick a goal race, then
+    // reveals the plan card inline (first card below the hero) — no navigation.
+    const bb = document.getElementById("planBridgeBtn");
+    if (bb) bb.onclick = () => { try { _openPickMarathon(); } catch(e){ location.href = "plans.html?p=" + (window.PACELAB_PID||""); } };
   } catch(e){}
   // Token lives server-side, so we don't ask people to reconnect — just quietly pull the
   // latest runs on load if what we have is more than a few hours old.
@@ -6191,6 +6245,12 @@ wireCalibrator();
 loadGoalFromStorage();
 if (goalRace && typeof loadConditionsFor === "function") loadConditionsFor([goalRace]);
 renderAll();
+// If they've already picked a race here, keep the plan card revealed at the top on every visit.
+try {
+  if (window.PACELAB_VIEW !== "plans" && localStorage.getItem("pacelab_reveal_plan") === "1" && goalRace && MARATHONS[goalRace]) {
+    _revealPlanTop();
+  }
+} catch(e){}
 window.addEventListener("resize", () => renderChart());
 
 /* ================== UNLOCK CTAs ================== */
