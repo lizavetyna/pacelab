@@ -3487,7 +3487,7 @@ function _plBuildPlan(m){
     if(isTaper){ const tf=taper===3?[0.85,0.68,0.52]:(taper===2?[0.75,0.55]:[0.6]); vol=Math.round(peakKm*(tf[idxT]!=null?tf[idxT]:0.5)); }
     else { const frac=rampWeeks<=1?1:i/(rampWeeks-1); const target=V0+(peakKm-V0)*frac; trend=Math.min(target,trend*1.10); vol=Math.round(isDeload?trend*0.82:trend); }
     if(isTaper){ longKm=Math.max(10,Math.round(Math.min(vol*0.42,24-idxT*5))); }
-    else { const f2=rampWeeks<=1?1:i/(rampWeeks-1); longKm=Math.round(Math.min(14+f2*20,34,vol*0.45)); }
+    else { const f2=rampWeeks<=1?1:i/(rampWeeks-1); longKm=Math.round(Math.min(14+f2*15,29,vol*0.45)); }
     let qc=phase==="Base"?1:(phase==="Taper"?1:2); while(1+qc+1>daysPerWeek && qc>0) qc--;
     const easyDays=Math.max(0,daysPerWeek-1-qc);
     let quality=phase==="Base"?["strides"]:phase==="Build"?(hilly?["hill","threshold"]:["threshold","interval"]):phase==="Peak"?["mp_long","threshold"]:["sharpener"];
