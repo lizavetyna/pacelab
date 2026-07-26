@@ -734,6 +734,8 @@
   .grc-eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #FF5A1F; }
   .grc-analysis .grc-msg { animation: none; font-size: clamp(24px, 4.4vw, 52px); }
   .grc-sub { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: clamp(14px, 2vw, 19px); color: var(--muted); }
+  .grc-next { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(20,20,20,.14); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: clamp(13px, 1.7vw, 16px); color: var(--ink); max-width: 30em; line-height: 1.55; }
+  .grc-next b { color: #FF5A1F; }
   .grc-cta { margin-top: 8px; background: #0033ff; color: #fff; border: none; border-radius: 12px; padding: 13px 22px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 24px rgba(0,51,255,.25); transition: filter .15s ease, transform .12s ease; }
   .grc-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
   .grc-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
@@ -3290,10 +3292,22 @@ function _grOverlay(innerHTML, opts){
     return { wrap, done };
   } catch(e){ return { wrap:null, done:function(){} }; }
 }
+// The come-back hook: name the next workout + momentum so there's a concrete reason to return.
+function _grNextTeaser(){
+  try {
+    if(!goalRace) return "";
+    const m=MARATHONS[goalRace]; if(!m) return "";
+    const nw=_plNextFor(m); const done=_plLog().length;
+    if(nw.complete) return `That was the last one \u2014 you\u2019re ready. Go and run ${goalRace}.`;
+    const left=(nw.total||0)-done;
+    return `Next when you\u2019re ready \u2014 <b>${nw.session.title}</b>. ${done} banked${left>0?`, ${left} to go`:""}. Run it, push it to Strava, and I\u2019ll be right here to tell you how it went.`;
+  } catch(e){ return ""; }
+}
 function _grCelebrate(){
   const q = document.querySelector(".gr-quip");
   const msg = ((q && q.textContent) || "").trim() || "Another one in the bank.";
-  _grOverlay(`<div class="grc-msg">${msg}</div>`);
+  const t = _grNextTeaser();
+  _grOverlay(`<div class="grc-msg">${msg}</div>${t?`<div class="grc-next">${t}</div>`:""}`, { hold: 7500 });
 }
 // A calmer, differently-coloured "reminder from coach" pop-up (blue, no confetti).
 function _grReminder(head, body){
@@ -3410,7 +3424,9 @@ async function _grReactToActivity(done, wk, z){
   const r = _svBuildReaction(done, wk, z, data);
   if(!r){ _grCelebrate(); return; }
   const ctaHtml = r.cta ? `<div class="grc-ctas"><button class="grc-cta" id="grReactCta" data-grdismiss>${r.cta.label}</button></div>` : "";
-  const ov = _grOverlay(`<div class="grc-analysis" data-grkeep><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">${r.head}</div><div class="grc-sub">${r.body}</div>${ctaHtml}</div>`, { hold: r.hold||8500 });
+  const teaser = r.cta ? "" : _grNextTeaser();
+  const teaserHtml = teaser ? `<div class="grc-next">${teaser}</div>` : "";
+  const ov = _grOverlay(`<div class="grc-analysis" data-grkeep><div class="grc-eyebrow">Coach speaking</div><div class="grc-msg">${r.head}</div><div class="grc-sub">${r.body}</div>${teaserHtml}${ctaHtml}</div>`, { hold: (r.hold||8500) + (teaser?2000:0) });
   _grPin(r.head + " " + r.body);
   if(r.cta){ const c=document.getElementById("grReactCta"); if(c) c.onclick=()=>{ if(ov.wrap){ try{ ov.wrap.remove(); }catch(e){} } if(r.cta.action==="coach") _grOpenCoach(); }; }
 }
@@ -3495,7 +3511,7 @@ function _plBuildPlan(m){
     let quality=phase==="Base"?["strides"]:phase==="Build"?(hilly?["hill","threshold"]:["threshold","interval"]):phase==="Peak"?["mp_long","threshold"]:["sharpener"];
     quality=quality.slice(0,qc);
     const focus=({Base:"Aerobic base \u2014 easy volume + strides, stretch the long run", Build:hilly?"Threshold + hill strength for the climbs":"Threshold + VO\u2082 \u2014 raise the ceiling", Peak:"Race specificity \u2014 marathon pace inside the long run", Taper:"Freshen up \u2014 hold sharpness, drop fatigue"})[phase];
-    weeks.push({ week:i+1, weeksToGo:W-i, phase, focus, targetKm:vol, longKm, quality, easyDays, isDeload });
+    weeks.push({ week:i+1, weeksToGo:W-i, phase, focus, targetKm:vol, longKm, quality, easyDays, isDeload, prog: rampWeeks<=1?1:Math.min(1, i/(rampWeeks-1)) });
   }
   return { weeks, zones, meta:{ W, base, build, peak, taper, peakKm, V0, daysPerWeek, hilly } };
 }
@@ -3523,10 +3539,10 @@ function _plDescribe(type, wk, z, name){
   const P=(k)=>_plFmtPace(z[k])+"/km", race=name||"your race";
   switch(type){
     case "long": return { type, title:"Long run", rpe:"easy \u00B7 you can chat", detail:`Run ${wk.longKm} km slow and relaxed at ${P("long")}.` };
-    case "mp_long": { const c=Math.min(Math.round(wk.longKm*0.4),16); return { type, title:"Long run, faster at the end", rpe:"builds through", detail:`${wk.longKm} km easy at ${P("long")}, then pick it up to your goal pace ${P("mp")} for the last ${c} km.` }; }
-    case "threshold": return { type, title:"Tempo run", rpe:"comfortably hard", detail:`Warm up 15 min easy. Then run 5 \u00D7 1 km at ${P("threshold")}, jogging 90 sec between each. Easy 10 min to finish.` };
-    case "interval": return { type, title:"Speed intervals", rpe:"hard, but short", detail:`Warm up 15 min easy. Then 6 \u00D7 3 min fast at ${P("interval")}, jogging 2 min between each. Easy 10 min to finish.` };
-    case "hill": return { type, title:"Hill repeats", rpe:"hard by feel", detail:`Warm up 15 min easy. Then run 8 \u00D7 90 sec hard up a hill, jogging back down to recover.` };
+    case "mp_long": { const c=Math.min(Math.round(8+(wk.prog||0)*10),Math.max(6,wk.longKm-4)); return { type, title:"Long run, faster at the end", rpe:"builds through", detail:`${wk.longKm} km easy at ${P("long")}, then pick it up to your goal pace ${P("mp")} for the last ${c} km.` }; }
+    case "threshold": { const reps=3+Math.round((wk.prog||0)*3); return { type, title:"Tempo run", rpe:"comfortably hard", detail:`Warm up 15 min easy. Then run ${reps} \u00D7 1 km at ${P("threshold")}, jogging 90 sec between each. Easy 10 min to finish.` }; }
+    case "interval": { const reps=4+Math.round((wk.prog||0)*2); return { type, title:"Speed intervals", rpe:"hard, but short", detail:`Warm up 15 min easy. Then ${reps} \u00D7 3 min fast at ${P("interval")}, jogging 2 min between each. Easy 10 min to finish.` }; }
+    case "hill": { const reps=6+Math.round((wk.prog||0)*4); return { type, title:"Hill repeats", rpe:"hard by feel", detail:`Warm up 15 min easy. Then run ${reps} \u00D7 90 sec hard up a hill, jogging back down to recover.` }; }
     case "strides": return { type, title:"Easy run + a few pickups", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.18))} km easy at ${P("easy")}, then 6 short 20-sec pickups \u2014 quick feet, stay relaxed.` };
     case "sharpener": return { type, title:"Short, sharp tune-up", rpe:"crisp, not tiring", detail:`Warm up, then 3 \u00D7 1 km at goal pace ${P("mp")} with 2 min jog between.` };
     case "recovery": return { type, title:"Recovery run", rpe:"very easy", detail:`4\u20136 km nice and slow at ${P("recovery")}.` };
@@ -3610,7 +3626,6 @@ function _grCoachQuip(m){
   const goal=goalRace||"race day";
   const quips=[
     `${days} days out, ${n} sessions to go \u2014 that\u2019s ${n} more chances to make me look like a genius. Off you go.`,
-    `Assuming you actually did the last one (I\u2019m choosing to believe you): ${days} days, ${n} workouts to ${goal}. Lovely.`,
     `Well done. ${n} to go. Remember the deal \u2014 you run these, I sit here looking clever.`,
     `${days} days, ${n} workouts. I\u2019d run them for you, but the legs aren\u2019t transferable.`,
     `Look at you, showing up. ${n} left, ${days} days \u2014 keep being the good runner we both know you are.`,
@@ -3627,7 +3642,7 @@ function _grCoachBlock(coachOn){
     return `<div class="gr-coach">`
       + `<button class="gr-feel-cta" id="goalFeelBtn">`
       +   `<span class="gr-feel-cta-ic">${mic}</span>`
-      +   `<span class="gr-feel-cta-tx"><b>Talk to your live coach</b><i>Tell your coach how you\u2019re feeling and today\u2019s session is tuned to your best effort.</i></span>`
+      +   `<span class="gr-feel-cta-tx"><b>Tell how you feel today</b></span>`
       + `</button>`
       + `<div class="gr-feel-panel" id="goalFeelPanel" hidden>`
       +   `<div class="gr-feel-wrap"><textarea id="goalFeelInput" placeholder="First day of my period, cramps \u2014 not up for the hard stuff today\u2026"></textarea>`
@@ -3714,7 +3729,7 @@ function renderGoal() {
     const mm = Math.floor(a / 60), ss = a % 60, ds = mm ? `${mm}:${String(ss).padStart(2, "0")}` : `${a}s`;
     if (d >= 15) { trend = `\u2193 ${ds} faster since you started`; tCls = "down"; }
     else if (d <= -15) { trend = `\u25B2 ${ds} since you started`; tCls = "up"; }
-    else { trend = "holding steady"; }
+    else { trend = ""; }
   } else if (_grStravaConnected()) {
     trend = "tracking from today \u2014 log runs to watch this move";
   } else {
@@ -3745,7 +3760,6 @@ function renderGoal() {
     + _grCoachBlock(coachOn)
     + `<div class="gr-quip">${_grCoachQuip(m)}</div>`
     + `<div class="gr-next">`
-    + `<span class="gr-m-label">Your next workout <span class="gr-wk">\u00B7 wk ${nw.week.week} ${nw.week.phase}</span></span>`
     + `<div class="gr-next-title">${sess.title}</div>`
     + `<div class="gr-next-detail">${sess.detail}</div>`
     + `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
