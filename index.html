@@ -708,7 +708,7 @@
   .plw-note { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
   .gr-next-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .gr-coach { margin: 14px 0 16px; }
-  .gr-feel-cta { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 13px 15px; border: 1px solid rgba(255,90,31,.30); background: rgba(255,90,31,.06); border-radius: 13px; cursor: pointer; font: inherit; transition: border-color .15s, box-shadow .15s, background .15s; }
+  .gr-feel-cta { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 4px 0; border: none; background: transparent; border-radius: 13px; cursor: pointer; font: inherit; transition: opacity .15s; }
   .gr-coach-badge { font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; background: var(--orange); color: #fff; border-radius: 5px; padding: 1px 6px; margin-left: 7px; font-weight: 700; vertical-align: middle; }
   .gr-coach-lock { margin-left: auto; color: var(--orange); flex: none; display: flex; }
   .gr-quip { font-size: 12.5px; line-height: 1.5; color: var(--ink); font-style: italic; opacity: .82; margin: 7px 0 12px; padding-left: 11px; border-left: 2px solid rgba(255,90,31,.35); }
@@ -769,7 +769,14 @@
   @keyframes grParticle { 0% { transform: translateY(0) rotate(0); opacity: 0 } 12% { opacity: 1 } 100% { transform: translateY(-58vh) rotate(220deg); opacity: 0 } }
   @keyframes grHue { 0% { filter: blur(30px) hue-rotate(0deg) } 100% { filter: blur(30px) hue-rotate(26deg) } }
   @media (prefers-reduced-motion: reduce) { .gr-navbtn { transition: none; } .gr-celebrate .grc-blob, .gr-celebrate .grc-particles span, .gr-celebrate .grc-msg { animation: none !important; } }
-  .gr-feel-cta:hover { border-color: var(--orange); background: rgba(255,90,31,.09); box-shadow: 0 3px 12px rgba(255,90,31,.13); }
+  .gr-feel-cta:hover { opacity: .82; }
+  .gr-next-head { display: flex; gap: 20px; align-items: flex-start; }
+  .gr-next-main { flex: 1; min-width: 0; }
+  .gr-recovery-box { flex: none; width: 220px; border: 1px solid rgba(255,90,31,.30); background: rgba(255,90,31,.06); border-radius: 13px; padding: 13px 15px; display: flex; gap: 10px; align-items: flex-start; }
+  .gr-recovery-box .gr-rec-ic { color: var(--orange); font-size: 18px; line-height: 1.1; flex: none; }
+  .gr-recovery-box .gr-rec-tx b { display: block; font-size: 14px; color: var(--ink); font-weight: 700; margin-bottom: 3px; }
+  .gr-recovery-box .gr-rec-tx i { font-style: normal; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  @media (max-width: 720px) { .gr-next-head { flex-direction: column; } .gr-recovery-box { width: 100%; } }
   .gr-feel-cta-ic { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; }
   .gr-feel-cta-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .gr-feel-cta-tx b { font-size: 14.5px; font-weight: 600; color: var(--ink); }
@@ -3549,6 +3556,32 @@ function _plDescribe(type, wk, z, name){
     default: return { type:"easy", title:"Easy run", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}.` };
   }
 }
+// Estimated recovery: how long before you're ready to go hard again. Fixed by session
+// type (harder session = longer), with long runs scaling by distance.
+function _plRecoveryHours(sess, wk){
+  const base = { recovery:6, easy:10, strides:12, threshold:26, interval:34, hill:28, sharpener:16, rest:0, done:0 };
+  if(sess.type==="long") return Math.round(12 + (wk.longKm||14)*0.5);
+  if(sess.type==="mp_long") return Math.round(24 + (wk.longKm||20)*0.5);
+  return base[sess.type] != null ? base[sess.type] : 12;
+}
+function _plRecoveryLabel(h){ if(!h||h<=0) return ""; if(h<24) return `~${h}h`; const d=h/24; return (Math.abs(d-Math.round(d))<0.15)?`~${Math.round(d)} day${Math.round(d)>1?"s":""}`:`~${h}h`; }
+// Recovery is a post-workout read: it reflects your LAST completed session. If you haven't
+// done one yet, it nudges you to go run today's first.
+function _grRecoveryBox(nw){
+  let log=[]; try { log=_plLog(); } catch(e){}
+  if(!log.length){
+    return `<div class="gr-recovery-box empty">`
+      + `<span class="gr-rec-ic">\u21BB</span>`
+      + `<div class="gr-rec-tx"><b>Recovery</b><i>Do a workout first \u2014 then I\u2019ll show how long to bounce back. Take today\u2019s and go run it!</i></div>`
+      + `</div>`;
+  }
+  const last=log[log.length-1];
+  const lbl=_plRecoveryLabel(_plRecoveryHours({type:last.type}, nw.week));
+  return `<div class="gr-recovery-box">`
+    + `<span class="gr-rec-ic">\u21BB</span>`
+    + `<div class="gr-rec-tx"><b>Recovery ${lbl}</b><i>to bounce back after your last workout</i></div>`
+    + `</div>`;
+}
 function _plNextFor(m, ignoreAdjust){
   const plan=_plBuildPlan(m);
   // One ordered sequence of every session across every week. Position = how many you've
@@ -3625,7 +3658,6 @@ function _grCoachQuip(m){
   let n=30; try { const plan=_plBuildPlan(m); n=plan.weeks.reduce((s,w)=> s + 1 + w.quality.length + w.easyDays, 0); } catch(e){}
   const goal=goalRace||"race day";
   const quips=[
-    `${days} days out, ${n} sessions to go \u2014 that\u2019s ${n} more chances to make me look like a genius. Off you go.`,
     `Well done. ${n} to go. Remember the deal \u2014 you run these, I sit here looking clever.`,
     `${days} days, ${n} workouts. I\u2019d run them for you, but the legs aren\u2019t transferable.`,
     `Look at you, showing up. ${n} left, ${days} days \u2014 keep being the good runner we both know you are.`,
@@ -3654,8 +3686,7 @@ function _grCoachBlock(coachOn){
   return `<div class="gr-coach">`
     + `<button class="gr-feel-cta locked" id="goalCoachLockBtn">`
     +   `<span class="gr-feel-cta-ic">${mic}</span>`
-    +   `<span class="gr-feel-cta-tx"><b>Train with a live coach <span class="gr-coach-badge">Plan</span></b><i>Talk to a coach that reshapes every session around how you feel. Unlock it with your 7-day free trial.</i></span>`
-    +   `<span class="gr-coach-lock"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+    +   `<span class="gr-feel-cta-tx"><b>Tell how you feel today</b></span>`
     + `</button></div>`;
 }
 function _plHasFullPlan(){ try { const paid=Object.keys(MARATHONS).filter(n=>{const mm=MARATHONS[n];return mm&&mm.tier!=="free"&&mm.tier!=="custom";}); return paid.length>0 && paid.every(n=>unlocked.has(n)); } catch(e){ return false; } }
@@ -3760,10 +3791,15 @@ function renderGoal() {
     + _grCoachBlock(coachOn)
     + `<div class="gr-quip">${_grCoachQuip(m)}</div>`
     + `<div class="gr-next">`
-    + `<div class="gr-next-title">${sess.title}</div>`
-    + `<div class="gr-next-detail">${sess.detail}</div>`
-    + `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
-    + (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
+    + `<div class="gr-next-head">`
+    +   `<div class="gr-next-main">`
+    +     `<div class="gr-next-title">${sess.title}</div>`
+    +     `<div class="gr-next-detail">${sess.detail}</div>`
+    +     `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
+    +     (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
+    +   `</div>`
+    +   _grRecoveryBox(nw)
+    + `</div>`
     + `<div class="gr-next-row">`
     +   `<button class="gr-navbtn ghost" id="goalBackBtn" type="button" title="Go back a workout (undo the last one)" aria-label="Previous workout"${_plLog().length ? "" : " disabled"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>`
     +   `<button class="gr-navbtn primary" id="goalNextBtn" type="button" data-type="${sess.type}"${(nw.complete||gated)?" disabled":""} title="Mark done &amp; go to the next workout" aria-label="Mark done and go to the next workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>`
