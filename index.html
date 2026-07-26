@@ -646,6 +646,8 @@
   .plw-zones { font-size: 12px; color: var(--ink); background: #f7f7f5; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
   /* ---- Product split: what each page shows ---- */
   .view-compare #goalRace, .view-compare #compareBack { display: none; }
+  .view-compare #yourLinkTop { display: none; }   /* the unique-ID/QR card lives only on the training page */
+  .view-compare #yourLinkTop.yl-show { display: flex; }   /* …unless they've revealed their plan here */
   .view-plans #strip, .view-plans #picker, .view-plans #planBridge { display: none; }
   .plan-bridge { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(120deg, #fff6f1, #fdfcfb 60%); padding: 26px 28px; margin: 26px 0; }
   .pb-eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: #FF5A1F; margin-bottom: 6px; }
@@ -3520,15 +3522,15 @@ function _plWeekSessions(wk){
 function _plDescribe(type, wk, z, name){
   const P=(k)=>_plFmtPace(z[k])+"/km", race=name||"your race";
   switch(type){
-    case "long": return { type, title:"Long run", rpe:"easy \u00B7 you can chat", detail:`Run ${wk.longKm} km slow and relaxed at ${P("long")}. Just time on your feet \u2014 don\u2019t push it.` };
+    case "long": return { type, title:"Long run", rpe:"easy \u00B7 you can chat", detail:`Run ${wk.longKm} km slow and relaxed at ${P("long")}.` };
     case "mp_long": { const c=Math.min(Math.round(wk.longKm*0.4),16); return { type, title:"Long run, faster at the end", rpe:"builds through", detail:`${wk.longKm} km easy at ${P("long")}, then pick it up to your goal pace ${P("mp")} for the last ${c} km.` }; }
     case "threshold": return { type, title:"Tempo run", rpe:"comfortably hard", detail:`Warm up 15 min easy. Then run 5 \u00D7 1 km at ${P("threshold")}, jogging 90 sec between each. Easy 10 min to finish.` };
     case "interval": return { type, title:"Speed intervals", rpe:"hard, but short", detail:`Warm up 15 min easy. Then 6 \u00D7 3 min fast at ${P("interval")}, jogging 2 min between each. Easy 10 min to finish.` };
-    case "hill": return { type, title:"Hill repeats", rpe:"hard by feel", detail:`Warm up 15 min easy. Then run 8 \u00D7 90 sec hard up a hill, jogging back down to recover. Builds strong legs.` };
+    case "hill": return { type, title:"Hill repeats", rpe:"hard by feel", detail:`Warm up 15 min easy. Then run 8 \u00D7 90 sec hard up a hill, jogging back down to recover.` };
     case "strides": return { type, title:"Easy run + a few pickups", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.18))} km easy at ${P("easy")}, then 6 short 20-sec pickups \u2014 quick feet, stay relaxed.` };
-    case "sharpener": return { type, title:"Short, sharp tune-up", rpe:"crisp, not tiring", detail:`Warm up, then 3 \u00D7 1 km at goal pace ${P("mp")} with 2 min jog between. Just enough to feel fast.` };
-    case "recovery": return { type, title:"Recovery run", rpe:"very easy", detail:`4\u20136 km nice and slow at ${P("recovery")}. It should feel almost too easy \u2014 that\u2019s the point.` };
-    default: return { type:"easy", title:"Easy run", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}. Keep it comfortable the whole way.` };
+    case "sharpener": return { type, title:"Short, sharp tune-up", rpe:"crisp, not tiring", detail:`Warm up, then 3 \u00D7 1 km at goal pace ${P("mp")} with 2 min jog between.` };
+    case "recovery": return { type, title:"Recovery run", rpe:"very easy", detail:`4\u20136 km nice and slow at ${P("recovery")}.` };
+    default: return { type:"easy", title:"Easy run", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}.` };
   }
 }
 function _plNextFor(m, ignoreAdjust){
@@ -3723,6 +3725,8 @@ function renderGoal() {
   const plDays = _plCfg().daysPerWeek;
   const coachOn = _plHasFullPlan();
   const cond = (m.condReal && m.weather) ? ` \u00B7 race day: ${m.weather}` : "";
+  // Free preview walks the first two weeks with the arrows; beyond that we steer to the whole plan.
+  const gated = !coachOn && nw.week && nw.week.week > 2;
   el.innerHTML = `<div class="gr-card gr-loop">`
     + `<div class="gr-top">`
     + `<span class="gr-flag">${m.emoji || ""}</span>`
@@ -3743,18 +3747,16 @@ function renderGoal() {
     + `<div class="gr-next">`
     + `<span class="gr-m-label">Your next workout <span class="gr-wk">\u00B7 wk ${nw.week.week} ${nw.week.phase}</span></span>`
     + `<div class="gr-next-title">${sess.title}</div>`
-    + `<div class="gr-next-meta"><span class="rpe">${sess.rpe}</span></div>`
     + `<div class="gr-next-detail">${sess.detail}</div>`
     + `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
     + (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
     + `<div class="gr-next-row">`
     +   `<button class="gr-navbtn ghost" id="goalBackBtn" type="button" title="Go back a workout (undo the last one)" aria-label="Previous workout"${_plLog().length ? "" : " disabled"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>`
-    +   `<button class="gr-navbtn primary" id="goalNextBtn" type="button" data-type="${sess.type}"${nw.complete?" disabled":""} title="Mark done &amp; go to the next workout" aria-label="Mark done and go to the next workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>`
+    +   `<button class="gr-navbtn primary" id="goalNextBtn" type="button" data-type="${sess.type}"${(nw.complete||gated)?" disabled":""} title="Mark done &amp; go to the next workout" aria-label="Mark done and go to the next workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>`
     +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
     + `</div>`
-    + `<div class="gr-weekline">This week (${plDays} days): ${_grWeekSummary(nw.week)}</div>`
-    + `<div class="gr-loop-hint">${_grStravaConnected() ? "\u2192 marks this done and shows the next \u00B7 \u2190 steps you back." : "Connect Strava up top and I\u2019ll check your runs against the plan."}</div>`
-    + `<button class="gr-plan-btn" id="goalPlanBtn">See the whole plan \u2192</button>`
+    + `<div class="gr-loop-hint">${gated ? "That\u2019s your first two weeks \u2014 see the whole plan to keep going." : (_grStravaConnected() ? "\u2192 marks this done and shows the next \u00B7 \u2190 steps you back." : "Connect Strava up top and I\u2019ll check your runs against the plan.")}</div>`
+    + `<button class="gr-plan-btn${gated?" big":""}" id="goalPlanBtn">See the whole plan \u2192</button>`
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
@@ -3798,6 +3800,17 @@ function renderGoal() {
   if (rs) rs.onclick = () => { _plClearAdjust(); renderGoal(); };
   const coachLock = document.getElementById("goalCoachLockBtn");
   if (coachLock) coachLock.onclick = () => openPlanModal(goalRace);
+  try { _grFirstWorkoutNudgeMaybe(); } catch(e){}
+}
+// One-time, warm "here's your first workout — go run it, then push to Strava and come back"
+// nudge, shown the moment someone first lands on a plan. This is the come-back hook.
+function _grFirstWorkoutNudgeMaybe(){
+  if(!goalRace || !MARATHONS[goalRace]) return;
+  if(_plLog().length !== 0) return;                                  // only at the very first workout
+  if(localStorage.getItem("pacelab_fw_nudge") === "1") return;
+  localStorage.setItem("pacelab_fw_nudge","1");
+  setTimeout(()=>{ try{ _grReminder("There\u2019s your first workout.",
+    "Go and run it. When you\u2019re done, push it from your watch to Strava \u2014 Garmin syncs on its own once it\u2019s linked \u2014 then come back and tick it off, and I\u2019ll tell you exactly how it looked. I\u2019ll be right here."); }catch(e){} }, 1100);
 }
 
 // "See the whole plan" -> 7-day free-trial hook (reuses the existing modal).
@@ -3883,6 +3896,7 @@ function _revealPlanTop(){
   gr.classList.add("revealed");
   if(top.nextElementSibling!==gr) top.parentNode.insertBefore(gr, top.nextElementSibling);  // first card below the hero
   const pb=document.getElementById("planBridge"); if(pb) pb.style.display="none";            // handoff card no longer needed
+  const yl=document.getElementById("yourLinkTop"); if(yl) yl.classList.add("yl-show");         // they're training now — let them save their unique ID
   try{ renderGoal(); }catch(e){}
   try{ gr.scrollIntoView({behavior:"smooth", block:"start"}); }catch(e){}
 }
