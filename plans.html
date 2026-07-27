@@ -708,7 +708,7 @@
   .plw-note { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
   .gr-next-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .gr-coach { margin: 14px 0 16px; }
-  .gr-feel-cta { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 4px 0; border: none; background: transparent; border-radius: 13px; cursor: pointer; font: inherit; transition: opacity .15s; }
+  .gr-feel-cta { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; text-align: left; padding: 4px 0; border: none; background: transparent; border-radius: 13px; cursor: pointer; font: inherit; transition: opacity .15s; }
   .gr-coach-badge { font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; background: var(--orange); color: #fff; border-radius: 5px; padding: 1px 6px; margin-left: 7px; font-weight: 700; vertical-align: middle; }
   .gr-coach-lock { margin-left: auto; color: var(--orange); flex: none; display: flex; }
   .gr-quip { font-size: 12.5px; line-height: 1.5; color: var(--ink); font-style: italic; opacity: .82; margin: 7px 0 12px; padding-left: 11px; border-left: 2px solid rgba(255,90,31,.35); }
@@ -772,10 +772,31 @@
   .gr-feel-cta:hover { opacity: .82; }
   .gr-next-head { display: flex; gap: 20px; align-items: flex-start; }
   .gr-next-main { flex: 1; min-width: 0; }
-  .gr-recovery-box { flex: none; width: 220px; border: 1px solid rgba(255,90,31,.30); background: rgba(255,90,31,.06); border-radius: 13px; padding: 13px 15px; display: flex; gap: 10px; align-items: flex-start; }
-  .gr-recovery-box .gr-rec-ic { color: var(--orange); font-size: 18px; line-height: 1.1; flex: none; }
-  .gr-recovery-box .gr-rec-tx b { display: block; font-size: 14px; color: var(--ink); font-weight: 700; margin-bottom: 3px; }
-  .gr-recovery-box .gr-rec-tx i { font-style: normal; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .gr-recovery-box { position: relative; overflow: hidden; flex: none; width: 220px; border: none; background: #FC4C02; border-radius: 13px; padding: 13px 15px; cursor: pointer; font: inherit; text-align: left; display: block; color: #fff; transition: background .15s, transform .1s; }
+  .gr-recovery-box:hover { background: #e84402; }
+  .gr-recovery-box .gr-rec-ic { color: #fff; font-size: 18px; line-height: 1.1; flex: none; }
+  .gr-recovery-box .gr-rec-collapsed { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #fff; font-weight: 700; line-height: 1.4; }
+  .gr-recovery-box .gr-rec-chev { margin-left: auto; color: #fff; font-size: 17px; transition: transform .2s ease; }
+  .gr-recovery-box.open .gr-rec-chev { transform: rotate(90deg); }
+  .gr-recovery-box .gr-rec-expanded { display: none; gap: 10px; align-items: flex-start; }
+  .gr-recovery-box.open .gr-rec-collapsed { display: none; }
+  .gr-recovery-box.open .gr-rec-expanded { display: flex; }
+  .gr-recovery-box.open { background: #FC4C02; border-color: #FC4C02; box-shadow: 0 10px 26px rgba(252,76,2,.40); animation: recUnwrap .55s ease-out; }
+  .gr-recovery-box:not(.open) { animation: recShimmerPulse 2s ease-in-out infinite; }
+  .gr-recovery-box:not(.open)::before { content: ""; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%); animation: recShimmerSweep 2.4s ease-in-out infinite; pointer-events: none; }
+  .gr-recovery-box.open .gr-rec-expanded { animation: recReveal .42s .12s both ease-out; }
+  @keyframes recShimmerSweep { 0% { left: -60%; } 55% { left: 120%; } 100% { left: 120%; } }
+  @keyframes recShimmerPulse { 0%,100% { box-shadow: 0 3px 14px rgba(252,76,2,.28); } 50% { box-shadow: 0 0 0 8px rgba(252,76,2,.10), 0 6px 22px rgba(252,76,2,.44); } }
+  @keyframes recUnwrap { 0% { transform: scale(1) rotate(0); } 12% { transform: scale(1.02) rotate(-3deg); } 26% { transform: scale(1.03) rotate(3deg); } 40% { transform: scale(1.04) rotate(-2deg); } 54% { transform: scale(1.1) rotate(1.2deg); } 72% { transform: scale(.97) rotate(0); } 100% { transform: scale(1) rotate(0); } }
+  @keyframes recReveal { 0% { opacity: 0; transform: translateY(8px) scale(.92); } 100% { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .gr-recovery-box:not(.open), .gr-recovery-box:not(.open)::before, .gr-recovery-box.open, .gr-recovery-box.open .gr-rec-expanded { animation: none !important; } }
+  .gr-recovery-box.open:hover { background: #e84402; }
+  .gr-recovery-box.open .gr-rec-ic { color: #fff; }
+  .gr-recovery-box.open .gr-rec-tx b { color: #fff; }
+  .gr-recovery-box.open .gr-rec-tx i { color: rgba(255,255,255,.9); }
+  @keyframes recPop { 0% { transform: scale(.82); } 55% { transform: scale(1.07); } 100% { transform: scale(1); } }
+  .gr-recovery-box .gr-rec-tx b { display: block; font-size: 14px; color: #fff; font-weight: 700; margin-bottom: 3px; }
+  .gr-recovery-box .gr-rec-tx i { font-style: normal; font-size: 12px; color: rgba(255,255,255,.9); line-height: 1.45; }
   @media (max-width: 720px) { .gr-next-head { flex-direction: column; } .gr-recovery-box { width: 100%; } }
   .gr-feel-cta-ic { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; }
   .gr-feel-cta-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
@@ -3311,10 +3332,8 @@ function _grNextTeaser(){
   } catch(e){ return ""; }
 }
 function _grCelebrate(){
-  const q = document.querySelector(".gr-quip");
-  const msg = ((q && q.textContent) || "").trim() || "Another one in the bank.";
   const t = _grNextTeaser();
-  _grOverlay(`<div class="grc-msg">${msg}</div>${t?`<div class="grc-next">${t}</div>`:""}`, { hold: 7500 });
+  _grOverlay(`<div class="grc-msg">Another one done.</div>${t?`<div class="grc-next">${t}</div>`:""}`, { hold: 7500 });
 }
 // A calmer, differently-coloured "reminder from coach" pop-up (blue, no confetti).
 function _grReminder(head, body){
@@ -3569,18 +3588,18 @@ function _plRecoveryLabel(h){ if(!h||h<=0) return ""; if(h<24) return `~${h}h`; 
 // done one yet, it nudges you to go run today's first.
 function _grRecoveryBox(nw){
   let log=[]; try { log=_plLog(); } catch(e){}
+  let inner;
   if(!log.length){
-    return `<div class="gr-recovery-box empty">`
-      + `<span class="gr-rec-ic">\u21BB</span>`
-      + `<div class="gr-rec-tx"><b>Recovery</b><i>Do a workout first \u2014 then I\u2019ll show how long to bounce back. Take today\u2019s and go run it!</i></div>`
-      + `</div>`;
+    inner = `<b>Recovery</b><i>Do a workout first \u2014 then I\u2019ll show how long to bounce back. Take today\u2019s and go run it!</i>`;
+  } else {
+    const last=log[log.length-1];
+    const lbl=_plRecoveryLabel(_plRecoveryHours({type:last.type}, nw.week));
+    inner = `<b>Recovery ${lbl}</b><i>to bounce back after your last workout</i>`;
   }
-  const last=log[log.length-1];
-  const lbl=_plRecoveryLabel(_plRecoveryHours({type:last.type}, nw.week));
-  return `<div class="gr-recovery-box">`
-    + `<span class="gr-rec-ic">\u21BB</span>`
-    + `<div class="gr-rec-tx"><b>Recovery ${lbl}</b><i>to bounce back after your last workout</i></div>`
-    + `</div>`;
+  return `<button type="button" class="gr-recovery-box" onclick="this.classList.toggle('open'); this.setAttribute('aria-expanded', this.classList.contains('open'));" aria-expanded="false">`
+    + `<span class="gr-rec-collapsed">Open after workout</span>`
+    + `<span class="gr-rec-expanded"><span class="gr-rec-ic">\u21BB</span><span class="gr-rec-tx">${inner}</span></span>`
+    + `</button>`;
 }
 function _plNextFor(m, ignoreAdjust){
   const plan=_plBuildPlan(m);
@@ -3673,8 +3692,8 @@ function _grCoachBlock(coachOn){
   if (coachOn) {
     return `<div class="gr-coach">`
       + `<button class="gr-feel-cta" id="goalFeelBtn">`
-      +   `<span class="gr-feel-cta-ic">${mic}</span>`
       +   `<span class="gr-feel-cta-tx"><b>Tell how you feel today</b></span>`
+      +   `<span class="gr-feel-cta-ic">${mic}</span>`
       + `</button>`
       + `<div class="gr-feel-panel" id="goalFeelPanel" hidden>`
       +   `<div class="gr-feel-wrap"><textarea id="goalFeelInput" placeholder="First day of my period, cramps \u2014 not up for the hard stuff today\u2026"></textarea>`
@@ -3685,8 +3704,8 @@ function _grCoachBlock(coachOn){
   }
   return `<div class="gr-coach">`
     + `<button class="gr-feel-cta locked" id="goalCoachLockBtn">`
-    +   `<span class="gr-feel-cta-ic">${mic}</span>`
     +   `<span class="gr-feel-cta-tx"><b>Tell how you feel today</b></span>`
+    +   `<span class="gr-feel-cta-ic">${mic}</span>`
     + `</button></div>`;
 }
 function _plHasFullPlan(){ try { const paid=Object.keys(MARATHONS).filter(n=>{const mm=MARATHONS[n];return mm&&mm.tier!=="free"&&mm.tier!=="custom";}); return paid.length>0 && paid.every(n=>unlocked.has(n)); } catch(e){ return false; } }
@@ -3789,7 +3808,6 @@ function renderGoal() {
     + `</div>`
     + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>This is your finish time today \u2014 ${_grStravaConnected() ? "from your Strava analysis, " : ""}aligned with effective temperature and race elevation.</span></div>`
     + _grCoachBlock(coachOn)
-    + `<div class="gr-quip">${_grCoachQuip(m)}</div>`
     + `<div class="gr-next">`
     + `<div class="gr-next-head">`
     +   `<div class="gr-next-main">`
