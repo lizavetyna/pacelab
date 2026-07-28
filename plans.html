@@ -772,6 +772,10 @@
   .gr-feel-cta:hover { opacity: .82; }
   .gr-next-head { display: flex; gap: 20px; align-items: flex-start; }
   .gr-next-main { flex: 1; min-width: 0; }
+  .gr-next-side { flex: none; width: 260px; display: flex; flex-direction: column; gap: 12px; }
+  .gr-next-main .gr-recovery-box { width: 240px; max-width: 100%; margin: 16px 0 22px; }
+  .gr-next-side .gr-coach { width: 100%; }
+  .gr-recovery-box .gr-rec-collapsed { justify-content: center; text-align: center; width: 100%; font-size: 14.5px; font-weight: 700; letter-spacing: .01em; }
   .gr-recovery-box { position: relative; overflow: hidden; flex: none; width: 220px; border: none; background: #FC4C02; border-radius: 13px; padding: 13px 15px; cursor: pointer; font: inherit; text-align: left; display: block; color: #fff; transition: background .15s, transform .1s; }
   .gr-recovery-box:hover { background: #e84402; }
   .gr-recovery-box .gr-rec-ic { color: #fff; font-size: 18px; line-height: 1.1; flex: none; }
@@ -797,7 +801,7 @@
   @keyframes recPop { 0% { transform: scale(.82); } 55% { transform: scale(1.07); } 100% { transform: scale(1); } }
   .gr-recovery-box .gr-rec-tx b { display: block; font-size: 14px; color: #fff; font-weight: 700; margin-bottom: 3px; }
   .gr-recovery-box .gr-rec-tx i { font-style: normal; font-size: 12px; color: rgba(255,255,255,.9); line-height: 1.45; }
-  @media (max-width: 720px) { .gr-next-head { flex-direction: column; } .gr-recovery-box { width: 100%; } }
+  @media (max-width: 720px) { .gr-next-head { flex-direction: column; } .gr-recovery-box { width: 100%; } .gr-next-side { width: 100%; } }
   .gr-feel-cta-ic { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; }
   .gr-feel-cta-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .gr-feel-cta-tx b { font-size: 14.5px; font-weight: 600; color: var(--ink); }
@@ -3597,7 +3601,7 @@ function _grRecoveryBox(nw){
     inner = `<b>Recovery ${lbl}</b><i>to bounce back after your last workout</i>`;
   }
   return `<button type="button" class="gr-recovery-box" onclick="this.classList.toggle('open'); this.setAttribute('aria-expanded', this.classList.contains('open'));" aria-expanded="false">`
-    + `<span class="gr-rec-collapsed">Open after workout</span>`
+    + `<span class="gr-rec-collapsed">Open me after</span>`
     + `<span class="gr-rec-expanded"><span class="gr-rec-ic">\u21BB</span><span class="gr-rec-tx">${inner}</span></span>`
     + `</button>`;
 }
@@ -3692,7 +3696,7 @@ function _grCoachBlock(coachOn){
   if (coachOn) {
     return `<div class="gr-coach">`
       + `<button class="gr-feel-cta" id="goalFeelBtn">`
-      +   `<span class="gr-feel-cta-tx"><b>Tell how you feel today</b></span>`
+      +   `<span class="gr-feel-cta-tx"><b>Tell us how you feel today</b></span>`
       +   `<span class="gr-feel-cta-ic">${mic}</span>`
       + `</button>`
       + `<div class="gr-feel-panel" id="goalFeelPanel" hidden>`
@@ -3704,7 +3708,7 @@ function _grCoachBlock(coachOn){
   }
   return `<div class="gr-coach">`
     + `<button class="gr-feel-cta locked" id="goalCoachLockBtn">`
-    +   `<span class="gr-feel-cta-tx"><b>Tell how you feel today</b></span>`
+    +   `<span class="gr-feel-cta-tx"><b>Tell us how you feel today</b></span>`
     +   `<span class="gr-feel-cta-ic">${mic}</span>`
     + `</button></div>`;
 }
@@ -3807,7 +3811,6 @@ function renderGoal() {
     + _grSparkline(hist)
     + `</div>`
     + `<div class="gr-method"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>This is your finish time today \u2014 ${_grStravaConnected() ? "from your Strava analysis, " : ""}aligned with effective temperature and race elevation.</span></div>`
-    + _grCoachBlock(coachOn)
     + `<div class="gr-next">`
     + `<div class="gr-next-head">`
     +   `<div class="gr-next-main">`
@@ -3815,8 +3818,11 @@ function renderGoal() {
     +     `<div class="gr-next-detail">${sess.detail}</div>`
     +     `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
     +     (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
+    +     _grRecoveryBox(nw)
     +   `</div>`
-    +   _grRecoveryBox(nw)
+    +   `<div class="gr-next-side">`
+    +     _grCoachBlock(coachOn)
+    +   `</div>`
     + `</div>`
     + `<div class="gr-next-row">`
     +   `<button class="gr-navbtn ghost" id="goalBackBtn" type="button" title="Go back a workout (undo the last one)" aria-label="Previous workout"${_plLog().length ? "" : " disabled"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>`
