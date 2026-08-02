@@ -3335,9 +3335,32 @@ function _grNextTeaser(){
     return `Next when you\u2019re ready \u2014 <b>${nw.session.title}</b>. ${done} banked${left>0?`, ${left} to go`:""}. Run it, push it to Strava, and I\u2019ll be right here to tell you how it went.`;
   } catch(e){ return ""; }
 }
+// Short, punchy celebration lines. One is picked at random each time the overlay
+// appears, PowerPoint-style — never the same one twice in a row.
+const _GR_CELEB_LINES = [
+  "Done.",
+  "Nailed it.",
+  "Banked it.",
+  "In the bag.",
+  "One more down.",
+  "That’s the one.",
+  "Boom — logged.",
+  "Locked in.",
+  "Crushed it.",
+  "Another down.",
+];
+function _grCelebLine(){
+  const arr = _GR_CELEB_LINES;
+  if (arr.length < 2) return arr[0] || "Done.";
+  let last = -1; try { last = parseInt(localStorage.getItem("pacelab_celeb_last"), 10); } catch(e){}
+  let i = Math.floor(Math.random() * arr.length);
+  if (i === last) i = (i + 1) % arr.length;   // avoid an immediate repeat
+  try { localStorage.setItem("pacelab_celeb_last", String(i)); } catch(e){}
+  return arr[i];
+}
 function _grCelebrate(){
   const t = _grNextTeaser();
-  _grOverlay(`<div class="grc-msg">Another one done.</div>${t?`<div class="grc-next">${t}</div>`:""}`, { hold: 7500 });
+  _grOverlay(`<div class="grc-msg">${_grCelebLine()}</div>${t?`<div class="grc-next">${t}</div>`:""}`, { hold: 7500 });
 }
 // A calmer, differently-coloured "reminder from coach" pop-up (blue, no confetti).
 function _grReminder(head, body){
