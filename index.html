@@ -329,6 +329,30 @@
     color: var(--paper);
     border-color: var(--ink);
   }
+  /* Strava has its own dedicated Connect button, so hide the redundant estimate tab. */
+  .cf-tab[data-mode="strava"] { display: none; }
+  /* Connect button + "don't have Strava?" affordance beneath it */
+  .cal-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .cal-actions-row { display: flex; gap: 8px; }
+  .cal-no-strava {
+    display: inline-block; background: none; border: none; padding: 0; margin: 0;
+    font-family: inherit; font-size: 12px; line-height: 1; white-space: nowrap;
+    color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+  }
+  .cal-no-strava:hover { color: var(--ink); }
+  /* Inline-editable big marathon time */
+  #calTimeWrap.editable { cursor: text; }
+  #calTimeWrap.editable:hover #calTime { border-bottom: 2px dotted rgba(10,10,15,0.35); }
+  #calTimeWrap.shake { animation: calShake .4s; }
+  @keyframes calShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-4px)} 40%,80%{transform:translateX(4px)} }
+  .ctime-edit { display: inline-flex; align-items: baseline; gap: 2px; }
+  .ctime-edit input {
+    width: 1.4em; font: inherit; text-align: center; color: inherit;
+    border: none; border-bottom: 2px solid var(--blue, #0033ff);
+    background: transparent; outline: none; padding: 0;
+  }
+  .ctime-edit input:first-child { width: 0.9em; }
+  .ctime-edit .csep { opacity: 0.55; }
   .cf-fields {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr auto;
@@ -649,12 +673,12 @@
   .view-compare #yourLinkTop { display: none; }   /* the unique-ID/QR card lives only on the training page */
   .view-compare #yourLinkTop.yl-show { display: flex; }   /* …unless they've revealed their plan here */
   .view-plans #strip, .view-plans #picker, .view-plans #planBridge { display: none; }
-  .plan-bridge { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(120deg, #fff6f1, #fdfcfb 60%); padding: 26px 28px; margin: 26px 0; }
-  .pb-eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: #FF5A1F; margin-bottom: 6px; }
+  .plan-bridge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(120deg, #fff6f1, #fdfcfb 60%); padding: 26px 28px; margin: 26px 0; }
+  .pb-eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: #FF5A1F; margin-bottom: 0; }
   .pb-title { font-family: "Fraunces", serif; font-size: 26px; line-height: 1.15; color: var(--ink); }
   .pb-title .it { font-style: italic; }
   .pb-sub { color: var(--muted); font-size: 13.5px; margin-top: 8px; max-width: 520px; }
-  .pb-btn { flex: 0 0 auto; background: #FF5A1F; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 14px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(255,90,31,.28); transition: transform .15s ease, filter .15s ease; }
+  .pb-btn { width: min(560px, 100%); box-sizing: border-box; text-align: center; background: #FF5A1F; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 16px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(255,90,31,.28); transition: transform .15s ease, filter .15s ease; }
   .pb-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
   /* Pick-your-marathon chooser + revealing the plan inline on the compare page */
   .view-compare #goalRace.revealed { display: block; }
@@ -2612,14 +2636,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
       </div>
     </div>
-    <div style="display:flex; gap:8px;">
-      <button class="calibrate-btn reset" id="calReset" style="display:none;">Reset</button>
-      <button class="calibrate-btn shimmer" id="calBtn">Calculate your REAL time</button>
-    </div>
-    <div class="cal-strava-nudge" id="calStravaNudgeRow">
-      <span class="csn-text" id="csnText">We'll estimate your marathon potential from your recent runs.</span>
-      <span class="csn-connected" id="csnConnected">✓ Strava connected — your time is set from your runs.</span>
-      <button type="button" class="csn-btn" id="calStravaNudge">Connect Strava →</button>
+    <div class="cal-actions-col">
+      <div class="cal-actions-row">
+        <button class="calibrate-btn reset" id="calReset" style="display:none;">Reset</button>
+        <button class="calibrate-btn shimmer" id="calBtn">Connect Strava →</button>
+      </div>
+      <button type="button" class="cal-no-strava" id="calNoStrava">don't have Strava?</button>
     </div>
     <div class="calibrator-form" id="calForm">
       <div class="cf-tabs">
@@ -2764,10 +2786,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   <div class="plan-bridge" id="planBridge">
     <div class="pb-left">
       <div class="pb-eyebrow">Step two</div>
-      <div class="pb-title">You’ve seen your finish time. <span class="it">Now go earn a better one.</span></div>
-      <div class="pb-sub">A week-by-week plan tuned to your pace and your race — with a coach that reshapes it around how you feel.</div>
     </div>
-    <button class="pb-btn" id="planBridgeBtn" type="button">Next most-effective workout →</button>
+    <button class="pb-btn" id="planBridgeBtn" type="button">See my personalised Pace Plan →</button>
   </div>
 
   <div class="compare-back" id="compareBack"><a href="index.html">← Compare marathon paces — see how you stack up against other runners</a></div>
@@ -5134,15 +5154,13 @@ function renderCalibrator() {
   if (userTime.mode === 'real') {
     modeEl.textContent = "Your real time";
     modeEl.classList.add("real");
-    calBtn.textContent = "Update your time";
     $("calReset").style.display = "";
-    // Stop shimmer once the user has calibrated
+    // Stop shimmer once the user has a real time (Strava or manual)
     timeWrap.classList.remove("shimmer");
     calBtn.classList.remove("shimmer");
   } else {
     modeEl.textContent = "";
     modeEl.classList.remove("real");
-    calBtn.textContent = "Calculate your REAL time";
     $("calReset").style.display = "none";
     // Re-enable shimmer if user resets
     timeWrap.classList.add("shimmer");
@@ -5154,19 +5172,64 @@ function renderCalibrator() {
   }
 }
 
+// Make the big marathon time inline-editable: click it, type H:M:S, Enter/blur to apply.
+function makeCalTimeEditable() {
+  const wrap = $("calTimeWrap"), span = $("calTime");
+  if (!wrap || !span) return;
+  wrap.classList.add("editable");
+  wrap.title = "Click to edit your time";
+  wrap.addEventListener("click", () => {
+    if (wrap.querySelector(".ctime-edit")) return;         // already editing
+    const total = Math.round(userTime.flatMinutes * 60);
+    const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+    span.style.display = "none";
+    const ed = document.createElement("span");
+    ed.className = "ctime-edit";
+    ed.innerHTML =
+        '<input type="text" inputmode="numeric" maxlength="1" aria-label="hours">' +
+        '<span class="csep">:</span>' +
+        '<input type="text" inputmode="numeric" maxlength="2" aria-label="minutes">' +
+        '<span class="csep">:</span>' +
+        '<input type="text" inputmode="numeric" maxlength="2" aria-label="seconds">';
+    const inputs = ed.querySelectorAll("input");
+    inputs[0].value = String(h);
+    inputs[1].value = String(m).padStart(2, "0");
+    inputs[2].value = String(s).padStart(2, "0");
+    wrap.appendChild(ed);
+    inputs[0].focus(); inputs[0].select();
+    const cancel = () => { try { ed.remove(); } catch(e){} span.style.display = ""; };
+    const commit = () => {
+      const H = parseInt(inputs[0].value, 10) || 0;
+      const M = parseInt(inputs[1].value, 10) || 0;
+      const S = parseInt(inputs[2].value, 10) || 0;
+      const t = H * 60 + M + S / 60;
+      if (t < 120 || t > 480) {                            // same 2:00–8:00 bound as Apply
+        wrap.classList.add("shake");
+        setTimeout(() => wrap.classList.remove("shake"), 420);
+        inputs[0].focus();
+        return;
+      }
+      cancel();
+      userTime.flatMinutes = t;
+      userTime.mode = "real";
+      renderAll();
+    };
+    ed.addEventListener("click", (e) => e.stopPropagation());
+    ed.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); commit(); }
+      else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+    });
+    ed.addEventListener("focusout", () => {
+      setTimeout(() => { if (ed.parentNode && !ed.contains(document.activeElement)) commit(); }, 0);
+    });
+  });
+}
+
 // Wire calibrator buttons + form
 function wireCalibrator() {
   const form = $("calForm");
-  $("calBtn").addEventListener("click", () => {
-    form.classList.toggle("open");
-    if (form.classList.contains("open")) {
-      // Pre-fill current time
-      const total = Math.round(userTime.flatMinutes * 60);
-      $("calHours").value = Math.floor(total / 3600);
-      $("calMinutes").value = Math.floor((total % 3600) / 60);
-      $("calSeconds").value = total % 60;
-    }
-  });
+  // Primary action is now "Connect Strava" (manual entry is via "don't have Strava?").
+  $("calBtn").addEventListener("click", connectStrava);
   $("calReset").addEventListener("click", () => {
     userTime.flatMinutes = 240;
     userTime.mode = 'baseline';
@@ -5176,6 +5239,21 @@ function wireCalibrator() {
   if (sc) sc.addEventListener("click", connectStrava);
   const sn = $("calStravaNudge");
   if (sn) sn.addEventListener("click", connectStrava);
+  // "don't have Strava?" — reveal the manual options (Strava tab is hidden) on the time tab.
+  const noStrava = $("calNoStrava");
+  if (noStrava) noStrava.addEventListener("click", () => {
+    form.classList.add("open");
+    document.querySelectorAll(".cf-tab").forEach(x => x.classList.toggle("active", x.dataset.mode === "time"));
+    document.querySelectorAll(".cf-mode").forEach(x => x.classList.toggle("active", x.dataset.mode === "time"));
+    const total = Math.round(userTime.flatMinutes * 60);
+    $("calHours").value = Math.floor(total / 3600);
+    $("calMinutes").value = Math.floor((total % 3600) / 60);
+    $("calSeconds").value = total % 60;
+    try { form.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch(e){}
+    try { $("calHours").focus(); } catch(e){}
+  });
+  // Click the big time to edit it inline (type a new H:M:S).
+  makeCalTimeEditable();
   restoreStravaUI();
   try { _grPinRender(); } catch(e){}
   // Per-page hero: the plans page introduces itself as the training product.
@@ -5204,6 +5282,15 @@ function wireCalibrator() {
     if (_grStravaConnected() && typeof _svRecent === "function") {
       let stale = true; try { const c = JSON.parse(localStorage.getItem("pacelab_strava_recent")||"null"); if (c && c.at && (Date.now()-c.at) < 6*3600*1000) stale = false; } catch(e){}
       if (stale) _svRecent(true);
+    }
+  } catch(e){}
+  // Cross-device: if this Strava is connected, pull the shared account so paid plans
+  // unlock here too (same athlete on phone + laptop sees the same purchases).
+  try {
+    if (_grStravaConnected()) {
+      const _pid = localStorage.getItem("pacelab_pid") || "";
+      if (_pid) fetch(STRAVA_WORKER_URL + "/strava/account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pid: _pid }) })
+        .then(r => r.json()).then(d => { if (d && d.ok) adoptStravaAccount(d); }).catch(() => {});
     }
   } catch(e){}
   // Tabs
@@ -5848,11 +5935,26 @@ function setStravaConnectedUI(connected, hms) {
 }
 
 // Apply an estimate (from the worker, or from demo mode) to the UI + remember it.
+// Cross-device: adopt the entitlement tied to this Strava athlete (returned by the
+// worker on /exchange and /strava/account), so a second device unlocks the same plans.
+function adoptStravaAccount(account) {
+  try {
+    if (!account) return;
+    if (account.pass) setPass(account.pass);
+    if (Array.isArray(account.unlocked) && account.unlocked.length) {
+      applyUnlockedNames(account.unlocked);
+      if (typeof ensurePaidData === "function") ensurePaidData(true);
+      renderAll();
+    }
+  } catch (e) {}
+}
+
 function applyStravaEstimate(data) {
   const best = data.vdotMarathonSeconds || data.estimateSeconds;
   userTime.flatMinutes = best / 60;
   userTime.mode = 'real';
   if (typeof recordEstimate === "function") recordEstimate(best);
+  try { adoptStravaAccount(data.account); } catch (e) {}
   renderAll();
   const conf = data.confidence ? ` · ${data.confidence} confidence` : '';
   const vtxt = data.vdot ? ` Your VDOT is about ${data.vdot}.` : '';
