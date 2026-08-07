@@ -340,6 +340,25 @@
     color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
   }
   .cal-no-strava:hover { color: var(--ink); }
+  /* Connect Strava = brand orange, with the shine kept (orange pulse + white sweep) */
+  #calBtn.shimmer, #calBtn { background:#FC4C02; border-color:#FC4C02; color:#fff; animation: shimmer-pulse-orange 1.8s ease-in-out infinite; }
+  #calBtn.shimmer:hover, #calBtn:hover { background:#e84402; border-color:#e84402; color:#fff; transform:translateY(-1px); box-shadow:0 6px 20px rgba(252,76,2,.32); }
+  @keyframes shimmer-pulse-orange {
+    0%,100% { box-shadow: 0 0 0 0 rgba(252,76,2,0), 0 4px 16px rgba(252,76,2,.22); }
+    50%     { box-shadow: 0 0 0 10px rgba(252,76,2,.12), 0 6px 24px rgba(252,76,2,.4); }
+  }
+  /* Tighten the gap under the hero to the top Step Two card */
+  #planBridgeTop { margin-top: 8px; }
+  /* Bare Step Two (under the graph): no frame, just the button */
+  .plan-bridge.bare { border:none; background:none; padding:0; margin:6px 0 22px; }
+  /* "Submit a request" for a marathon we don't have yet */
+  .pm-empty-msg { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .pm-req { display:flex; gap:8px; flex-wrap:wrap; }
+  .pm-req input { flex:1 1 200px; min-width:0; padding:10px 14px; border:1.5px solid var(--line); border-radius:100px; font-family:inherit; font-size:13px; background:var(--paper-2,#f5f4ef); color:var(--ink); outline:none; }
+  .pm-req input:focus { border-color: var(--ink); }
+  .pm-req-btn { flex:0 0 auto; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:100px; padding:10px 18px; font-family:inherit; font-size:12px; font-weight:600; letter-spacing:.02em; cursor:pointer; }
+  .pm-req-btn:hover { filter:brightness(1.08); }
+  .pm-req-msg { margin-top:8px; font-size:12px; color:var(--blue,#0033ff); }
   /* Inline-editable big marathon time */
   #calTimeWrap.editable { cursor: text; }
   #calTimeWrap.editable:hover #calTime { border-bottom: 2px dotted rgba(10,10,15,0.35); }
@@ -673,13 +692,23 @@
   .view-compare #yourLinkTop { display: none; }   /* the unique-ID/QR card lives only on the training page */
   .view-compare #yourLinkTop.yl-show { display: flex; }   /* …unless they've revealed their plan here */
   .view-plans #strip, .view-plans #picker, .view-plans #planBridge { display: none; }
-  .plan-bridge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(120deg, #fff6f1, #fdfcfb 60%); padding: 26px 28px; margin: 26px 0; }
-  .pb-eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: #FF5A1F; margin-bottom: 0; }
+  .plan-bridge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; border: 1px solid rgba(0,51,255,0.18); border-radius: 16px; background: linear-gradient(120deg, #eef2ff, #fdfdff 62%); padding: 26px 28px; margin: 26px 0; }
+  .pb-eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--blue, #0033ff); margin-bottom: 0; }
   .pb-title { font-family: "Fraunces", serif; font-size: 26px; line-height: 1.15; color: var(--ink); }
   .pb-title .it { font-style: italic; }
   .pb-sub { color: var(--muted); font-size: 13.5px; margin-top: 8px; max-width: 520px; }
-  .pb-btn { width: min(560px, 100%); box-sizing: border-box; text-align: center; background: #FF5A1F; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 16px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(255,90,31,.28); transition: transform .15s ease, filter .15s ease; }
+  .pb-btn { position: relative; overflow: hidden; width: min(560px, 100%); box-sizing: border-box; text-align: center; background: #FC4C02; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 16px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(252,76,2,.28); transition: transform .15s ease, filter .15s ease; animation: shimmer-pulse-orange 1.8s ease-in-out infinite; }
   .pb-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+  .pb-btn::before { content: ""; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%); animation: shimmer-sweep 1.8s ease-in-out infinite; pointer-events: none; }
+  /* Top Step Two card button: royal blue with a soft, slow pulse — deliberately
+     gentler than the Strava button so it doesn't compete for attention. */
+  #planBridgeBtnTop { background: var(--blue, #0033ff); animation: pb-soft-pulse 2.6s ease-in-out infinite; }
+  #planBridgeBtnTop:hover { background: var(--blue, #0033ff); }
+  #planBridgeBtnTop::before { display: none; }   /* no white sweep, just the pulse */
+  @keyframes pb-soft-pulse {
+    0%, 100% { box-shadow: 0 6px 18px rgba(0,51,255,.20); }
+    50%      { box-shadow: 0 0 0 7px rgba(0,51,255,.08), 0 8px 22px rgba(0,51,255,.32); }
+  }
   /* Pick-your-marathon chooser + revealing the plan inline on the compare page */
   .view-compare #goalRace.revealed { display: block; }
   #goalRace.revealed { margin-bottom: 26px; }
@@ -2706,6 +2735,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
   </div>
 
+  <div class="plan-bridge" id="planBridgeTop">
+    <div class="pb-left">
+      <div class="pb-eyebrow">Step two</div>
+    </div>
+    <button class="pb-btn" id="planBridgeBtnTop" type="button">See my personalised Plan →</button>
+  </div>
+
   <div class="strip" id="strip"></div>
 
   <div class="picker" id="picker">
@@ -2764,7 +2800,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
   </div>
 
-  <div style="margin: 0 0 32px 0; text-align: center;">
+  <div style="margin: 0 0 12px 0; text-align: center;">
     <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(10,10,15,0.45);margin-bottom:12px;">Search your marathon</div>
     <div style="position:relative;display:inline-block;width:min(480px,90%);">
       <input
@@ -2783,11 +2819,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
   </div>
 
-  <div class="plan-bridge" id="planBridge">
-    <div class="pb-left">
-      <div class="pb-eyebrow">Step two</div>
-    </div>
-    <button class="pb-btn" id="planBridgeBtn" type="button">See my personalised Pace Plan →</button>
+  <div class="plan-bridge bare" id="planBridge">
+    <button class="pb-btn" id="planBridgeBtn" type="button">See my personalised Plan →</button>
   </div>
 
   <div class="compare-back" id="compareBack"><a href="index.html">← Compare marathon paces — see how you stack up against other runners</a></div>
@@ -2993,6 +3026,23 @@ const SHEET_ENDPOINT = "";
 // ===== STRAVA =====
 const STRAVA_CLIENT_ID = "255679";
 const STRAVA_WORKER_URL = "https://pacelab-strava.lizavetyna.workers.dev";
+
+// ── Lightweight funnel analytics (anonymous pid only) ──────────────────────────
+// Fire-and-forget event beacon. Never sends tokens, email, or activity data —
+// just the event name, anonymous pid, path, and (optional) marathon slug.
+// strava_oauth_success is emitted server-side (it needs the athlete_id).
+function track(name, extra) {
+  try {
+    const pid = (typeof window !== "undefined" && window.PACELAB_PID) || (localStorage.getItem("pacelab_pid") || "");
+    const body = Object.assign({ name: name, pid: pid, path: location.pathname }, extra || {});
+    fetch(STRAVA_WORKER_URL + "/ev", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,   // survive the checkout/OAuth navigation
+    }).catch(() => {});
+  } catch (e) {}
+}
 
 // Selected marathons live here (filled by the searchable multi-select).
 let marathonInterest = new Set();
@@ -3208,6 +3258,7 @@ function loadGoalFromStorage() {
 function setGoalRace(name) {
   if (!MARATHONS[name]) return;
   goalRace = name;
+  try { track("marathon_selected", { marathon: name }); } catch (e) {}
   try { localStorage.setItem("pacelab_goal", name); } catch (e) {}
   if (typeof loadConditionsFor === "function") loadConditionsFor([name]);  // fetch its date + conditions
   renderGoal();
@@ -3922,12 +3973,13 @@ function renderGoal() {
 // One-time, warm "here's your first workout — go run it, then push to Strava and come back"
 // nudge, shown the moment someone first lands on a plan. This is the come-back hook.
 function _grFirstWorkoutNudgeMaybe(){
+  if(window.PACELAB_VIEW !== "plans") return;                        // only on step 2 (the plans page)
   if(!goalRace || !MARATHONS[goalRace]) return;
   if(_plLog().length !== 0) return;                                  // only at the very first workout
   if(localStorage.getItem("pacelab_fw_nudge") === "1") return;
   localStorage.setItem("pacelab_fw_nudge","1");
-  setTimeout(()=>{ try{ _grReminder("There\u2019s your first workout.",
-    "Go and run it. When you\u2019re done, push it from your watch to Strava \u2014 Garmin syncs on its own once it\u2019s linked \u2014 then come back and tick it off, and I\u2019ll tell you exactly how it looked. I\u2019ll be right here."); }catch(e){} }, 1100);
+  setTimeout(()=>{ try{ _grReminder("Your first workout.",
+    "Run it, sync to Strava, then tick it off \u2014 I\u2019ll tell you how it looked."); }catch(e){} }, 1100);
 }
 
 // "See the whole plan" -> 7-day free-trial hook (reuses the existing modal).
@@ -3989,7 +4041,14 @@ function _openPickMarathon(){
     + `<p class="plan-sub">Choose your goal race \u2014 I\u2019ll build the plan around its course and your pace, right here.</p>`
     + `<input class="pm-search" id="pmSearch" type="text" inputmode="search" autocomplete="off" placeholder="Search marathons\u2026" aria-label="Search marathons" />`
     + `<div class="pm-list" id="pmList">${items}</div>`
-    + `<div class="pm-empty" id="pmEmpty" hidden>No marathon matches that \u2014 try another name.</div>`;
+    + `<div class="pm-empty" id="pmEmpty" hidden>`
+    +   `<div class="pm-empty-msg">We don\u2019t have that one yet \u2014 want us to add it?</div>`
+    +   `<div class="pm-req">`
+    +     `<input type="email" id="pmReqEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Your email" />`
+    +     `<button type="button" class="pm-req-btn" id="pmReqBtn">Submit a request</button>`
+    +   `</div>`
+    +   `<div class="pm-req-msg" id="pmReqMsg" aria-live="polite"></div>`
+    + `</div>`;
   bd.classList.add("open");
   const list=[...body.querySelectorAll(".pm-item")];
   list.forEach(btn=>{ btn.onclick=()=>{ _pickRaceAndReveal(btn.getAttribute("data-race")); }; });
@@ -3997,6 +4056,18 @@ function _openPickMarathon(){
   if(search){
     search.oninput=()=>{ const q=search.value.trim().toLowerCase(); let shown=0; list.forEach(btn=>{ const ok=!q||btn.getAttribute("data-name").indexOf(q)>=0; btn.style.display=ok?"":"none"; if(ok)shown++; }); if(empty) empty.hidden=shown>0; };
     setTimeout(()=>{ try{ search.focus(); }catch(e){} }, 60);
+  }
+  // No-match: let people request a marathon and leave their email.
+  const reqBtn=document.getElementById("pmReqBtn"), reqEmail=document.getElementById("pmReqEmail"), reqMsg=document.getElementById("pmReqMsg");
+  if(reqBtn && reqEmail){
+    reqBtn.onclick=()=>{
+      const email=(reqEmail.value||"").trim();
+      const wanted=(search && search.value ? search.value : "").trim();
+      if(email.indexOf("@")<=0){ if(reqMsg){ reqMsg.style.color="#c0392b"; reqMsg.textContent="Please enter a valid email."; } return; }
+      try{ submitSignup({ email, context:"marathon-request", marathon_request: wanted, marathons:[], at:new Date().toISOString() }); }catch(e){}
+      if(reqMsg){ reqMsg.style.color=""; reqMsg.textContent = wanted ? `Thanks — we’ll email you when ${wanted} is added.` : "Thanks — we’ll be in touch."; }
+      reqBtn.disabled=true; reqEmail.disabled=true;
+    };
   }
 }
 function _pickRaceAndReveal(race){
@@ -4013,6 +4084,7 @@ function _revealPlanTop(){
   gr.classList.add("revealed");
   if(top.nextElementSibling!==gr) top.parentNode.insertBefore(gr, top.nextElementSibling);  // first card below the hero
   const pb=document.getElementById("planBridge"); if(pb) pb.style.display="none";            // handoff card no longer needed
+  const pbt=document.getElementById("planBridgeTop"); if(pbt) pbt.style.display="none";       // and the top handoff card
   const yl=document.getElementById("yourLinkTop"); if(yl) yl.classList.add("yl-show");         // they're training now — let them save their unique ID
   try{ renderGoal(); }catch(e){}
   try{ gr.scrollIntoView({behavior:"smooth", block:"start"}); }catch(e){}
@@ -5273,8 +5345,11 @@ function wireCalibrator() {
     }
     // On the compare page, "next most-effective workout" lets you pick a goal race, then
     // reveals the plan card inline (first card below the hero) — no navigation.
+    const _openPlanStep = () => { try { _openPickMarathon(); } catch(e){ location.href = "plans.html?p=" + (window.PACELAB_PID||""); } };
     const bb = document.getElementById("planBridgeBtn");
-    if (bb) bb.onclick = () => { try { _openPickMarathon(); } catch(e){ location.href = "plans.html?p=" + (window.PACELAB_PID||""); } };
+    if (bb) bb.onclick = _openPlanStep;
+    const bbTop = document.getElementById("planBridgeBtnTop");
+    if (bbTop) bbTop.onclick = _openPlanStep;
   } catch(e){}
   // Token lives server-side, so we don't ask people to reconnect — just quietly pull the
   // latest runs on load if what we have is more than a few hours old.
@@ -5780,6 +5855,7 @@ async function confirmPurchase() {
     }
     if (ref) link += (link.indexOf('?') >= 0 ? '&' : '?') + "client_reference_id=" + encodeURIComponent(ref);
   }
+  try { track("checkout_started", { marathon: (pendingContext && pendingContext.name) || null }); } catch (e) {}
   window.location.href = link;
 }
 
@@ -5837,6 +5913,7 @@ async function confirmPurchase() {
 
 // ===== STRAVA: connect, analyse, set time =====
 function connectStrava() {
+  try { track("connect_strava_clicked", { marathon: goalRace || null }); } catch (e) {}
   // redirect_uri must be on your Strava app's callback domain (pacelab.me)
   const redirect = location.origin + location.pathname;
   const url = "https://www.strava.com/oauth/authorize"
@@ -5955,6 +6032,7 @@ function applyStravaEstimate(data) {
   userTime.mode = 'real';
   if (typeof recordEstimate === "function") recordEstimate(best);
   try { adoptStravaAccount(data.account); } catch (e) {}
+  try { track("result_viewed", { marathon: goalRace || null }); } catch (e) {}
   renderAll();
   const conf = data.confidence ? ` · ${data.confidence} confidence` : '';
   const vtxt = data.vdot ? ` Your VDOT is about ${data.vdot}.` : '';
@@ -6080,6 +6158,7 @@ function restoreStravaUI() {
         return;
       }
       setPass(d.pass);
+      try { track("purchase_completed", { marathon: (savedCtx.context && savedCtx.context.name) || null }); } catch (e) {}
       if (d.email) persistEmail(d.email);
       applyUnlockedNames(d.unlocked || []);
       if (isSub || d.plan) {
@@ -6140,6 +6219,7 @@ function restoreStravaUI() {
   }
   const PID = resolvePid();
   window.PACELAB_PID = PID;
+  try { track("page_open"); } catch (e) {}
 
   function snapshot() {
     const s = {};
