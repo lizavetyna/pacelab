@@ -3031,7 +3031,8 @@ const STRAVA_WORKER_URL = "https://pacelab-strava.lizavetyna.workers.dev";
 // Fire-and-forget event beacon. Never sends tokens, email, or activity data —
 // just the event name, anonymous pid, path, and (optional) marathon slug.
 // strava_oauth_success is emitted server-side (it needs the athlete_id).
-function track(name, extra) {
+// Named trackEv (not track) to avoid colliding with the existing Plausible track().
+function trackEv(name, extra) {
   try {
     const pid = (typeof window !== "undefined" && window.PACELAB_PID) || (localStorage.getItem("pacelab_pid") || "");
     const body = Object.assign({ name: name, pid: pid, path: location.pathname }, extra || {});
@@ -3258,7 +3259,7 @@ function loadGoalFromStorage() {
 function setGoalRace(name) {
   if (!MARATHONS[name]) return;
   goalRace = name;
-  try { track("marathon_selected", { marathon: name }); } catch (e) {}
+  try { trackEv("marathon_selected", { marathon: name }); } catch (e) {}
   try { localStorage.setItem("pacelab_goal", name); } catch (e) {}
   if (typeof loadConditionsFor === "function") loadConditionsFor([name]);  // fetch its date + conditions
   renderGoal();
@@ -5855,7 +5856,7 @@ async function confirmPurchase() {
     }
     if (ref) link += (link.indexOf('?') >= 0 ? '&' : '?') + "client_reference_id=" + encodeURIComponent(ref);
   }
-  try { track("checkout_started", { marathon: (pendingContext && pendingContext.name) || null }); } catch (e) {}
+  try { trackEv("checkout_started", { marathon: (pendingContext && pendingContext.name) || null }); } catch (e) {}
   window.location.href = link;
 }
 
@@ -5913,7 +5914,7 @@ async function confirmPurchase() {
 
 // ===== STRAVA: connect, analyse, set time =====
 function connectStrava() {
-  try { track("connect_strava_clicked", { marathon: goalRace || null }); } catch (e) {}
+  try { trackEv("connect_strava_clicked", { marathon: goalRace || null }); } catch (e) {}
   // redirect_uri must be on your Strava app's callback domain (pacelab.me)
   const redirect = location.origin + location.pathname;
   const url = "https://www.strava.com/oauth/authorize"
@@ -6032,7 +6033,7 @@ function applyStravaEstimate(data) {
   userTime.mode = 'real';
   if (typeof recordEstimate === "function") recordEstimate(best);
   try { adoptStravaAccount(data.account); } catch (e) {}
-  try { track("result_viewed", { marathon: goalRace || null }); } catch (e) {}
+  try { trackEv("result_viewed", { marathon: goalRace || null }); } catch (e) {}
   renderAll();
   const conf = data.confidence ? ` · ${data.confidence} confidence` : '';
   const vtxt = data.vdot ? ` Your VDOT is about ${data.vdot}.` : '';
@@ -6158,7 +6159,7 @@ function restoreStravaUI() {
         return;
       }
       setPass(d.pass);
-      try { track("purchase_completed", { marathon: (savedCtx.context && savedCtx.context.name) || null }); } catch (e) {}
+      try { trackEv("purchase_completed", { marathon: (savedCtx.context && savedCtx.context.name) || null }); } catch (e) {}
       if (d.email) persistEmail(d.email);
       applyUnlockedNames(d.unlocked || []);
       if (isSub || d.plan) {
@@ -6219,7 +6220,7 @@ function restoreStravaUI() {
   }
   const PID = resolvePid();
   window.PACELAB_PID = PID;
-  try { track("page_open"); } catch (e) {}
+  try { trackEv("page_open"); } catch (e) {}
 
   function snapshot() {
     const s = {};
