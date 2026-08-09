@@ -700,6 +700,33 @@
   .pb-btn { position: relative; overflow: hidden; width: min(560px, 100%); box-sizing: border-box; text-align: center; background: #FC4C02; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 16px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(252,76,2,.28); transition: transform .15s ease, filter .15s ease; animation: shimmer-pulse-orange 1.8s ease-in-out infinite; }
   .pb-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
   .pb-btn::before { content: ""; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%); animation: shimmer-sweep 1.8s ease-in-out infinite; pointer-events: none; }
+  /* Secondary "How it helps you" link under the Step Two CTA */
+  .pb-help { background:none; border:none; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--blue,#0033ff); text-decoration:underline; text-underline-offset:3px; padding:2px; }
+  .pb-help:hover { filter:brightness(1.15); }
+
+  /* ===== Product chooser (Static / Dynamic / Race) ===== */
+  .pchooser-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:6px; align-items:stretch; }
+  @media (max-width:720px){ .pchooser-grid { grid-template-columns:1fr; } }
+  .pcard { position:relative; display:flex; flex-direction:column; border:1px solid var(--line); border-radius:16px; padding:20px 18px 18px; background:#fff; text-align:left; }
+  .pcard.rec { border:2px solid var(--blue,#0033ff); box-shadow:0 10px 30px rgba(0,51,255,.10); }
+  .pcard-ribbon { position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--blue,#0033ff); color:#fff; font-family:var(--mono,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; padding:3px 10px; border-radius:100px; white-space:nowrap; }
+  .pcard-tag { font-family:var(--mono,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .pcard-name { font-family:var(--serif,Georgia,serif); font-size:20px; font-weight:600; color:var(--ink); margin:3px 0 2px; }
+  .pcard-line { font-size:13px; color:var(--ink-soft,#555); line-height:1.35; min-height:34px; }
+  .pcard-price { display:flex; align-items:baseline; gap:6px; margin:12px 0 2px; }
+  .pcard-price b { font-family:var(--serif,Georgia,serif); font-size:26px; font-weight:600; color:var(--ink); }
+  .pcard-price .per { font-size:11px; color:var(--muted); }
+  .pcard-trial { font-size:11px; color:var(--blue,#0033ff); font-weight:600; margin-bottom:10px; min-height:15px; }
+  .pcard-feats { list-style:none; margin:0 0 8px; padding:0; display:flex; flex-direction:column; gap:7px; }
+  .pcard-feats li { font-size:12.5px; color:var(--ink); line-height:1.35; padding-left:20px; position:relative; }
+  .pcard-feats li::before { content:"✓"; position:absolute; left:0; color:var(--blue,#0033ff); font-weight:700; }
+  .pcard-inc { display:inline-block; align-self:flex-start; font-size:10.5px; letter-spacing:.02em; background:rgba(0,51,255,.08); color:var(--blue,#0033ff); padding:3px 9px; border-radius:100px; margin-bottom:12px; }
+  .pcard-cta { margin-top:auto; width:100%; box-sizing:border-box; border:none; border-radius:11px; padding:13px 16px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; transition:transform .15s ease, filter .15s ease; }
+  .pcard-cta:hover { transform:translateY(-1px); filter:brightness(1.05); }
+  .pcard-cta.primary { background:#FC4C02; color:#fff; box-shadow:0 6px 16px rgba(252,76,2,.26); }
+  .pcard-cta.solid { background:var(--blue,#0033ff); color:#fff; }
+  .pcard-cta.ghost { background:transparent; color:var(--ink); border:1.5px solid var(--line); }
+  .pcard-cta.ghost:hover { border-color:var(--ink); }
   /* Top Step Two card button: royal blue with a soft, slow pulse — deliberately
      gentler than the Strava button so it doesn't compete for attention. */
   #planBridgeBtnTop { background: var(--blue, #0033ff); animation: pb-soft-pulse 2.6s ease-in-out infinite; }
@@ -2740,6 +2767,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       <div class="pb-eyebrow">Step two</div>
     </div>
     <button class="pb-btn" id="planBridgeBtnTop" type="button">See my personalised Plan →</button>
+    <button class="pb-help" id="planHelpBtn" type="button">How it helps you</button>
   </div>
 
   <div class="strip" id="strip"></div>
@@ -2984,6 +3012,8 @@ const MARATHONS = {
 
 const PRICE_SINGLE = 1.99;
 const PRICE_BUNDLE = 9.99;
+// New product line (see the 3-plan chooser).
+const PRICE_RACE = 3.99, PRICE_STATIC = 9.99, PRICE_DYNAMIC = 19.99, TRIAL_DAYS = 14;
 // Helper to format money — drops trailing zero for whole dollars, keeps two decimals otherwise
 const fmtPrice = (n) => `€${n.toFixed(2)}`;
 
@@ -4089,6 +4119,58 @@ function _revealPlanTop(){
   const yl=document.getElementById("yourLinkTop"); if(yl) yl.classList.add("yl-show");         // they're training now — let them save their unique ID
   try{ renderGoal(); }catch(e){}
   try{ gr.scrollIntoView({behavior:"smooth", block:"start"}); }catch(e){}
+}
+// "How it helps you" → the three products. Built for a few-second read: short copy,
+// who it's for, what's included, price, and a clearly recommended option.
+function openPlanChooser(){
+  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
+  if(!body||!bd) return;
+  body.innerHTML =
+    `<div class="plan-eyebrow">How Pacelab helps you</div>`
+  + `<h2 class="plan-title">Pick the plan that <span class="it">helps you.</span></h2>`
+  + `<div class="pchooser-grid">`
+    + `<div class="pcard">`
+      + `<div class="pcard-name">Race</div>`
+      + `<div class="pcard-price"><b>${fmtPrice(PRICE_RACE)}</b><span class="per">one-off</span></div>`
+      + `<div class="pcard-trial"></div>`
+      + `<ul class="pcard-feats"><li>Elevation-aware splits every 5K / mi</li><li>Paced to the course, not linear</li><li>Export to your watch (GPX)</li></ul>`
+      + `<button class="pcard-cta ghost" data-plan="race" type="button">Get Race Plan</button>`
+    + `</div>`
+    + `<div class="pcard">`
+      + `<div class="pcard-name">Static</div>`
+      + `<div class="pcard-price"><b>${fmtPrice(PRICE_STATIC)}</b></div>`
+      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
+      + `<ul class="pcard-feats"><li>Week-by-week to race day</li><li>Open any week’s workouts</li></ul>`
+      + `<span class="pcard-inc">Includes Race Plan</span>`
+      + `<button class="pcard-cta solid" data-plan="static" type="button">Start ${TRIAL_DAYS}-day trial</button>`
+    + `</div>`
+    + `<div class="pcard rec">`
+      + `<div class="pcard-ribbon">Most complete</div>`
+      + `<div class="pcard-name">Dynamic</div>`
+      + `<div class="pcard-price"><b>${fmtPrice(PRICE_DYNAMIC)}</b></div>`
+      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
+      + `<ul class="pcard-feats"><li>Everything in Static</li><li>Adapts when you miss or change</li></ul>`
+      + `<span class="pcard-inc">Includes Race Plan</span>`
+      + `<button class="pcard-cta primary" data-plan="dynamic" type="button">Start ${TRIAL_DAYS}-day trial</button>`
+    + `</div>`
+  + `</div>`;
+  bd.classList.add("open");
+  body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=()=>choosePlan(b.getAttribute("data-plan")); });
+}
+async function choosePlan(product){
+  try{ localStorage.setItem("pacelab_selected_product", product); }catch(e){}
+  const pid = window.PACELAB_PID || (localStorage.getItem("pacelab_pid") || "");
+  try{
+    const res = await fetch(STRAVA_WORKER_URL + "/plan/checkout", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ product, pid }),
+    });
+    const d = await res.json();
+    if(d && d.ok && d.url){ window.location.href = d.url; return; }   // → Stripe Checkout
+  }catch(e){}
+  // Checkout unavailable (e.g. Stripe prices not configured yet) — fall back to race selection.
+  const bd=document.getElementById("modalBackdrop"); if(bd) bd.classList.remove("open");
+  try{ _openPickMarathon(); }catch(e){ location.href="plans.html?p="+(window.PACELAB_PID||""); }
 }
 function openPlanModal(name) {
   const m = MARATHONS[name];
@@ -5351,6 +5433,8 @@ function wireCalibrator() {
     if (bb) bb.onclick = _openPlanStep;
     const bbTop = document.getElementById("planBridgeBtnTop");
     if (bbTop) bbTop.onclick = _openPlanStep;
+    const helpBtn = document.getElementById("planHelpBtn");
+    if (helpBtn) helpBtn.onclick = openPlanChooser;
   } catch(e){}
   // Token lives server-side, so we don't ask people to reconnect — just quietly pull the
   // latest runs on load if what we have is more than a few hours old.
@@ -5368,6 +5452,12 @@ function wireCalibrator() {
       if (_pid) fetch(STRAVA_WORKER_URL + "/strava/account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pid: _pid }) })
         .then(r => r.json()).then(d => { if (d && d.ok) adoptStravaAccount(d); }).catch(() => {});
     }
+  } catch(e){}
+  // Cross-device: which plan does this identity own? (Strava athlete_id, else email.)
+  try {
+    const _pid = localStorage.getItem("pacelab_pid") || "";
+    fetch(STRAVA_WORKER_URL + "/plan/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pid: _pid }) })
+      .then(r => r.json()).then(d => { if (d && d.ok) { try { localStorage.setItem("pacelab_plan", JSON.stringify({ product:d.product, status:d.status, trial_ends_at:d.trial_ends_at||0, at:Date.now() })); } catch(e){} } }).catch(() => {});
   } catch(e){}
   // Tabs
   document.querySelectorAll(".cf-tab").forEach(t => {
@@ -6114,6 +6204,33 @@ function restoreStravaUI() {
     } catch (e) {
       showStravaStatus("Couldn't reach the analysis service. Please try again in a moment.", false);
     }
+  });
+})();
+
+// Return from a plan checkout (?plan=success&session_id=…): verify, persist locally,
+// then go straight to race selection.
+(function handlePlanReturn() {
+  const params = new URLSearchParams(location.search);
+  const plan = params.get("plan");
+  if (plan !== "success" && plan !== "cancel") return;
+  const sessionId = params.get("session_id");
+  history.replaceState({}, "", location.pathname);
+  if (plan === "cancel") return;
+  const run = (fn) => { if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", fn, { once:true }); else fn(); };
+  run(async () => {
+    try {
+      const pid = window.PACELAB_PID || (localStorage.getItem("pacelab_pid") || "");
+      const res = await fetch(STRAVA_WORKER_URL + "/plan/verify", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ session_id: sessionId, pid }),
+      });
+      const d = await res.json().catch(() => null);
+      if (d && d.ok) {
+        try { localStorage.setItem("pacelab_plan", JSON.stringify({ product:d.product, status:d.status, trial_ends_at:d.trial_ends_at||0, at:Date.now() })); } catch (e) {}
+        try { trackEv("purchase_completed", { marathon: null }); } catch (e) {}
+        try { _openPickMarathon(); } catch (e) {}    // straight into race selection
+      }
+    } catch (e) {}
   });
 })();
 
