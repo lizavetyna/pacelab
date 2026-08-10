@@ -2766,8 +2766,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     <div class="pb-left">
       <div class="pb-eyebrow">Step two</div>
     </div>
-    <button class="pb-btn" id="planBridgeBtnTop" type="button">See my personalised Plan →</button>
-    <button class="pb-help" id="planHelpBtn" type="button">How it helps you</button>
+    <button class="pb-btn" id="planBridgeBtnTop" type="button">It helps you →</button>
   </div>
 
   <div class="strip" id="strip"></div>
@@ -2848,7 +2847,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   </div>
 
   <div class="plan-bridge bare" id="planBridge">
-    <button class="pb-btn" id="planBridgeBtn" type="button">See my personalised Plan →</button>
+    <button class="pb-btn" id="planBridgeBtn" type="button">It helps you →</button>
   </div>
 
   <div class="compare-back" id="compareBack"><a href="index.html">← Compare marathon paces — see how you stack up against other runners</a></div>
@@ -5428,13 +5427,10 @@ function wireCalibrator() {
     }
     // On the compare page, "next most-effective workout" lets you pick a goal race, then
     // reveals the plan card inline (first card below the hero) — no navigation.
-    const _openPlanStep = () => { try { _openPickMarathon(); } catch(e){ location.href = "plans.html?p=" + (window.PACELAB_PID||""); } };
     const bb = document.getElementById("planBridgeBtn");
-    if (bb) bb.onclick = _openPlanStep;
+    if (bb) bb.onclick = openPlanChooser;
     const bbTop = document.getElementById("planBridgeBtnTop");
-    if (bbTop) bbTop.onclick = _openPlanStep;
-    const helpBtn = document.getElementById("planHelpBtn");
-    if (helpBtn) helpBtn.onclick = openPlanChooser;
+    if (bbTop) bbTop.onclick = openPlanChooser;
   } catch(e){}
   // Token lives server-side, so we don't ask people to reconnect — just quietly pull the
   // latest runs on load if what we have is more than a few hours old.
