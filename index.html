@@ -731,6 +731,30 @@
   .pcard-cta.solid { background:var(--blue,#0033ff); color:#fff; }
   .pcard-cta.ghost { background:transparent; color:var(--ink); border:1.5px solid var(--line); }
   .pcard-cta.ghost:hover { border-color:var(--ink); }
+  /* Race Plan splits table */
+  .rp-head { display:flex; justify-content:space-between; font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:8px 4px 6px; border-bottom:1px solid var(--line); }
+  .rp-list { max-height:340px; overflow:auto; margin-top:2px; }
+  .rp-row { display:flex; justify-content:space-between; align-items:center; padding:8px 4px; border-bottom:1px solid rgba(10,10,15,.06); font-size:13px; }
+  .rp-row .rp-k { width:70px; color:var(--ink); font-weight:600; }
+  .rp-row .rp-pace { flex:1; text-align:center; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .rp-row .rp-cum { width:90px; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .rp-row.up .rp-pace { color:#c0392b; }
+  .rp-row.down .rp-pace { color:#0f8a5f; }
+  /* Plan card hover mini-teaser */
+  .pcard { transition: transform .15s ease, box-shadow .15s ease; }
+  .pcard:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,.10); }
+  .pcard-mini { max-height:0; overflow:hidden; opacity:0; transition:max-height .18s ease, opacity .18s ease, margin .18s ease; font-size:11.5px; color:var(--muted); text-align:center; }
+  .pcard:hover .pcard-mini { max-height:34px; opacity:1; margin-top:8px; }
+  /* "Selected plan" step */
+  .psel-back { background:none; border:none; color:var(--blue,#0033ff); font-family:inherit; font-size:12px; cursor:pointer; padding:0 0 6px; }
+  .psel-main { max-width:340px; margin:6px auto 2px; }
+  .psel-teasers-label { text-align:center; font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
+  .psel-teasers { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:520px){ .psel-teasers { grid-template-columns:1fr; } }
+  .pcard.teaser { cursor:pointer; opacity:.9; }
+  .pcard.teaser:hover { opacity:1; }
+  .pcard.teaser .pcard-feats { filter:blur(3.5px); pointer-events:none; user-select:none; }
+  .pcard-switch { margin-top:auto; font-size:11.5px; font-weight:600; color:var(--blue,#0033ff); text-align:center; }
   /* Top Step Two card button: royal blue with a soft, slow pulse — deliberately
      gentler than the Strava button so it doesn't compete for attention. */
   #planBridgeBtnTop { background: var(--blue, #0033ff); animation: pb-soft-pulse 2.6s ease-in-out infinite; }
@@ -4009,6 +4033,7 @@ function renderGoal() {
     + `<span class="gr-cd">${cd}</span>`
     + `<div class="gr-actions">`
     +   `<button class="gr-btn ghost" id="goalClearBtn">Change race</button>`
+    +   ((_plProduct()) ? `<button class="gr-btn" id="goalRacePlanBtn">Race-day pacing</button>` : "")
     +   `</div>`
     + `</div>`
     + `<div class="gr-loop-row">`
@@ -4040,6 +4065,8 @@ function renderGoal() {
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
+  const rp = document.getElementById("goalRacePlanBtn");
+  if (rp) rp.onclick = () => { if (goalRace) openRacePlan(goalRace); };
   const rc = document.getElementById("goalReconnectBtn");
   if (rc) rc.onclick = () => {
     const mm = MARATHONS[goalRace];
@@ -4208,47 +4235,59 @@ function _revealPlanTop(){
   try{ renderGoal(); }catch(e){}
   try{ gr.scrollIntoView({behavior:"smooth", block:"start"}); }catch(e){}
 }
-// "How it helps you" → the three products. Built for a few-second read: short copy,
-// who it's for, what's included, price, and a clearly recommended option.
+// The three products as data, so the chooser and the "selected" step share one card renderer.
+const PLAN_META = {
+  race:    { name:"Race",    priceN:PRICE_RACE,    per:"one-off", trial:false, teaser:"Your race-day pacing, sorted.",     feats:["Elevation-aware splits every km / mi","Paced to the course, not linear","Export to your watch (GPX)"], inc:false, cls:"ghost" },
+  static:  { name:"Static",  priceN:PRICE_STATIC,  per:"",        trial:true,  teaser:"A clear week-by-week plan.",         feats:["Week-by-week to race day","Open any week’s workouts"], inc:true,  cls:"solid" },
+  dynamic: { name:"Dynamic", priceN:PRICE_DYNAMIC, per:"",        trial:true,  teaser:"A plan that adapts as you train.",   feats:["Everything in Static","Adapts when you miss or change"], inc:true, cls:"primary", rec:true },
+};
+function _planCardHtml(product, opts){
+  opts = opts || {}; const p = PLAN_META[product]; if(!p) return "";
+  const cta = opts.ctaLabel || (p.trial ? `Start ${TRIAL_DAYS}-day trial` : `Get ${p.name} Plan`);
+  return `<div class="pcard${p.rec?" rec":""}${opts.teaser?" teaser":""}" data-plan="${product}">`
+    + ((p.rec && !opts.teaser) ? `<div class="pcard-ribbon">Most complete</div>` : "")
+    + `<div class="pcard-name">${p.name}</div>`
+    + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b>${p.per?`<span class="per">${p.per}</span>`:""}</div>`
+    + `<div class="pcard-trial">${p.trial?`${TRIAL_DAYS}-day free trial`:""}</div>`
+    + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
+    + (p.inc?`<span class="pcard-inc">Includes Race Plan</span>`:"")
+    + (opts.teaser ? `<div class="pcard-switch">Tap to switch →</div>` : `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${cta}</button>`)
+    + `<div class="pcard-mini">${p.teaser}</div>`
+    + `</div>`;
+}
+// "How it helps you" → the three products. Hover shows a mini teaser; click opens the selected step.
 function openPlanChooser(){
   const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
   if(!body||!bd) return;
   body.innerHTML =
     `<div class="plan-eyebrow">How Pacelab helps you</div>`
   + `<h2 class="plan-title">Pick the plan that <span class="it">helps you.</span></h2>`
-  + `<div class="pchooser-grid">`
-    + `<div class="pcard">`
-      + `<div class="pcard-name">Race</div>`
-      + `<div class="pcard-price"><b>${fmtPrice(PRICE_RACE)}</b><span class="per">one-off</span></div>`
-      + `<div class="pcard-trial"></div>`
-      + `<ul class="pcard-feats"><li>Elevation-aware splits every km / mi</li><li>Paced to the course, not linear</li><li>Export to your watch (GPX)</li></ul>`
-      + `<button class="pcard-cta ghost" data-plan="race" type="button">Get Race Plan</button>`
-    + `</div>`
-    + `<div class="pcard">`
-      + `<div class="pcard-name">Static</div>`
-      + `<div class="pcard-price"><b>${fmtPrice(PRICE_STATIC)}</b></div>`
-      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
-      + `<ul class="pcard-feats"><li>Week-by-week to race day</li><li>Open any week’s workouts</li></ul>`
-      + `<span class="pcard-inc">Includes Race Plan</span>`
-      + `<button class="pcard-cta solid" data-plan="static" type="button">Start ${TRIAL_DAYS}-day trial</button>`
-    + `</div>`
-    + `<div class="pcard rec">`
-      + `<div class="pcard-ribbon">Most complete</div>`
-      + `<div class="pcard-name">Dynamic</div>`
-      + `<div class="pcard-price"><b>${fmtPrice(PRICE_DYNAMIC)}</b></div>`
-      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
-      + `<ul class="pcard-feats"><li>Everything in Static</li><li>Adapts when you miss or change</li></ul>`
-      + `<span class="pcard-inc">Includes Race Plan</span>`
-      + `<button class="pcard-cta primary" data-plan="dynamic" type="button">Start ${TRIAL_DAYS}-day trial</button>`
-    + `</div>`
-  + `</div>`;
+  + `<div class="pchooser-grid">${_planCardHtml("race")}${_planCardHtml("static")}${_planCardHtml("dynamic")}</div>`;
   bd.classList.add("open");
-  body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=()=>choosePlan(b.getAttribute("data-plan")); });
+  body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openPlanSelected(b.getAttribute("data-plan")); }; });
 }
-async function choosePlan(product){
+// After picking: the chosen plan up front + 1–2 blurred upsell teasers (curiosity, not full content).
+function openPlanSelected(product){
+  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
+  if(!body||!bd||!PLAN_META[product]) return;
+  const p=PLAN_META[product];
+  const others=["dynamic","static","race"].filter(x=>x!==product).slice(0,2);
+  body.innerHTML =
+    `<button class="psel-back" id="pselBack" type="button">← All plans</button>`
+  + `<div class="plan-eyebrow">You picked</div>`
+  + `<h2 class="plan-title">${p.name}${p.trial?` — <span class="it">${TRIAL_DAYS}-day free trial</span>`:""}</h2>`
+  + `<div class="psel-main">${_planCardHtml(product)}</div>`
+  + `<div class="psel-teasers-label">Other plans</div>`
+  + `<div class="psel-teasers">${others.map(o=>_planCardHtml(o,{teaser:true})).join("")}</div>`;
+  bd.classList.add("open");
+  const back=document.getElementById("pselBack"); if(back) back.onclick=openPlanChooser;
+  const cta=body.querySelector(".psel-main .pcard-cta"); if(cta) cta.onclick=(e)=>{ e.stopPropagation(); startPlanCheckout(product); };
+  body.querySelectorAll(".psel-teasers .pcard.teaser").forEach(c=>{ c.onclick=()=>openPlanSelected(c.getAttribute("data-plan")); });
+}
+async function startPlanCheckout(product){
   try{ localStorage.setItem("pacelab_selected_product", product); }catch(e){}
   const pid = window.PACELAB_PID || (localStorage.getItem("pacelab_pid") || "");
-  const btn = document.querySelector(`.pcard-cta[data-plan="${product}"]`);
+  const btn = document.querySelector(".psel-main .pcard-cta");
   const orig = btn ? btn.textContent : "";
   if (btn) { btn.disabled = true; btn.textContent = "Opening checkout…"; }
   try{
@@ -4263,9 +4302,57 @@ async function choosePlan(product){
     // Pay-first: never grant access if checkout can't open — surface an error instead.
     if (btn) { btn.disabled = false; btn.textContent = orig; }
     let err = document.getElementById("pcardErr");
-    if (!err) { err = document.createElement("div"); err.id = "pcardErr"; err.style.cssText = "margin-top:12px;font-size:12px;color:#c0392b;text-align:center;"; const grid = document.querySelector(".pchooser-grid"); if (grid && grid.parentNode) grid.parentNode.appendChild(err); }
+    if (!err) { err = document.createElement("div"); err.id = "pcardErr"; err.style.cssText = "margin-top:12px;font-size:12px;color:#c0392b;text-align:center;"; const main = document.querySelector(".psel-main"); if (main && main.parentNode) main.parentNode.appendChild(err); }
     err.textContent = "Couldn’t open checkout — please try again in a moment.";
   }
+}
+// ===== Race Plan: even-effort, elevation-adjusted pacing splits =====
+function _rpMS(sec){ sec=Math.max(0,Math.round(sec)); return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); }
+function _rpHMS(sec){ sec=Math.max(0,Math.round(sec)); const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; return (h?h+":"+String(m).padStart(2,"0"):String(m))+":"+String(s).padStart(2,"0"); }
+function _raceSplits(name){
+  const m=MARATHONS[name]; if(!m) return null;
+  const elev=PLOT_DATA[m.col], dist=PLOT_DATA.distance_km;
+  if(!elev||!dist||!elev.length||!dist.length) return null;
+  const N=Math.min(elev.length,dist.length), endIdx=N-1;
+  const totalSec=userTime.flatMinutes*60 + ((typeof timeAddedSecondsFor==="function")?timeAddedSecondsFor(m,userTime.flatMinutes):0);
+  const courseKm=(m.customDistance!==undefined)?m.customDistance:dist[N-1];
+  // Per-segment effort weight: uphill slower, downhill faster (same model as the chart runner).
+  const segW=new Array(endIdx).fill(0); let sumW=0;
+  for(let i=0;i<endIdx;i++){
+    const dx=(dist[i+1]-dist[i])*1000, dy=elev[i+1]-elev[i], grade=dx>0?dy/dx:0;
+    let f=grade>=0?1+grade*8:1+grade*2; f=Math.max(0.7,Math.min(3.0,f));
+    const w=dx*f; segW[i]=w; sumW+=w;
+  }
+  const cumTime=new Array(N).fill(0); let cum=0;
+  for(let i=0;i<endIdx;i++){ cum+=segW[i]; cumTime[i+1]=sumW>0?(cum/sumW)*totalSec:((i+1)/endIdx)*totalSec; }
+  const timeAtKm=(tk)=>{ if(tk<=dist[0]) return 0; for(let i=0;i<endIdx;i++){ if(dist[i+1]>=tk){ const t=(tk-dist[i])/((dist[i+1]-dist[i])||1); return cumTime[i]+(cumTime[i+1]-cumTime[i])*t; } } return totalSec; };
+  const mi=useMiles(), unitKm=mi?KM_PER_MI:1, avgPerUnit=totalSec/(courseKm/unitKm);
+  const splits=[]; let prev=0, u=1;
+  for(let d=unitKm; d<=courseKm+1e-6; d+=unitKm){
+    const dd=Math.min(d,courseKm), t=timeAtKm(dd), pace=t-prev;
+    splits.push({ label:u+" "+(mi?"mi":"km"), cumSec:t, paceSec:pace, rel: pace>avgPerUnit*1.02?"up":(pace<avgPerUnit*0.98?"down":"") });
+    prev=t; u++; if(dd>=courseKm) break;
+  }
+  const lastD=(u-1)*unitKm;
+  if(courseKm-lastD>0.05){ const t=timeAtKm(courseKm); splits.push({ label:"Finish", cumSec:t, paceSec:t-prev, rel:"" }); }
+  return { splits, totalSec, mi };
+}
+function _racePlanHtml(name,data){
+  const m=MARATHONS[name], u=data.mi?"mi":"km";
+  const rows=data.splits.map(s=>`<div class="rp-row ${s.rel}"><span class="rp-k">${s.label}</span><span class="rp-pace">${_rpMS(s.paceSec)}/${u}</span><span class="rp-cum">${_rpHMS(s.cumSec)}</span></div>`).join("");
+  return `<div class="plan-eyebrow">${m&&m.emoji?m.emoji+" ":""}Race Plan</div>`
+    + `<h2 class="plan-title">${name} — <span class="it">race-day pacing</span></h2>`
+    + `<p class="plan-sub">Even effort, not even pace — each split is tuned to the course's climbs and descents. Target finish ${_rpHMS(data.totalSec)}.</p>`
+    + `<div class="rp-head"><span>Split</span><span>Pace</span><span>Elapsed</span></div>`
+    + `<div class="rp-list">${rows}</div>`;
+}
+function openRacePlan(name){
+  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop"); if(!body||!bd) return;
+  const data=_raceSplits(name);
+  if(data){ body.innerHTML=_racePlanHtml(name,data); bd.classList.add("open"); return; }
+  body.innerHTML=`<div class="plan-eyebrow">Race Plan</div><h2 class="plan-title">${name} — <span class="it">race-day pacing</span></h2><p class="plan-sub">Loading the course profile…</p>`;
+  bd.classList.add("open");
+  if(typeof ensurePaidData==="function"){ ensurePaidData(true).then(()=>{ const d2=_raceSplits(name); const b=document.getElementById("modalBody"); if(b){ b.innerHTML = d2 ? _racePlanHtml(name,d2) : `<div class="plan-eyebrow">Race Plan</div><p class="plan-sub">Couldn’t load this course’s elevation profile.</p>`; } }); }
 }
 function openPlanModal(name) {
   const m = MARATHONS[name];
@@ -6050,6 +6137,7 @@ async function confirmPurchase() {
   // ?unlock=off clears the tester unlock so you can see the non-subscriber view again.
   if (code === "off") {
     try { localStorage.removeItem("pacelab_comp"); } catch (e) {}
+    try { localStorage.removeItem("pacelab_plan"); } catch (e) {}
     Object.keys(MARATHONS).forEach(n => { if (MARATHONS[n].tier === 'paid') unlocked.delete(n); });
     try { persistUnlocked(); } catch (e) {}
     try { renderPicker(); } catch (e) {}
@@ -6060,6 +6148,7 @@ async function confirmPurchase() {
   async function unlockAll(pass, names) {
     if (pass) setPass(pass);
     try { localStorage.setItem("pacelab_comp", "1"); } catch (e) {}   // durable tester unlock
+    try { localStorage.setItem("pacelab_plan", JSON.stringify({ product:"dynamic", status:"active" })); } catch (e) {}  // also unlock the Dynamic plan experience
     applyUnlockedNames((names && names.length) ? names : Object.keys(MARATHONS).filter(n => MARATHONS[n].tier === 'paid'));
     persistGpxPaid();
     await ensurePaidData(true);
