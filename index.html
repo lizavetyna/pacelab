@@ -862,6 +862,12 @@
   .gr-recovery-box .gr-rec-collapsed { justify-content: center; text-align: center; width: 100%; font-size: 14.5px; font-weight: 700; letter-spacing: .01em; }
   .gr-recovery-box { position: relative; overflow: hidden; flex: none; width: 220px; max-width: 100%; border: none; background: #FC4C02; border-radius: 13px; padding: 13px 15px; cursor: pointer; font: inherit; text-align: left; display: block; color: #fff; transition: background .15s, transform .1s; }
   .gr-next-side .gr-recovery-box { width: auto; align-self: flex-end; margin: 0; padding: 10px 14px; }
+  /* Dynamic-plan adaptive panel (reconnect Strava + AI coach) */
+  .gr-dyn { display:flex; flex-direction:column; gap:12px; width:100%; padding:14px; border:1px solid rgba(0,51,255,.18); border-radius:14px; background:linear-gradient(120deg,#eef2ff,#fdfdff 62%); }
+  .gr-dyn-eyebrow { font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--blue,#0033ff); }
+  .gr-dyn-btn { width:100%; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:11px; padding:12px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:filter .15s ease, transform .15s ease; }
+  .gr-dyn-btn:hover { filter:brightness(1.08); transform:translateY(-1px); }
+  .gr-dyn-note { font-size:11.5px; color:var(--muted); line-height:1.4; }
   .gr-next-side .gr-recovery-box .gr-rec-collapsed { font-size: 12px; }
   .gr-recovery-box:hover { background: #e84402; }
   .gr-recovery-box .gr-rec-ic { color: #fff; font-size: 18px; line-height: 1.1; flex: none; }
@@ -3870,6 +3876,21 @@ function _grCoachQuip(m){
   let i=0; try { i=_plLog().length % quips.length; } catch(e){}
   return quips[i];
 }
+// Dynamic-plan adaptive panel: a prominent Reconnect-Strava (recalculates the plan
+// from the latest runs) + the AI coach feel panel (adapts your sessions).
+function _grDynamicPanel(){
+  const connected = (typeof _grStravaConnected === "function") && _grStravaConnected();
+  const label = connected ? "Reconnect Strava — recalculate →" : "Connect Strava →";
+  const note = connected
+    ? "Rebuilds your plan from your latest Strava runs."
+    : "Connect Strava so your plan adapts to real training.";
+  return `<div class="gr-dyn">`
+    + `<div class="gr-dyn-eyebrow">Dynamic · your plan adapts</div>`
+    + `<button class="gr-dyn-btn" id="goalReconnectBtn" type="button">${label}</button>`
+    + `<div class="gr-dyn-note">${note}</div>`
+    + _grCoachBlock(true)
+    + `</div>`;
+}
 function _grCoachBlock(coachOn){
   const mic = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
   if (coachOn) {
@@ -3947,12 +3968,12 @@ function renderGoal() {
     const opts = Object.keys(MARATHONS).sort().map(n => `<option value="${n}">${n}</option>`).join("");
     el.innerHTML = `<div class="gr-card"><div class="gr-prompt">`
       + `<svg class="gr-goalicon" viewBox="0 0 100 100" aria-hidden="true"><use href="#tgoal"/></svg>`
-      + `<span class="gr-prompt-label">Set your goal race</span>`
+      + `<span class="gr-prompt-label">Pick your goal race</span>`
       + `<span>track your predicted time and your progress.</span>`
-      + `<select class="gr-select" id="goalSelect">${opts}</select>`
-      + `<button class="gr-btn" id="goalSetBtn">Set goal</button></div></div>`;
-    const btn = document.getElementById("goalSetBtn");
-    if (btn) btn.onclick = () => { const s = document.getElementById("goalSelect"); if (s) { setGoalRace(s.value); _grGoalSetMessage(s.value); } };
+      + `<select class="gr-select" id="goalSelect"><option value="" disabled selected>Pick your marathon…</option>${opts}</select></div></div>`;
+    const s = document.getElementById("goalSelect");
+    // Picking a race is enough — set it and drop straight into the plan (no second confirm).
+    if (s) s.onchange = () => { if (s.value) { setGoalRace(s.value); _grGoalSetMessage(s.value); } };
     return;
   }
   const m = MARATHONS[goalRace];
@@ -3988,7 +4009,6 @@ function renderGoal() {
     + `<span class="gr-cd">${cd}</span>`
     + `<div class="gr-actions">`
     +   `<button class="gr-btn ghost" id="goalClearBtn">Change race</button>`
-    +   ((dynamicOn && _grStravaConnected()) ? `<button class="gr-btn" id="goalRebuildBtn">Update from Strava</button>` : "")
     +   `</div>`
     + `</div>`
     + `<div class="gr-loop-row">`
@@ -4006,7 +4026,7 @@ function renderGoal() {
     +     (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
     +   `</div>`
     +   `<div class="gr-next-side">`
-    +     (dynamicOn ? _grCoachBlock(true) : "")
+    +     (dynamicOn ? _grDynamicPanel() : "")
     +     _grRecoveryBox(nw)
     +   `</div>`
     + `</div>`
@@ -4020,8 +4040,12 @@ function renderGoal() {
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
-  const rbtn = document.getElementById("goalRebuildBtn");
-  if (rbtn) rbtn.onclick = () => { const mm = MARATHONS[goalRace]; if (mm) _plRebuildFromStrava(mm); };
+  const rc = document.getElementById("goalReconnectBtn");
+  if (rc) rc.onclick = () => {
+    const mm = MARATHONS[goalRace];
+    if (!_grStravaConnected()) { if (typeof connectStrava === "function") connectStrava(); }  // first connect → OAuth
+    else if (mm) { _plRebuildFromStrava(mm); }                                                 // reconnect → recalc from latest runs
+  };
   const gsc = document.getElementById("goalStravaConnect");
   if (gsc) gsc.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
   const gss = document.getElementById("goalStravaSync");
