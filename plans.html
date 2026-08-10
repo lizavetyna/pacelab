@@ -755,6 +755,10 @@
   .pcard.teaser:hover { opacity:1; }
   .pcard.teaser .pcard-feats { filter:blur(3.5px); pointer-events:none; user-select:none; }
   .pcard-switch { margin-top:auto; font-size:11.5px; font-weight:600; color:var(--blue,#0033ff); text-align:center; }
+  /* Cursor-following, non-clickable plan preview */
+  .plan-hover-pop { position:fixed; z-index:6000; pointer-events:none; width:250px; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,.22)); }
+  .plan-hover-pop .pcard { background:#fff; border:1px solid var(--line); }
+  .pcard-mini2 { font-size:12px; color:var(--muted); margin:2px 0 6px; }
   /* Top Step Two card button: royal blue with a soft, slow pulse — deliberately
      gentler than the Strava button so it doesn't compete for attention. */
   #planBridgeBtnTop { background: var(--blue, #0033ff); animation: pb-soft-pulse 2.6s ease-in-out infinite; }
@@ -886,6 +890,7 @@
   .gr-recovery-box .gr-rec-collapsed { justify-content: center; text-align: center; width: 100%; font-size: 14.5px; font-weight: 700; letter-spacing: .01em; }
   .gr-recovery-box { position: relative; overflow: hidden; flex: none; width: 220px; max-width: 100%; border: none; background: #FC4C02; border-radius: 13px; padding: 13px 15px; cursor: pointer; font: inherit; text-align: left; display: block; color: #fff; transition: background .15s, transform .1s; }
   .gr-next-side .gr-recovery-box { width: auto; align-self: flex-end; margin: 0; padding: 10px 14px; }
+  .gr-dyn .gr-recovery-box { width: 100%; align-self: auto; margin: 0; padding: 11px 14px; }
   /* Dynamic-plan adaptive panel (reconnect Strava + AI coach) */
   .gr-dyn { display:flex; flex-direction:column; gap:12px; width:100%; padding:14px; border:1px solid rgba(0,51,255,.18); border-radius:14px; background:linear-gradient(120deg,#eef2ff,#fdfdff 62%); }
   .gr-dyn-eyebrow { font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--blue,#0033ff); }
@@ -3398,7 +3403,9 @@ function setUnits(u){ try { localStorage.setItem("pacelab_units", u === "mi" ? "
 function unitDist(){ return useMiles() ? "mi" : "km"; }
 function fmtDistNum(km, dp){ const v = useMiles() ? km / KM_PER_MI : km; const p = Math.pow(10, dp==null?1:dp); return Math.round(v*p)/p; }
 function fmtDist(km, dp){ return fmtDistNum(km, dp) + " " + unitDist(); }              // "12 km" / "7.5 mi"
-function fmtPace(secPerKm){ let s = useMiles() ? secPerKm * KM_PER_MI : secPerKm; s = Math.max(1, Math.round(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0") + (useMiles() ? "/mi" : "/km"); }
+// Named fmtPaceU (not fmtPace) — there is a separate legacy fmtPace(paceMin) that takes
+// MINUTES; colliding names silently broke pace display ("396:00"). This one takes sec/km.
+function fmtPaceU(secPerKm){ let s = useMiles() ? secPerKm * KM_PER_MI : secPerKm; s = Math.max(1, Math.round(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0") + (useMiles() ? "/mi" : "/km"); }
 // --- Daniels VDOT engine (validated against Daniels' Running Formula, Tables 5.1/5.2) ---
 function _vo2(v){ return -4.60 + 0.182258*v + 0.000104*v*v; }                              // v in m/min -> O2 cost
 function _pctMax(t){ return 0.8 + 0.1894393*Math.exp(-0.012778*t) + 0.2989558*Math.exp(-0.1932605*t); } // t in min
@@ -3563,7 +3570,7 @@ async function _svRecent(force){
   } catch(e){ return null; }
 }
 function _svDaysAgo(iso){ try { const d=new Date(iso+"T00:00:00"), t=new Date(_plTodayISO()+"T00:00:00"); return Math.round((t-d)/86400000); } catch(e){ return 999; } }
-function _svPace(sec){ return fmtPace(sec); }
+function _svPace(sec){ return fmtPaceU(sec); }
 function _svPick(a){ return a[Math.floor(Math.random()*a.length)]; }
 function _svExpPace(type,z){ const m={easy:z.easy,recovery:z.recovery,long:z.long,strides:z.easy,mp_long:z.long,threshold:z.threshold,interval:z.interval,hill:z.threshold,sharpener:z.mp}; return m[type]!=null?m[type]:z.easy; }
 function _svExpDist(type,wk){ if(type==="long"||type==="mp_long") return wk.longKm; if(type==="recovery") return 5; if(type==="threshold"||type==="interval"||type==="hill") return 9; if(type==="sharpener") return 8; return Math.max(5,Math.round(wk.targetKm*0.16)); }
@@ -3775,7 +3782,7 @@ function _plWeekSessions(wk){
   return head.concat([longRun]);
 }
 function _plDescribe(type, wk, z, name){
-  const P=(k)=>fmtPace(z[k]), race=name||"your race";
+  const P=(k)=>fmtPaceU(z[k]), race=name||"your race";
   switch(type){
     case "long": return { type, title:"Long run", rpe:"easy \u00B7 you can chat", detail:`Run ${fmtDist(wk.longKm,0)} slow and relaxed at ${P("long")}.` };
     case "mp_long": { const c=Math.min(Math.round(8+(wk.prog||0)*10),Math.max(6,wk.longKm-4)); return { type, title:"Long run, faster at the end", rpe:"builds through", detail:`${fmtDist(wk.longKm,0)} easy at ${P("long")}, then pick it up to your goal pace ${P("mp")} for the last ${fmtDist(c,0)}.` }; }
@@ -3902,17 +3909,15 @@ function _grCoachQuip(m){
 }
 // Dynamic-plan adaptive panel: a prominent Reconnect-Strava (recalculates the plan
 // from the latest runs) + the AI coach feel panel (adapts your sessions).
-function _grDynamicPanel(){
+function _grDynamicPanel(nw){
   const connected = (typeof _grStravaConnected === "function") && _grStravaConnected();
-  const label = connected ? "Reconnect Strava — recalculate →" : "Connect Strava →";
-  const note = connected
-    ? "Rebuilds your plan from your latest Strava runs."
-    : "Connect Strava so your plan adapts to real training.";
+  const label = connected ? "Reconnect Strava →" : "Connect Strava →";
   return `<div class="gr-dyn">`
     + `<div class="gr-dyn-eyebrow">Dynamic · your plan adapts</div>`
     + `<button class="gr-dyn-btn" id="goalReconnectBtn" type="button">${label}</button>`
-    + `<div class="gr-dyn-note">${note}</div>`
+    + `<div class="gr-dyn-note">Wherever you need to readjust your plan — just reconnect Strava.</div>`
     + _grCoachBlock(true)
+    + _grRecoveryBox(nw)
     + `</div>`;
 }
 function _grCoachBlock(coachOn){
@@ -3959,7 +3964,7 @@ function _plFullPlanHtml(m, name){
       + `<div class="plw-detail">${sessions}</div>`
       + `</div>`;
   }).join("");
-  const zline=`Easy ${fmtPace(z.easy)} \u00B7 MP ${fmtPace(z.mp)} \u00B7 Threshold ${fmtPace(z.threshold)} \u00B7 VO\u2082 ${fmtPace(z.interval)}`;
+  const zline=`Easy ${fmtPaceU(z.easy)} \u00B7 MP ${fmtPaceU(z.mp)} \u00B7 Threshold ${fmtPaceU(z.threshold)} \u00B7 VO\u2082 ${fmtPaceU(z.interval)}`;
   return `<div class="plw-wrap"><div class="plw-head">${plan.meta.W}-week plan \u2014 ${plan.meta.base} base \u00B7 ${plan.meta.build} build \u00B7 ${plan.meta.peak} peak \u00B7 ${plan.meta.taper} taper</div>`
     + `<div class="plw-zones">${zline}</div>${rows}</div>`;
 }
@@ -4051,8 +4056,7 @@ function renderGoal() {
     +     (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
     +   `</div>`
     +   `<div class="gr-next-side">`
-    +     (dynamicOn ? _grDynamicPanel() : "")
-    +     (dynamicOn ? _grRecoveryBox(nw) : "")
+    +     (dynamicOn ? _grDynamicPanel(nw) : "")
     +   `</div>`
     + `</div>`
     + `<div class="gr-next-row">`
@@ -4241,21 +4245,51 @@ const PLAN_META = {
   static:  { name:"Static",  priceN:PRICE_STATIC,  per:"",        trial:true,  teaser:"A clear week-by-week plan.",         feats:["Week-by-week to race day","Open any week’s workouts"], inc:true,  cls:"solid" },
   dynamic: { name:"Dynamic", priceN:PRICE_DYNAMIC, per:"",        trial:true,  teaser:"A plan that adapts as you train.",   feats:["Everything in Static","Adapts when you miss or change"], inc:true, cls:"primary", rec:true },
 };
-function _planCardHtml(product, opts){
-  opts = opts || {}; const p = PLAN_META[product]; if(!p) return "";
-  const cta = opts.ctaLabel || (p.trial ? `Start ${TRIAL_DAYS}-day trial` : `Get ${p.name} Plan`);
-  return `<div class="pcard${p.rec?" rec":""}${opts.teaser?" teaser":""}" data-plan="${product}">`
-    + ((p.rec && !opts.teaser) ? `<div class="pcard-ribbon">Most complete</div>` : "")
+function _planCardHtml(product){
+  const p = PLAN_META[product]; if(!p) return "";
+  const cta = p.trial ? `Start ${TRIAL_DAYS}-day trial` : `Get ${p.name} Plan`;
+  return `<div class="pcard${p.rec?" rec":""}" data-plan="${product}">`
+    + (p.rec ? `<div class="pcard-ribbon">Most complete</div>` : "")
     + `<div class="pcard-name">${p.name}</div>`
     + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b>${p.per?`<span class="per">${p.per}</span>`:""}</div>`
     + `<div class="pcard-trial">${p.trial?`${TRIAL_DAYS}-day free trial`:""}</div>`
     + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
     + (p.inc?`<span class="pcard-inc">Includes Race Plan</span>`:"")
-    + (opts.teaser ? `<div class="pcard-switch">Tap to switch →</div>` : `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${cta}</button>`)
-    + `<div class="pcard-mini">${p.teaser}</div>`
+    + `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${cta}</button>`
     + `</div>`;
 }
-// "How it helps you" → the three products. Hover shows a mini teaser; click opens the selected step.
+// A prominent, NON-clickable preview card that follows the cursor while hovering a plan.
+function _planPreviewHtml(product){
+  const p = PLAN_META[product]; if(!p) return "";
+  return `<div class="pcard${p.rec?" rec":""}">`
+    + (p.rec ? `<div class="pcard-ribbon">Most complete</div>` : "")
+    + `<div class="pcard-name">${p.name}</div>`
+    + `<div class="pcard-mini2">${p.teaser}</div>`
+    + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b>${p.per?`<span class="per">${p.per}</span>`:""}</div>`
+    + `<div class="pcard-trial">${p.trial?`${TRIAL_DAYS}-day free trial`:""}</div>`
+    + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
+    + (p.inc?`<span class="pcard-inc">Includes Race Plan</span>`:"")
+    + `</div>`;
+}
+function _wirePlanHoverPreview(scope){
+  let pop=document.getElementById("planHoverPop");
+  if(!pop){ pop=document.createElement("div"); pop.id="planHoverPop"; pop.className="plan-hover-pop"; document.body.appendChild(pop); }
+  const hide=()=>{ pop.style.display="none"; };
+  hide();
+  scope.querySelectorAll(".pchooser-grid .pcard").forEach(card=>{
+    const product=card.getAttribute("data-plan");
+    card.addEventListener("mouseenter",()=>{ pop.innerHTML=_planPreviewHtml(product); pop.style.display="block"; });
+    card.addEventListener("mousemove",(e)=>{
+      const w=pop.offsetWidth||250, h=pop.offsetHeight||320;
+      let x=e.clientX+20, y=e.clientY+20;
+      if(x+w>window.innerWidth-8) x=e.clientX-w-20;
+      if(y+h>window.innerHeight-8) y=Math.max(8, window.innerHeight-h-8);
+      pop.style.left=x+"px"; pop.style.top=y+"px";
+    });
+    card.addEventListener("mouseleave",hide);
+  });
+}
+// "How it helps you" → the three products. Hover shows a cursor-following preview; click → checkout.
 function openPlanChooser(){
   const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
   if(!body||!bd) return;
@@ -4264,30 +4298,13 @@ function openPlanChooser(){
   + `<h2 class="plan-title">Pick the plan that <span class="it">helps you.</span></h2>`
   + `<div class="pchooser-grid">${_planCardHtml("race")}${_planCardHtml("static")}${_planCardHtml("dynamic")}</div>`;
   bd.classList.add("open");
-  body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openPlanSelected(b.getAttribute("data-plan")); }; });
-}
-// After picking: the chosen plan up front + 1–2 blurred upsell teasers (curiosity, not full content).
-function openPlanSelected(product){
-  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
-  if(!body||!bd||!PLAN_META[product]) return;
-  const p=PLAN_META[product];
-  const others=["dynamic","static","race"].filter(x=>x!==product).slice(0,2);
-  body.innerHTML =
-    `<button class="psel-back" id="pselBack" type="button">← All plans</button>`
-  + `<div class="plan-eyebrow">You picked</div>`
-  + `<h2 class="plan-title">${p.name}${p.trial?` — <span class="it">${TRIAL_DAYS}-day free trial</span>`:""}</h2>`
-  + `<div class="psel-main">${_planCardHtml(product)}</div>`
-  + `<div class="psel-teasers-label">Other plans</div>`
-  + `<div class="psel-teasers">${others.map(o=>_planCardHtml(o,{teaser:true})).join("")}</div>`;
-  bd.classList.add("open");
-  const back=document.getElementById("pselBack"); if(back) back.onclick=openPlanChooser;
-  const cta=body.querySelector(".psel-main .pcard-cta"); if(cta) cta.onclick=(e)=>{ e.stopPropagation(); startPlanCheckout(product); };
-  body.querySelectorAll(".psel-teasers .pcard.teaser").forEach(c=>{ c.onclick=()=>openPlanSelected(c.getAttribute("data-plan")); });
+  body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); startPlanCheckout(b.getAttribute("data-plan")); }; });
+  _wirePlanHoverPreview(body);
 }
 async function startPlanCheckout(product){
   try{ localStorage.setItem("pacelab_selected_product", product); }catch(e){}
   const pid = window.PACELAB_PID || (localStorage.getItem("pacelab_pid") || "");
-  const btn = document.querySelector(".psel-main .pcard-cta");
+  const btn = document.querySelector(`.pcard-cta[data-plan="${product}"]`);
   const orig = btn ? btn.textContent : "";
   if (btn) { btn.disabled = true; btn.textContent = "Opening checkout…"; }
   try{
@@ -6806,6 +6823,7 @@ function showQuickToast(text) {
 
 function closeModal() {
   $("modalBackdrop").classList.remove("open");
+  const pp = document.getElementById("planHoverPop"); if (pp) pp.style.display = "none";
 }
 
 $("modalClose").addEventListener("click", closeModal);
