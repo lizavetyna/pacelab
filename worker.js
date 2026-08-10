@@ -370,7 +370,12 @@ async function cleanupUnconverted(env){
 // subscription with a 14-day trial.
 const PLAN_TRIAL_DAYS = 14;
 const PLAN_PRODUCTS = ["race", "static", "dynamic"];
-function planPrice(env, product){ return env["STRIPE_PRICE_" + String(product || "").toUpperCase()] || ""; }
+const PLAN_PRICE_FALLBACK = {
+  RACE:    "price_1U2uf8P4aPbXd2jRFR7pALIp",   // one-time $3.99
+  STATIC:  "price_1U2ugYP4aPbXd2jRArWaIfLx",   // recurring $9.99
+  DYNAMIC: "price_1U2uhfP4aPbXd2jRgJYQa2JT",   // recurring $19.99
+};
+function planPrice(env, product){ const p = String(product || "").toUpperCase(); return env["STRIPE_PRICE_" + p] || PLAN_PRICE_FALLBACK[p] || ""; }
 async function athleteIdForPid(env, pid){
   if(!pid || !env.ENTITLEMENTS) return 0;
   try{ const s = await env.ENTITLEMENTS.get("strava:" + pid); if(s) return (JSON.parse(s)||{}).athlete_id || 0; }catch(e){}
