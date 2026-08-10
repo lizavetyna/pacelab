@@ -4027,7 +4027,7 @@ function renderGoal() {
     +   `</div>`
     +   `<div class="gr-next-side">`
     +     (dynamicOn ? _grDynamicPanel() : "")
-    +     _grRecoveryBox(nw)
+    +     (dynamicOn ? _grRecoveryBox(nw) : "")
     +   `</div>`
     + `</div>`
     + `<div class="gr-next-row">`
@@ -4057,7 +4057,7 @@ function renderGoal() {
     else { _grReminder("Couldn\u2019t reach Strava just now.", "No worries \u2014 it\u2019ll refresh on its own next time you open the page, or tap again in a moment."); }
   };
   const pb = document.getElementById("goalPlanBtn");
-  if (pb) pb.onclick = () => { if (_plProduct()) { try { openPlanModal(goalRace); } catch(e){} } else openPlanChooser(); };   // owners see the plan; others pay first
+  if (pb) pb.onclick = () => openPlanModal(goalRace);   // owners → full plan; non-owners → preview + "Choose your plan"
   const nb = document.getElementById("goalNextBtn");
   if (nb) nb.onclick = () => {
     const mm = MARATHONS[goalRace];

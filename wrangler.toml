@@ -1,0 +1,46 @@
+# Pacelab Worker configuration.
+#
+# NOTE: there was no wrangler.toml in this project, so double-check these values
+# against your existing Worker before deploying from the CLI — especially `name`.
+# If `name` does NOT match your live Worker, `wrangler deploy` will create a NEW
+# Worker instead of updating the current one.
+
+name = "pacelab-worker"                 # TODO: set to your EXACT existing Worker name
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# --- Cron Trigger: runs scheduled() hourly to revoke unconverted 24h connections ---
+[triggers]
+crons = ["0 * * * *"]                   # hourly, on the hour
+
+# --- KV namespace binding (the "pacelab-entitlements" namespace) ---
+[[kv_namespaces]]
+binding = "ENTITLEMENTS"
+id = "ef59c8476c77457397991295d4ec2dd5"   # pacelab-entitlements
+
+# --- Stripe price IDs for the 3 plan products (create these in your Stripe dashboard) ---
+# Race = one-time $3.99. Static = recurring $9.99. Dynamic = recurring $19.99.
+# The 14-day trial for Static/Dynamic is applied by the Worker at checkout, not on the price.
+[vars]
+STRIPE_PRICE_RACE = "price_REPLACE_RACE"
+STRIPE_PRICE_STATIC = "price_REPLACE_STATIC"
+STRIPE_PRICE_DYNAMIC = "price_REPLACE_DYNAMIC"
+
+# --- D1 database for funnel analytics ---
+# Create once:  npx wrangler d1 create pacelab-analytics
+# then paste the printed database_id below and apply analytics_schema.sql.
+[[d1_databases]]
+binding = "DB"
+database_name = "pacelab-analytics"
+database_id = "efcb36b8-c950-4e4e-9fa6-4dd944fdf215"
+
+# Secrets are NOT stored here. They already exist on your deployed Worker and
+# persist across deploys. If you ever recreate the Worker, set them with:
+#   wrangler secret put STRAVA_CLIENT_ID
+#   wrangler secret put STRAVA_CLIENT_SECRET
+#   wrangler secret put TOKEN_SECRET
+#   wrangler secret put STRIPE_SECRET_KEY
+#   wrangler secret put STRIPE_WEBHOOK_SECRET
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put RESEND_API_KEY
+#   wrangler secret put UNLOCK_CODE
