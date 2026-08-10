@@ -3976,10 +3976,11 @@ function renderGoal() {
   const sess = nw.session;
   const plDays = _plCfg().daysPerWeek;
   const coachOn = _plHasFullPlan();
+  const hasPlan = coachOn || _plProduct() !== null;   // owns a training plan → full plan unlocked
   const dynamicOn = _plIsDynamic();   // coach + Strava check-in only for the Dynamic plan
   const cond = (m.condReal && m.weather) ? ` \u00B7 race day: ${m.weather}` : "";
   // Free preview walks the first two weeks with the arrows; beyond that we steer to the whole plan.
-  const gated = !coachOn && nw.week && nw.week.week > 2;
+  const gated = !hasPlan && nw.week && nw.week.week > 2;
   el.innerHTML = `<div class="gr-card gr-loop">`
     + `<div class="gr-top">`
     + `<span class="gr-flag">${m.emoji || ""}</span>`
@@ -4032,7 +4033,7 @@ function renderGoal() {
     else { _grReminder("Couldn\u2019t reach Strava just now.", "No worries \u2014 it\u2019ll refresh on its own next time you open the page, or tap again in a moment."); }
   };
   const pb = document.getElementById("goalPlanBtn");
-  if (pb) pb.onclick = () => openPlanModal(goalRace);
+  if (pb) pb.onclick = () => { if (_plProduct()) { try { openPlanModal(goalRace); } catch(e){} } else openPlanChooser(); };   // owners see the plan; others pay first
   const nb = document.getElementById("goalNextBtn");
   if (nb) nb.onclick = () => {
     const mm = MARATHONS[goalRace];
@@ -4202,19 +4203,19 @@ function openPlanChooser(){
     + `<div class="pcard">`
       + `<div class="pcard-name">Static</div>`
       + `<div class="pcard-price"><b>${fmtPrice(PRICE_STATIC)}</b></div>`
-      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
+      + `<div class="pcard-trial"></div>`
       + `<ul class="pcard-feats"><li>Week-by-week to race day</li><li>Open any week’s workouts</li></ul>`
       + `<span class="pcard-inc">Includes Race Plan</span>`
-      + `<button class="pcard-cta solid" data-plan="static" type="button">Start ${TRIAL_DAYS}-day trial</button>`
+      + `<button class="pcard-cta solid" data-plan="static" type="button">Get Static</button>`
     + `</div>`
     + `<div class="pcard rec">`
       + `<div class="pcard-ribbon">Most complete</div>`
       + `<div class="pcard-name">Dynamic</div>`
       + `<div class="pcard-price"><b>${fmtPrice(PRICE_DYNAMIC)}</b></div>`
-      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
+      + `<div class="pcard-trial"></div>`
       + `<ul class="pcard-feats"><li>Everything in Static</li><li>Adapts when you miss or change</li></ul>`
       + `<span class="pcard-inc">Includes Race Plan</span>`
-      + `<button class="pcard-cta primary" data-plan="dynamic" type="button">Start ${TRIAL_DAYS}-day trial</button>`
+      + `<button class="pcard-cta primary" data-plan="dynamic" type="button">Get Dynamic</button>`
     + `</div>`
   + `</div>`;
   bd.classList.add("open");
@@ -4239,7 +4240,7 @@ function openPlanModal(name) {
   const m = MARATHONS[name];
   const body = document.getElementById("modalBody");
   if (!body) return;
-  if (m && _plHasFullPlan()) {
+  if (m && (_plHasFullPlan() || _plProduct())) {
     body.innerHTML = `
     <div class="plan-eyebrow">${m.emoji ? m.emoji + " " : ""}Your ${name} plan</div>
     <h2 class="plan-title">Your whole road to <span class="it">${name}</span>.</h2>
@@ -4258,29 +4259,11 @@ function openPlanModal(name) {
       <li>Auto-adjusts to your fitness and the forecast</li>
       <li>Cancel anytime</li>
     </ul>
-    <button class="gr-plan-btn big" id="planTrialCta">Start 7-day free trial</button>
-    <div class="plan-fineprint">Free for 7 days, then ${PLAN_PRICE_MONTHLY}/month. Cancel anytime.</div>`;
+    <button class="gr-plan-btn big" id="planChooseCta">Choose your plan \u2192</button>
+    <div class="plan-fineprint">Static \u20ac9.99/mo \u00b7 Dynamic \u20ac19.99/mo \u00b7 Race \u20ac3.99. Cancel anytime.</div>`;
   document.getElementById("modalBackdrop").classList.add("open");
-  const cta = document.getElementById("planTrialCta");
-  if (cta) cta.onclick = async () => {
-    if (cta.disabled) return;
-    const original = cta.textContent;
-    cta.disabled = true; cta.textContent = "Starting\u2026";
-    try {
-      const res = await fetch(STRAVA_WORKER_URL + "/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userEmail ? { email: userEmail } : {}),
-      });
-      const d = await res.json().catch(() => null);
-      if (d && d.ok && d.url) { window.location.href = d.url; return; }
-      throw new Error((d && d.reason) || "no_url");
-    } catch (e) {
-      cta.disabled = false; cta.textContent = original;
-      const fp = body.querySelector(".plan-fineprint");
-      if (fp) fp.textContent = "Couldn\u2019t start checkout just now \u2014 please try again.";
-    }
-  };
+  const cta = document.getElementById("planChooseCta");
+  if (cta) cta.onclick = () => { try { openPlanChooser(); } catch(e){} };
 }
 // Payment-required model: giving an email no longer unlocks premium courses.
 // Entitlement now comes only from a verified pass. Kept as a no-op for safety.
