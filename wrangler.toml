@@ -22,9 +22,9 @@ id = "ef59c8476c77457397991295d4ec2dd5"   # pacelab-entitlements
 # Race = one-time $3.99. Static = recurring $9.99. Dynamic = recurring $19.99.
 # The 14-day trial for Static/Dynamic is applied by the Worker at checkout, not on the price.
 [vars]
-STRIPE_PRICE_RACE = "price_REPLACE_RACE"
-STRIPE_PRICE_STATIC = "price_REPLACE_STATIC"
-STRIPE_PRICE_DYNAMIC = "price_REPLACE_DYNAMIC"
+STRIPE_PRICE_RACE = "price_1U2uf8P4aPbXd2jRFR7pALIp"
+STRIPE_PRICE_STATIC = "price_1U2ugYP4aPbXd2jRArWaIfLx"
+STRIPE_PRICE_DYNAMIC = "price_1U2uhfP4aPbXd2jRgJYQa2JT"
 
 # --- D1 database for funnel analytics ---
 # Create once:  npx wrangler d1 create pacelab-analytics
