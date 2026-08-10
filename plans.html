@@ -4203,19 +4203,19 @@ function openPlanChooser(){
     + `<div class="pcard">`
       + `<div class="pcard-name">Static</div>`
       + `<div class="pcard-price"><b>${fmtPrice(PRICE_STATIC)}</b></div>`
-      + `<div class="pcard-trial"></div>`
+      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
       + `<ul class="pcard-feats"><li>Week-by-week to race day</li><li>Open any week’s workouts</li></ul>`
       + `<span class="pcard-inc">Includes Race Plan</span>`
-      + `<button class="pcard-cta solid" data-plan="static" type="button">Get Static</button>`
+      + `<button class="pcard-cta solid" data-plan="static" type="button">Start ${TRIAL_DAYS}-day trial</button>`
     + `</div>`
     + `<div class="pcard rec">`
       + `<div class="pcard-ribbon">Most complete</div>`
       + `<div class="pcard-name">Dynamic</div>`
       + `<div class="pcard-price"><b>${fmtPrice(PRICE_DYNAMIC)}</b></div>`
-      + `<div class="pcard-trial"></div>`
+      + `<div class="pcard-trial">${TRIAL_DAYS}-day free trial</div>`
       + `<ul class="pcard-feats"><li>Everything in Static</li><li>Adapts when you miss or change</li></ul>`
       + `<span class="pcard-inc">Includes Race Plan</span>`
-      + `<button class="pcard-cta primary" data-plan="dynamic" type="button">Get Dynamic</button>`
+      + `<button class="pcard-cta primary" data-plan="dynamic" type="button">Start ${TRIAL_DAYS}-day trial</button>`
     + `</div>`
   + `</div>`;
   bd.classList.add("open");
@@ -6280,8 +6280,13 @@ function restoreStravaUI() {
       const d = await res.json().catch(() => null);
       if (d && d.ok) {
         try { localStorage.setItem("pacelab_plan", JSON.stringify({ product:d.product, status:d.status, trial_ends_at:d.trial_ends_at||0, at:Date.now() })); } catch (e) {}
-        try { trackEv("purchase_completed", { marathon: null }); } catch (e) {}
-        try { _openPickMarathon(); } catch (e) {}    // straight into race selection
+        try { trackEv("purchase_completed", { marathon: goalRace || null }); } catch (e) {}
+        // Paid → show their plan. If a race is already chosen, open the full plan;
+        // otherwise send them to race selection first.
+        try {
+          if (goalRace && MARATHONS[goalRace]) { renderGoal(); openPlanModal(goalRace); }
+          else _openPickMarathon();
+        } catch (e) {}
       }
     } catch (e) {}
   });
