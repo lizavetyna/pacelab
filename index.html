@@ -759,6 +759,58 @@
   .plan-hover-pop { position:fixed; z-index:6000; pointer-events:none; width:250px; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,.22)); }
   .plan-hover-pop .pcard { background:#fff; border:1px solid var(--line); }
   .pcard-mini2 { font-size:12px; color:var(--muted); margin:2px 0 6px; }
+  /* Hover preview mini-mockup (looks like the actual plan screen) */
+  .pv-card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 16px 14px; }
+  .pv-eyebrow { font-family:var(--mono,ui-monospace,monospace); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .pv-race { font-family:"Fraunces",serif; font-size:18px; color:var(--ink); margin:2px 0 8px; }
+  .pv-finishlab { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .pv-finish { font-family:"Fraunces",serif; font-size:26px; color:var(--blue,#0033ff); line-height:1; margin-bottom:10px; }
+  .pv-badge { display:inline-block; background:var(--blue,#0033ff); color:#fff; font-family:var(--mono,ui-monospace,monospace); font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:6px; margin-bottom:10px; }
+  .pv-week { display:flex; justify-content:space-between; margin-bottom:10px; }
+  .pv-day { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .pv-day i { font-style:normal; font-family:var(--mono,ui-monospace,monospace); font-size:10px; color:var(--muted); }
+  .pv-day b { width:6px; height:6px; border-radius:50%; background:rgba(10,10,15,.12); }
+  .pv-day b.on { background:#FC4C02; }
+  .pv-splits { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .pv-split { display:flex; justify-content:space-between; font-size:12px; color:var(--ink); }
+  .pv-split b { color:var(--blue,#0033ff); font-weight:600; }
+  .pv-split.climb b { color:#c0392b; }
+  .pv-split.drop b { color:#0f8a5f; }
+  .pv-foot { font-size:10.5px; color:var(--muted); border-top:1px solid var(--line); padding-top:8px; }
+  /* "This week" widget — fills the empty field, light tones */
+  .ws-card { margin:14px 0 6px; padding:16px 18px; border-radius:16px; background:linear-gradient(180deg,#faf9f5,#ffffff); border:1px solid var(--line); max-width:520px; }
+  .ws-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; }
+  .ws-title { font-family:var(--mono,ui-monospace,monospace); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .ws-sub { font-size:11px; color:var(--muted); }
+  .ws-row { display:flex; justify-content:space-between; gap:6px; }
+  .ws-day { flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .ws-dl { font-family:var(--mono,ui-monospace,monospace); font-size:12px; color:var(--muted); }
+  .ws-day.today .ws-dl { color:var(--ink); font-weight:700; }
+  .ws-dot { width:8px; height:8px; border-radius:50%; background:rgba(10,10,15,.10); }
+  .ws-dot.sched { background:rgba(252,76,2,.35); }
+  .ws-dot.done { background:#FC4C02; }
+  .ws-dot.on { background:#FC4C02; box-shadow:0 0 0 4px rgba(252,76,2,.18); }
+  .ws-next { display:flex; align-items:center; gap:10px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+  .ws-next-tag { font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.08em; background:#FC4C02; color:#fff; padding:2px 8px; border-radius:100px; }
+  .ws-next-t { font-weight:700; color:var(--ink); font-size:14px; flex:1; }
+  .ws-next-when { font-size:12px; color:var(--muted); }
+  /* Dynamic 2nd card (ideal time · Strava · GPX Race Plan) */
+  .gr-card.gr2 { margin-top:16px; }
+  .gr2-top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .gr2-label { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .gr2-val { font-family:"Fraunces",serif; font-size:30px; color:var(--ink); line-height:1; cursor:default; }
+  .gr2-str { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .gr2-timebox { display:flex; flex-direction:column; align-items:flex-end; }
+  .gr2-t2 { font-family:"Fraunces",serif; font-size:22px; color:var(--blue,#0033ff); line-height:1.1; }
+  .gr2-btn { background:#FC4C02; color:#fff; border:none; border-radius:100px; padding:10px 18px; font:inherit; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; }
+  .gr2-btn:hover { background:#e84402; }
+  .gr2-link { background:none; border:none; color:var(--muted); text-decoration:underline; text-underline-offset:2px; font:inherit; font-size:12px; cursor:pointer; }
+  .gr2-link:hover { color:var(--ink); }
+  .gr2-gpx { margin-top:16px; width:100%; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+  .gr2-gpx:hover { filter:brightness(1.06); }
+  .gr2-note { font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4; }
+  .gr2-edit input { width:1.4em; font:inherit; font-size:28px; text-align:center; border:none; border-bottom:2px solid var(--blue,#0033ff); background:transparent; outline:none; }
+  .gr2-edit input:first-child { width:.9em; }
   /* Top Step Two card button: royal blue with a soft, slow pulse — deliberately
      gentler than the Strava button so it doesn't compete for attention. */
   #planBridgeBtnTop { background: var(--blue, #0033ff); animation: pb-soft-pulse 2.6s ease-in-out infinite; }
@@ -894,6 +946,7 @@
   /* Dynamic-plan adaptive panel (reconnect Strava + AI coach) */
   .gr-dyn { display:flex; flex-direction:column; gap:12px; width:100%; padding:14px; border:1px solid rgba(0,51,255,.18); border-radius:14px; background:linear-gradient(120deg,#eef2ff,#fdfdff 62%); }
   .gr-dyn-eyebrow { font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--blue,#0033ff); }
+  .gr-dyn-badge { align-self:flex-start; background:var(--blue,#0033ff); color:#fff; font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:7px; }
   .gr-dyn-btn { width:100%; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:11px; padding:12px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:filter .15s ease, transform .15s ease; }
   .gr-dyn-btn:hover { filter:brightness(1.08); transform:translateY(-1px); }
   .gr-dyn-note { font-size:11.5px; color:var(--muted); line-height:1.4; }
@@ -3821,6 +3874,51 @@ function _grRecoveryBox(nw){
     + `<span class="gr-rec-expanded"><span class="gr-rec-ic">\u21BB</span><span class="gr-rec-tx">${inner}</span></span>`
     + `</button>`;
 }
+// "This week" glance. Advances as you click Next: completed sessions mark done, the
+// current session's day highlights, and it rolls into the next week automatically.
+function _grWeekStrip(nw){
+  const wk = nw.week || {}, plan = nw.plan;
+  const sessions = (typeof _plWeekSessions==="function") ? _plWeekSessions(wk) : [];
+  const nSess = sessions.length || (_plCfg().daysPerWeek||4);
+  let before = 0; if(plan && plan.weeks){ for(const w of plan.weeks){ if(w.week < (wk.week||1)) before += _plWeekSessions(w).length; } }
+  const doneInWeek = Math.max(0, Math.min((nw.done||0) - before, nSess));
+  const DOW=["M","T","W","T","F","S","S"], DAYNAME=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  const slotOf=(i)=> nSess<=1 ? 0 : Math.round(i*6/(nSess-1));
+  const state={};
+  for(let i=0;i<nSess;i++){ state[slotOf(i)] = i<doneInWeek ? "done" : (i===doneInWeek ? "current" : "up"); }
+  let cells="";
+  for(let s=0;s<7;s++){
+    const st=state[s], cls = st==="done"?"done":st==="current"?"on":st==="up"?"sched":"";
+    cells += `<div class="ws-day${st==="current"?" today":""}"><span class="ws-dl">${DOW[s]}</span><span class="ws-dot ${cls}"></span></div>`;
+  }
+  const curDay = DAYNAME[slotOf(Math.min(doneInWeek, nSess-1))] || "Today";
+  const nextT=(nw.session&&nw.session.title)||"Next workout";
+  return `<div class="ws-card">`
+    + `<div class="ws-head"><span class="ws-title">This week · W${wk.week||1}</span><span class="ws-sub">${doneInWeek}/${nSess} done</span></div>`
+    + `<div class="ws-row">${cells}</div>`
+    + `<div class="ws-next"><span class="ws-next-tag">NEXT</span><span class="ws-next-t">${nextT}</span><span class="ws-next-when">${nw.complete?"—":curDay}</span></div>`
+    + `</div>`;
+}
+// Dynamic 2nd card: ideal marathon time · (re)connect Strava · don't-have-Strava · downloadable GPX Race Plan.
+function _grDynamicCard2(){
+  return `<div class="gr-card gr2">`
+    + `<div class="gr2-top">`
+    +   `<div><div class="gr2-label">Your GPX Race Plan</div><div class="gr2-val">${goalRace||"Your race"}</div></div>`
+    +   `<div class="gr2-timebox"><span class="gr2-label">Ideal time</span><span class="gr2-t2">${fmtClock(userTime.flatMinutes)}</span></div>`
+    + `</div>`
+    + `<button class="gr2-gpx" id="gr2Gpx" type="button">↓ Download My GPX Race Plan</button>`
+    + `<div class="gr2-note">Elevation-aware race-day pacing for your watch — rebuilt from your current fitness each time, so it updates as your results change.</div>`
+    + `</div>`;
+}
+function _gr2EditTime(){
+  const el=document.getElementById("gr2Time"); if(!el||el.querySelector("input")) return;
+  const total=Math.round(userTime.flatMinutes*60), h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
+  el.innerHTML=`<span class="gr2-edit"><input type="text" inputmode="numeric" maxlength="1" value="${h}"><span>:</span><input type="text" inputmode="numeric" maxlength="2" value="${String(m).padStart(2,'0')}"><span>:</span><input type="text" inputmode="numeric" maxlength="2" value="${String(s).padStart(2,'0')}"></span>`;
+  const box=el.querySelector(".gr2-edit"), ins=el.querySelectorAll("input"); ins[0].focus(); ins[0].select();
+  const commit=()=>{ const H=parseInt(ins[0].value,10)||0,M=parseInt(ins[1].value,10)||0,S=parseInt(ins[2].value,10)||0,t=H*60+M+S/60; if(t>=120&&t<=480){ userTime.flatMinutes=t; userTime.mode="real"; renderAll(); } else { renderGoal(); } };
+  box.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){e.preventDefault();commit();} else if(e.key==="Escape"){e.preventDefault();renderGoal();} });
+  box.addEventListener("focusout",()=>{ setTimeout(()=>{ if(box.parentNode && !box.contains(document.activeElement)) commit(); },0); });
+}
 function _plNextFor(m, ignoreAdjust){
   const plan=_plBuildPlan(m);
   // One ordered sequence of every session across every week. Position = how many you've
@@ -3913,7 +4011,7 @@ function _grDynamicPanel(nw){
   const connected = (typeof _grStravaConnected === "function") && _grStravaConnected();
   const label = connected ? "Reconnect Strava →" : "Connect Strava →";
   return `<div class="gr-dyn">`
-    + `<div class="gr-dyn-eyebrow">Dynamic · your plan adapts</div>`
+    + `<div class="gr-dyn-badge">Dynamic · Adjustable Plan</div>`
     + `<button class="gr-dyn-btn" id="goalReconnectBtn" type="button">${label}</button>`
     + `<div class="gr-dyn-note">Wherever you need to readjust your plan — just reconnect Strava.</div>`
     + _grCoachBlock(true)
@@ -4054,6 +4152,7 @@ function renderGoal() {
     +     `<div class="gr-next-detail">${sess.detail}</div>`
     +     `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
     +     (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
+    +     _grWeekStrip(nw)
     +   `</div>`
     +   `<div class="gr-next-side">`
     +     (dynamicOn ? _grDynamicPanel(nw) : "")
@@ -4066,7 +4165,8 @@ function renderGoal() {
     + `</div>`
     + (function(){ const h = gated ? "That\u2019s your first two weeks \u2014 see the whole plan to keep going." : ((dynamicOn && !_grStravaConnected()) ? "Connect Strava up top and I\u2019ll check your runs against the plan." : ""); return h ? `<div class="gr-loop-hint">${h}</div>` : ""; })()
     + `<button class="gr-plan-btn${gated?" big":""}" id="goalPlanBtn">See the whole plan →</button>`
-    + `</div></div>`;
+    + `</div></div>`
+    + (dynamicOn ? _grDynamicCard2() : "");
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
   const rp = document.getElementById("goalRacePlanBtn");
@@ -4077,6 +4177,9 @@ function renderGoal() {
     if (!_grStravaConnected()) { if (typeof connectStrava === "function") connectStrava(); }  // first connect → OAuth
     else if (mm) { _plRebuildFromStrava(mm); }                                                 // reconnect → recalc from latest runs
   };
+  // Dynamic 2nd card — GPX Race Plan download
+  const g2g = document.getElementById("gr2Gpx");
+  if (g2g) g2g.onclick = () => { const m = MARATHONS[goalRace]; if (!m) return; const fin = userTime.flatMinutes + (timeAddedSecondsFor(m, userTime.flatMinutes) / 60); try { downloadPaceGpx(goalRace, fin); } catch(e){} };
   const gsc = document.getElementById("goalStravaConnect");
   if (gsc) gsc.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
   const gss = document.getElementById("goalStravaSync");
@@ -4258,17 +4361,36 @@ function _planCardHtml(product){
     + `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${cta}</button>`
     + `</div>`;
 }
-// A prominent, NON-clickable preview card that follows the cursor while hovering a plan.
+// A prominent, NON-clickable preview that follows the cursor — a mini mockup of what
+// that plan's actual screen looks like (Dynamic shows the plan's first card).
 function _planPreviewHtml(product){
-  const p = PLAN_META[product]; if(!p) return "";
-  return `<div class="pcard${p.rec?" rec":""}">`
-    + (p.rec ? `<div class="pcard-ribbon">Most complete</div>` : "")
-    + `<div class="pcard-name">${p.name}</div>`
-    + `<div class="pcard-mini2">${p.teaser}</div>`
-    + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b>${p.per?`<span class="per">${p.per}</span>`:""}</div>`
-    + `<div class="pcard-trial">${p.trial?`${TRIAL_DAYS}-day free trial`:""}</div>`
-    + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
-    + (p.inc?`<span class="pcard-inc">Includes Race Plan</span>`:"")
+  if(!PLAN_META[product]) return "";
+  const finish = (typeof fmtClock==="function") ? fmtClock(userTime.flatMinutes||225) : "3:45:00";
+  const race = goalRace || "Your marathon";
+  const days = (typeof _plCfg==="function" ? _plCfg().daysPerWeek : 4) || 4;
+  const week = `<div class="pv-week">${["M","T","W","T","F","S","S"].map((d,i)=>`<span class="pv-day"><i>${d}</i><b class="${i<days?'on':''}"></b></span>`).join("")}</div>`;
+  if(product==="race"){
+    const flat=(userTime.flatMinutes*60)/42.195;
+    const pace=(typeof fmtPaceU==="function") ? fmtPaceU(flat) : "5:20/km";
+    return `<div class="pv-card">`
+      + `<div class="pv-eyebrow">${race} · race day</div>`
+      + `<div class="pv-splits">`
+        + `<div class="pv-split"><span>Km 1</span><b>${pace}</b></div>`
+        + `<div class="pv-split climb"><span>Km 8 · climb</span><b>slower</b></div>`
+        + `<div class="pv-split drop"><span>Km 20 · descent</span><b>faster</b></div>`
+        + `<div class="pv-split"><span>Finish</span><b>${finish}</b></div>`
+      + `</div>`
+      + `<div class="pv-foot">Even-effort pacing · per km / mi · export to watch</div>`
+      + `</div>`;
+  }
+  const dynBadge = product==="dynamic" ? `<div class="pv-badge">Dynamic · Adjustable Plan</div>` : "";
+  const foot = product==="dynamic" ? "Reconnect Strava → replans from your latest runs" : "A fixed week-by-week plan to race day";
+  return `<div class="pv-card">`
+    + `<div class="pv-eyebrow">Your goal race</div><div class="pv-race">${race}</div>`
+    + `<div class="pv-finishlab">Predicted finish</div><div class="pv-finish">${finish}</div>`
+    + dynBadge
+    + week
+    + `<div class="pv-foot">${foot}</div>`
     + `</div>`;
 }
 function _wirePlanHoverPreview(scope){
