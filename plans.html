@@ -703,6 +703,10 @@
   /* Secondary "How it helps you" link under the Step Two CTA */
   .pb-help { background:none; border:none; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--blue,#0033ff); text-decoration:underline; text-underline-offset:3px; padding:2px; }
   .pb-help:hover { filter:brightness(1.15); }
+  /* km / mi units toggle */
+  .unit-toggle { display:inline-flex; border:1px solid var(--line); border-radius:100px; overflow:hidden; margin-bottom:8px; }
+  .unit-toggle .ut-btn { background:transparent; border:none; padding:5px 13px; font-family:inherit; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); cursor:pointer; transition:all .15s; }
+  .unit-toggle .ut-btn.active { background:var(--ink); color:var(--paper); }
 
   /* ===== Product chooser (Static / Dynamic / Race) ===== */
   .pchooser-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:6px; align-items:stretch; }
@@ -856,7 +860,9 @@
   .gr-next-main .gr-recovery-box { width: 240px; max-width: 100%; margin: 16px 0 22px; }
   .gr-next-side .gr-coach { width: 100%; }
   .gr-recovery-box .gr-rec-collapsed { justify-content: center; text-align: center; width: 100%; font-size: 14.5px; font-weight: 700; letter-spacing: .01em; }
-  .gr-recovery-box { position: relative; overflow: hidden; flex: none; width: 220px; border: none; background: #FC4C02; border-radius: 13px; padding: 13px 15px; cursor: pointer; font: inherit; text-align: left; display: block; color: #fff; transition: background .15s, transform .1s; }
+  .gr-recovery-box { position: relative; overflow: hidden; flex: none; width: 220px; max-width: 100%; border: none; background: #FC4C02; border-radius: 13px; padding: 13px 15px; cursor: pointer; font: inherit; text-align: left; display: block; color: #fff; transition: background .15s, transform .1s; }
+  .gr-next-side .gr-recovery-box { width: auto; align-self: flex-end; margin: 0; padding: 10px 14px; }
+  .gr-next-side .gr-recovery-box .gr-rec-collapsed { font-size: 12px; }
   .gr-recovery-box:hover { background: #e84402; }
   .gr-recovery-box .gr-rec-ic { color: #fff; font-size: 18px; line-height: 1.1; flex: none; }
   .gr-recovery-box .gr-rec-collapsed { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #fff; font-weight: 700; line-height: 1.4; }
@@ -867,7 +873,7 @@
   .gr-recovery-box.open .gr-rec-expanded { display: flex; }
   .gr-recovery-box.open { background: #FC4C02; border-color: #FC4C02; box-shadow: 0 10px 26px rgba(252,76,2,.40); animation: recUnwrap .55s ease-out; }
   .gr-recovery-box:not(.open) { animation: recShimmerPulse 2s ease-in-out infinite; }
-  .gr-recovery-box:not(.open)::before { content: ""; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%); animation: recShimmerSweep 2.4s ease-in-out infinite; pointer-events: none; }
+  .gr-recovery-box:not(.open)::before { display: none; }
   .gr-recovery-box.open .gr-rec-expanded { animation: recReveal .42s .12s both ease-out; }
   @keyframes recShimmerSweep { 0% { left: -60%; } 55% { left: 120%; } 100% { left: 120%; } }
   @keyframes recShimmerPulse { 0%,100% { box-shadow: 0 3px 14px rgba(252,76,2,.28); } 50% { box-shadow: 0 0 0 8px rgba(252,76,2,.10), 0 6px 22px rgba(252,76,2,.44); } }
@@ -2676,6 +2682,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         <div class="yl-email-msg" id="yourLinkTopEmailMsg" aria-live="polite"></div>
       </div>
       <div class="meta">
+        <div class="unit-toggle" id="unitToggle" role="group" aria-label="Distance units">
+          <button type="button" class="ut-btn" data-u="km">km</button>
+          <button type="button" class="ut-btn" data-u="mi">mi</button>
+        </div>
         Heat × Elevation = your real finish time
       </div>
     </div>
@@ -3351,6 +3361,14 @@ function recordEstimate(sec) {
    the race date (m.displayDate) and the course profile (m.gain). Numbers are approximate
    for now and safe by construction: capped weekly ramp, deloads, taper, rest. */
 function _plFmtPace(s){ s = Math.max(150, Math.round(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); }
+// ── Units (km / mi) — internal math stays in km; convert only at display. ──────
+const KM_PER_MI = 1.609344;
+function useMiles(){ try { return localStorage.getItem("pacelab_units") === "mi"; } catch(e){ return false; } }
+function setUnits(u){ try { localStorage.setItem("pacelab_units", u === "mi" ? "mi" : "km"); } catch(e){} }
+function unitDist(){ return useMiles() ? "mi" : "km"; }
+function fmtDistNum(km, dp){ const v = useMiles() ? km / KM_PER_MI : km; const p = Math.pow(10, dp==null?1:dp); return Math.round(v*p)/p; }
+function fmtDist(km, dp){ return fmtDistNum(km, dp) + " " + unitDist(); }              // "12 km" / "7.5 mi"
+function fmtPace(secPerKm){ let s = useMiles() ? secPerKm * KM_PER_MI : secPerKm; s = Math.max(1, Math.round(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0") + (useMiles() ? "/mi" : "/km"); }
 // --- Daniels VDOT engine (validated against Daniels' Running Formula, Tables 5.1/5.2) ---
 function _vo2(v){ return -4.60 + 0.182258*v + 0.000104*v*v; }                              // v in m/min -> O2 cost
 function _pctMax(t){ return 0.8 + 0.1894393*Math.exp(-0.012778*t) + 0.2989558*Math.exp(-0.1932605*t); } // t in min
@@ -3378,6 +3396,11 @@ function _plZones(flatMin){
 }
 function _plCfg(){ try { const c=JSON.parse(localStorage.getItem("pacelab_plan_cfg")||"{}")||{}; return { daysPerWeek: Math.max(3,Math.min(6,parseInt(c.daysPerWeek,10)||4)) }; } catch(e){ return { daysPerWeek:4 }; } }
 function _plSetDays(n){ try { localStorage.setItem("pacelab_plan_cfg", JSON.stringify({ daysPerWeek: Math.max(3,Math.min(6,parseInt(n,10)||4)) })); } catch(e){} }
+// Dynamic plan: a volume load factor derived from how the athlete's real training
+// compares to plan (see _plRebuildFromStrava). 1 = on plan; <1 eased; >1 pushed.
+function _plAdapt(){ try { const a=JSON.parse(localStorage.getItem("pacelab_plan_adapt")||"null"); if(a && typeof a.loadFactor==="number") return a; } catch(e){} return { loadFactor:1 }; }
+function _plSetAdapt(a){ try { localStorage.setItem("pacelab_plan_adapt", JSON.stringify(Object.assign({at:Date.now()},a))); } catch(e){} }
+function _plClearAdapt(){ try { localStorage.removeItem("pacelab_plan_adapt"); } catch(e){} }
 function _grWeekSummary(wk){
   try {
     const L={ long:"long run", mp_long:"MP long run", threshold:"threshold", interval:"VO\u2082 intervals", hill:"hill repeats", strides:"strides", sharpener:"sharpener", recovery:"recovery", easy:"easy" };
@@ -3510,7 +3533,7 @@ async function _svRecent(force){
   } catch(e){ return null; }
 }
 function _svDaysAgo(iso){ try { const d=new Date(iso+"T00:00:00"), t=new Date(_plTodayISO()+"T00:00:00"); return Math.round((t-d)/86400000); } catch(e){ return 999; } }
-function _svPace(sec){ return _plFmtPace(sec)+"/km"; }
+function _svPace(sec){ return fmtPace(sec); }
 function _svPick(a){ return a[Math.floor(Math.random()*a.length)]; }
 function _svExpPace(type,z){ const m={easy:z.easy,recovery:z.recovery,long:z.long,strides:z.easy,mp_long:z.long,threshold:z.threshold,interval:z.interval,hill:z.threshold,sharpener:z.mp}; return m[type]!=null?m[type]:z.easy; }
 function _svExpDist(type,wk){ if(type==="long"||type==="mp_long") return wk.longKm; if(type==="recovery") return 5; if(type==="threshold"||type==="interval"||type==="hill") return 9; if(type==="sharpener") return 8; return Math.max(5,Math.round(wk.targetKm*0.16)); }
@@ -3538,7 +3561,7 @@ function _svBuildReaction(done, wk, z, data){
   // Wildly different from anything I planned — ask, don't assume.
   if(distRatio>2.2 || distRatio<0.35){
     head=_svPick(["That\u2019s a different session.","Not quite what I drew up."]);
-    body=`I saw ${dist} km at ${pStr}, which doesn\u2019t really line up with what I had for you today. No problem at all \u2014 plans bend around real life. Tell me what happened and I\u2019ll fit the rest of the week around it.`;
+    body=`I saw ${fmtDist(dist)} at ${pStr}, which doesn\u2019t really line up with what I had for you today. No problem at all \u2014 plans bend around real life. Tell me what happened and I\u2019ll fit the rest of the week around it.`;
     return { head, body: body+fbNote, hold:9500, cta:askCta };
   }
   // Easy day run too hard — the one thing worth gently protecting you from.
@@ -3554,15 +3577,15 @@ function _svBuildReaction(done, wk, z, data){
   if(Math.abs(paceDelta)<=40 && distRatio>=0.6 && distRatio<=1.6){
     head=_svPick(["That\u2019s the one.","Right on the money.","Bang on."]);
     body=_svPick([
-      `${dist} km at ${pStr} \u2014 right where I wanted you. This is what the good weeks are made of.`,
-      `${dist} km, ${pStr}. That lines up nicely with today\u2019s session. Keep making me look clever.`,
-      `Saw it land \u2014 ${dist} km at ${pStr}. That\u2019ll do very nicely. Same again next time.`
+      `${fmtDist(dist)} at ${pStr} \u2014 right where I wanted you. This is what the good weeks are made of.`,
+      `${fmtDist(dist)}, ${pStr}. That lines up nicely with today\u2019s session. Keep making me look clever.`,
+      `Saw it land \u2014 ${fmtDist(dist)} at ${pStr}. That\u2019ll do very nicely. Same again next time.`
     ]);
     return { head, body: body+fbNote, hold:7500 };
   }
   // In the right spirit but a bit off — supportive, no nagging.
   head=_svPick(["Close enough.","You got out the door."]);
-  body=`${dist} km at ${pStr} \u2014 not textbook for today, but you moved and that counts more than perfect. If something felt off, tell me; otherwise onward.`;
+  body=`${fmtDist(dist)} at ${pStr} \u2014 not textbook for today, but you moved and that counts more than perfect. If something felt off, tell me; otherwise onward.`;
   return { head, body: body+fbNote, hold:8500, cta:askCta };
 }
 async function _grReactToActivity(done, wk, z){
@@ -3617,7 +3640,7 @@ function _grGoalSetMessage(name){
   const s = _grStravaInfo();
   const bestHMS = (s && s.vdotMarathonSeconds) ? _grFmtHMS(s.vdotMarathonSeconds) : "";
   const km = (s && s.weeklyKm) ? Math.round(s.weeklyKm) : 0;
-  const brag = bestHMS ? `You\u2019re already worth ${bestHMS} on today\u2019s fitness` : (km ? `You\u2019re already logging ~${km} km a week` : `You\u2019ve got a real base to build on`);
+  const brag = bestHMS ? `You\u2019re already worth ${bestHMS} on today\u2019s fitness` : (km ? `You\u2019re already logging ~${fmtDist(km,0)} a week` : `You\u2019ve got a real base to build on`);
   let eyebrow, msg, sub;
   if (days != null && days > 0 && days <= 35){
     eyebrow = "Cutting it close \u2014 in the best way";
@@ -3651,7 +3674,8 @@ function _plBuildPlan(m){
   const build=Math.round(remB*0.55), base=Math.max(0,remB-build);
   const phaseAt=(i)=> i<base?"Base":i<base+build?"Build":i<base+build+peak?"Peak":"Taper";
   const dayFactor=daysPerWeek/4;   // more days trained ⇒ more total weekly volume (recalculated, not padded)
-  const V0=Math.max(15,Math.round(_plBaseKm(flatMin)*dayFactor)), peakKm=Math.min(Math.round(V0*1.55),V0+Math.round(45*dayFactor)), rampWeeks=base+build+peak;
+  const _lf=Math.max(0.6,Math.min(1.15,(_plAdapt().loadFactor)||1));   // Dynamic-plan volume adaptation
+  const V0=Math.max(12,Math.round(_plBaseKm(flatMin)*dayFactor*_lf)), peakKm=Math.min(Math.round(V0*1.55),V0+Math.round(45*dayFactor)), rampWeeks=base+build+peak;
   const weeks=[]; let trend=V0;
   for(let i=0;i<W;i++){
     const phase=phaseAt(i), isTaper=phase==="Taper", idxT=i-(base+build+peak);
@@ -3668,6 +3692,37 @@ function _plBuildPlan(m){
     weeks.push({ week:i+1, weeksToGo:W-i, phase, focus, targetKm:vol, longKm, quality, easyDays, isDeload, prog: rampWeeks<=1?1:Math.min(1, i/(rampWeeks-1)) });
   }
   return { weeks, zones, meta:{ W, base, build, peak, taper, peakKm, V0, daysPerWeek, hilly } };
+}
+// Dynamic Plan engine: pull recent Strava, compare real training to the plan, and
+// rebuild the remaining weeks. Reliable signals only — weekly volume, longest run,
+// and consistency/gap (fine-grained per-workout matching isn't reliable from the
+// activity list alone, so we don't claim it). Paces re-fit via the calibrator reconnect.
+async function _plRebuildFromStrava(m){
+  if(!m || typeof _svRecent !== "function") return;
+  const data = await _svRecent(true);
+  if(!data || data.ok === false || !Array.isArray(data.runs)){
+    _grReminder("Couldn’t reach Strava.", "Try again in a moment — I’ll rebuild once I can read your recent runs.");
+    return;
+  }
+  const runs = data.runs, now = Date.now();
+  const daysAgo = (iso) => { try { return Math.round((now - new Date(iso + "T00:00:00").getTime()) / 86400000); } catch(e){ return 999; } };
+  const km7  = runs.filter(r => daysAgo(r.date) < 7 ).reduce((s,r) => s + (r.distanceKm||0), 0);
+  const km14 = runs.filter(r => daysAgo(r.date) < 14).reduce((s,r) => s + (r.distanceKm||0), 0);
+  const recentWeekly = Math.max(km7, km14/2);
+  const lastLong = runs.filter(r => daysAgo(r.date) < 14).reduce((mx,r) => Math.max(mx, r.distanceKm||0), 0);
+  const gapDays = runs.length ? Math.min.apply(null, runs.map(r => daysAgo(r.date))) : 999;
+  const nw = _plNextFor(m), wk = nw.week || { targetKm:0 };
+  const plannedKm = wk.targetKm || 0;
+  const ratio = plannedKm > 0 ? recentWeekly / plannedKm : 1;
+  let lf, verdict;
+  if(gapDays >= 10 || ratio < 0.5){ lf = 0.72; verdict = "You’ve been away from it — I’ve eased the plan right back so you can build in safely."; }
+  else if(ratio < 0.8){ lf = 0.88; verdict = "You’re running a little under plan — I’ve trimmed the volume to keep it realistic."; }
+  else if(ratio <= 1.2){ lf = 1.0; verdict = "You’re right on plan — holding your build steady."; }
+  else { lf = 1.08; verdict = "You’re running more than planned — I’ve nudged the volume up to match."; }
+  _plSetAdapt({ loadFactor: lf });
+  try { renderGoal(); } catch(e){}
+  const body = `Last ${runs.length} run${runs.length===1?"":"s"}: about ${fmtDist(Math.round(recentWeekly),0)}/week, longest ${fmtDist(Math.round(lastLong),0)}. ${verdict}`;
+  _grReminder("Plan updated.", body);
 }
 function _plWeekSessions(wk){
   // Exactly one long run a week (the marathon-pace long IS the long run — never both), and
@@ -3690,16 +3745,16 @@ function _plWeekSessions(wk){
   return head.concat([longRun]);
 }
 function _plDescribe(type, wk, z, name){
-  const P=(k)=>_plFmtPace(z[k])+"/km", race=name||"your race";
+  const P=(k)=>fmtPace(z[k]), race=name||"your race";
   switch(type){
-    case "long": return { type, title:"Long run", rpe:"easy \u00B7 you can chat", detail:`Run ${wk.longKm} km slow and relaxed at ${P("long")}.` };
-    case "mp_long": { const c=Math.min(Math.round(8+(wk.prog||0)*10),Math.max(6,wk.longKm-4)); return { type, title:"Long run, faster at the end", rpe:"builds through", detail:`${wk.longKm} km easy at ${P("long")}, then pick it up to your goal pace ${P("mp")} for the last ${c} km.` }; }
+    case "long": return { type, title:"Long run", rpe:"easy \u00B7 you can chat", detail:`Run ${fmtDist(wk.longKm,0)} slow and relaxed at ${P("long")}.` };
+    case "mp_long": { const c=Math.min(Math.round(8+(wk.prog||0)*10),Math.max(6,wk.longKm-4)); return { type, title:"Long run, faster at the end", rpe:"builds through", detail:`${fmtDist(wk.longKm,0)} easy at ${P("long")}, then pick it up to your goal pace ${P("mp")} for the last ${fmtDist(c,0)}.` }; }
     case "threshold": { const reps=3+Math.round((wk.prog||0)*3); return { type, title:"Tempo run", rpe:"comfortably hard", detail:`Warm up 15 min easy. Then run ${reps} \u00D7 1 km at ${P("threshold")}, jogging 90 sec between each. Easy 10 min to finish.` }; }
     case "interval": { const reps=4+Math.round((wk.prog||0)*2); return { type, title:"Speed intervals", rpe:"hard, but short", detail:`Warm up 15 min easy. Then ${reps} \u00D7 3 min fast at ${P("interval")}, jogging 2 min between each. Easy 10 min to finish.` }; }
     case "hill": { const reps=6+Math.round((wk.prog||0)*4); return { type, title:"Hill repeats", rpe:"hard by feel", detail:`Warm up 15 min easy. Then run ${reps} \u00D7 90 sec hard up a hill, jogging back down to recover.` }; }
-    case "strides": return { type, title:"Easy run + a few pickups", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.18))} km easy at ${P("easy")}, then 6 short 20-sec pickups \u2014 quick feet, stay relaxed.` };
+    case "strides": return { type, title:"Easy run + a few pickups", rpe:"easy", detail:`${fmtDist(Math.max(5,Math.round(wk.targetKm*0.18)),0)} easy at ${P("easy")}, then 6 short 20-sec pickups \u2014 quick feet, stay relaxed.` };
     case "sharpener": return { type, title:"Short, sharp tune-up", rpe:"crisp, not tiring", detail:`Warm up, then 3 \u00D7 1 km at goal pace ${P("mp")} with 2 min jog between.` };
-    case "recovery": return { type, title:"Recovery run", rpe:"very easy", detail:`4\u20136 km nice and slow at ${P("recovery")}.` };
+    case "recovery": return { type, title:"Recovery run", rpe:"very easy", detail:`${fmtDistNum(4,0)}\u2013${fmtDist(6,0)} nice and slow at ${P("recovery")}.` };
     default: return { type:"easy", title:"Easy run", rpe:"easy", detail:`${Math.max(5,Math.round(wk.targetKm*0.16))} km relaxed at ${P("easy")}.` };
   }
 }
@@ -3725,7 +3780,7 @@ function _grRecoveryBox(nw){
     inner = `<b>Recovery ${lbl}</b><i>to bounce back after your last workout</i>`;
   }
   return `<button type="button" class="gr-recovery-box" onclick="this.classList.toggle('open'); this.setAttribute('aria-expanded', this.classList.contains('open'));" aria-expanded="false">`
-    + `<span class="gr-rec-collapsed">Open me after</span>`
+    + `<span class="gr-rec-collapsed">Push me when done</span>`
     + `<span class="gr-rec-expanded"><span class="gr-rec-ic">\u21BB</span><span class="gr-rec-tx">${inner}</span></span>`
     + `</button>`;
 }
@@ -3760,7 +3815,7 @@ function _plAdjustSession(base, wk, action, z){
   if(bt==="threshold") return { type:"threshold", title:"Threshold intervals (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 3 \u00D7 1 km at ${P("threshold")} with 90 s jog. Cool down. Half the reps.` };
   if(bt==="interval") return { type:"interval", title:"VO\u2082 intervals (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 3 \u00D7 3 min at ${P("interval")} with 2 min jog. Cool down.` };
   if(bt==="hill") return { type:"hill", title:"Hill repeats (shortened)", rpe:"lighter than planned", detail:`Warm up 15 min, then 4 \u00D7 90 s uphill hard, jog down.` };
-  if(bt==="long"||bt==="mp_long"){ const s=Math.max(8,Math.round(wk.longKm*0.6)); return { type:"long", title:"Long run (shortened)", rpe:"easy", detail:`${s} km easy at ${P("long")} \u2014 shorter than planned, still good time on your feet.` }; }
+  if(bt==="long"||bt==="mp_long"){ const s=Math.max(8,Math.round(wk.longKm*0.6)); return { type:"long", title:"Long run (shortened)", rpe:"easy", detail:`${fmtDist(s,0)} easy at ${P("long")} \u2014 shorter than planned, still good time on your feet.` }; }
   return { type:"easy", title:base.title+" (shortened)", rpe:"lighter than planned", detail:`Cut it back today \u2014 about half the planned volume at an easy effort.` };
 }
 let _feelRec=null, _feelRecording=false;
@@ -3837,6 +3892,10 @@ function _grCoachBlock(coachOn){
     + `</button></div>`;
 }
 function _plHasFullPlan(){ try { const paid=Object.keys(MARATHONS).filter(n=>{const mm=MARATHONS[n];return mm&&mm.tier!=="free"&&mm.tier!=="custom";}); return paid.length>0 && paid.every(n=>unlocked.has(n)); } catch(e){ return false; } }
+// Which plan product the athlete owns (Static/Dynamic/Race). The coach + Strava
+// check-in ("Smart Connect") belong to Dynamic only; Static shows a plain plan.
+function _plProduct(){ try { const p = JSON.parse(localStorage.getItem("pacelab_plan")||"null"); if(p && p.product && ["trialing","active","paid"].indexOf(p.status)>=0) return p.product; } catch(e){} return null; }
+function _plIsDynamic(){ return _plProduct() === "dynamic"; }
 function _plFullPlanHtml(m, name){
   const plan=_plBuildPlan(m), z=plan.zones;
   const LABEL={strides:"Strides",threshold:"Threshold",interval:"VO\u2082",hill:"Hills",mp_long:"MP long run",sharpener:"Sharpener"};
@@ -3849,13 +3908,13 @@ function _plFullPlanHtml(m, name){
       +   `<span class="plw-wk">W${w.week}</span>`
       +   `<span class="plw-ph plw-${w.phase.toLowerCase()}">${w.phase}${w.isDeload?" \u00B7 ease":""}</span>`
       +   `<div class="plw-mid"><div class="plw-bar"><i style="width:${bar}%"></i></div><div class="plw-tags">${tags}</div></div>`
-      +   `<span class="plw-vol">${w.targetKm} km<br><span class="plw-long">long ${w.longKm} km</span></span>`
+      +   `<span class="plw-vol">${fmtDist(w.targetKm,0)}<br><span class="plw-long">long ${fmtDist(w.longKm,0)}</span></span>`
       +   `<span class="plw-chev" aria-hidden="true">\u203A</span>`
       + `</div>`
       + `<div class="plw-detail">${sessions}</div>`
       + `</div>`;
   }).join("");
-  const zline=`Easy ${_plFmtPace(z.easy)} \u00B7 MP ${_plFmtPace(z.mp)} \u00B7 Threshold ${_plFmtPace(z.threshold)} \u00B7 VO\u2082 ${_plFmtPace(z.interval)} /km`;
+  const zline=`Easy ${fmtPace(z.easy)} \u00B7 MP ${fmtPace(z.mp)} \u00B7 Threshold ${fmtPace(z.threshold)} \u00B7 VO\u2082 ${fmtPace(z.interval)}`;
   return `<div class="plw-wrap"><div class="plw-head">${plan.meta.W}-week plan \u2014 ${plan.meta.base} base \u00B7 ${plan.meta.build} build \u00B7 ${plan.meta.peak} peak \u00B7 ${plan.meta.taper} taper</div>`
     + `<div class="plw-zones">${zline}</div>${rows}</div>`;
 }
@@ -3917,6 +3976,7 @@ function renderGoal() {
   const sess = nw.session;
   const plDays = _plCfg().daysPerWeek;
   const coachOn = _plHasFullPlan();
+  const dynamicOn = _plIsDynamic();   // coach + Strava check-in only for the Dynamic plan
   const cond = (m.condReal && m.weather) ? ` \u00B7 race day: ${m.weather}` : "";
   // Free preview walks the first two weeks with the arrows; beyond that we steer to the whole plan.
   const gated = !coachOn && nw.week && nw.week.week > 2;
@@ -3927,6 +3987,7 @@ function renderGoal() {
     + `<span class="gr-cd">${cd}</span>`
     + `<div class="gr-actions">`
     +   `<button class="gr-btn ghost" id="goalClearBtn">Change race</button>`
+    +   ((dynamicOn && _grStravaConnected()) ? `<button class="gr-btn" id="goalRebuildBtn">Update from Strava</button>` : "")
     +   `</div>`
     + `</div>`
     + `<div class="gr-loop-row">`
@@ -3942,10 +4003,10 @@ function renderGoal() {
     +     `<div class="gr-next-detail">${sess.detail}</div>`
     +     `<div class="gr-why${nw.adjusted?" adj":""}">${nw.why}</div>`
     +     (nw.adjusted ? `<button class="gr-reset" id="goalResetBtn">reset to planned</button>` : "")
-    +     _grRecoveryBox(nw)
     +   `</div>`
     +   `<div class="gr-next-side">`
-    +     _grCoachBlock(coachOn)
+    +     (dynamicOn ? _grCoachBlock(true) : "")
+    +     _grRecoveryBox(nw)
     +   `</div>`
     + `</div>`
     + `<div class="gr-next-row">`
@@ -3953,11 +4014,13 @@ function renderGoal() {
     +   `<button class="gr-navbtn primary" id="goalNextBtn" type="button" data-type="${sess.type}"${(nw.complete||gated)?" disabled":""} title="Mark done &amp; go to the next workout" aria-label="Mark done and go to the next workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>`
     +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
     + `</div>`
-    + `<div class="gr-loop-hint">${gated ? "That\u2019s your first two weeks \u2014 see the whole plan to keep going." : (_grStravaConnected() ? "\u2192 marks this done and shows the next \u00B7 \u2190 steps you back." : "Connect Strava up top and I\u2019ll check your runs against the plan.")}</div>`
-    + `<button class="gr-plan-btn${gated?" big":""}" id="goalPlanBtn">See the whole plan \u2192</button>`
+    + (function(){ const h = gated ? "That\u2019s your first two weeks \u2014 see the whole plan to keep going." : ((dynamicOn && !_grStravaConnected()) ? "Connect Strava up top and I\u2019ll check your runs against the plan." : ""); return h ? `<div class="gr-loop-hint">${h}</div>` : ""; })()
+    + `<button class="gr-plan-btn${gated?" big":""}" id="goalPlanBtn">See the whole plan →</button>`
     + `</div></div>`;
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
+  const rbtn = document.getElementById("goalRebuildBtn");
+  if (rbtn) rbtn.onclick = () => { const mm = MARATHONS[goalRace]; if (mm) _plRebuildFromStrava(mm); };
   const gsc = document.getElementById("goalStravaConnect");
   if (gsc) gsc.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
   const gss = document.getElementById("goalStravaSync");
@@ -3975,8 +4038,8 @@ function renderGoal() {
     const mm = MARATHONS[goalRace];
     const before = mm ? _plNextFor(mm) : null;
     _plClearAdjust(); _plMarkDone(nb.getAttribute("data-type")); renderGoal();
-    if (before && !before.complete && _grStravaConnected()) _grReactToActivity(before.session, before.week, before.plan.zones);
-    else if (before && !before.complete) _grReminder("Nice \u2014 another one done.", "Connect Strava and I\u2019ll actually check these against your plan next time, not just take your word for it.");
+    // Strava check-in reaction is a Dynamic-plan feature; Static just confirms.
+    if (before && !before.complete && _plIsDynamic() && _grStravaConnected()) _grReactToActivity(before.session, before.week, before.plan.zones);
     else _grCelebrate();
   };
   const bb = document.getElementById("goalBackBtn");
@@ -4003,6 +4066,7 @@ function renderGoal() {
 // One-time, warm "here's your first workout — go run it, then push to Strava and come back"
 // nudge, shown the moment someone first lands on a plan. This is the come-back hook.
 function _grFirstWorkoutNudgeMaybe(){
+  if(!_plIsDynamic()) return;                                        // coach nudge is Dynamic-only
   if(window.PACELAB_VIEW !== "plans") return;                        // only on step 2 (the plans page)
   if(!goalRace || !MARATHONS[goalRace]) return;
   if(_plLog().length !== 0) return;                                  // only at the very first workout
@@ -4636,7 +4700,7 @@ function handleGpxFile(file) {
           ", normalized to " + official + " km (file: " + result.rawKm.toFixed(2) + " km)";
       } else {
         statusText = "✓ Added " + result.name + " — " + result.totalKm.toFixed(1) + " km";
-        if (result.totalKm > 43) statusText += " (showing first 42.2 km on chart)";
+        if (result.totalKm > 43) statusText += ` (showing first ${fmtDist(42.195,1)} on chart)`;
         else if (result.totalKm < 40) statusText += " (line ends at " + result.totalKm.toFixed(1) + " km)";
       }
       uploadStatus.textContent = statusText;
@@ -4949,7 +5013,7 @@ function renderChart() {
     const py = bbox.top + (CHART_PAD.t / CHART_H) * bbox.height;
     tooltip.style.left = (px - bbox.left) + "px";
     tooltip.style.top  = (py - bbox.top - 16) + "px";
-    tooltip.innerHTML = `<div class="tt-km">${realKm.toFixed(1)} km</div>${rows}`;
+    tooltip.innerHTML = `<div class="tt-km">${fmtDist(realKm,1)}</div>${rows}`;
     tooltip.classList.add("on");
   });
   rect.addEventListener("mouseleave", () => {
@@ -5379,8 +5443,18 @@ function makeCalTimeEditable() {
   });
 }
 
+// km / mi toggle: reflect the saved preference and re-render everything on change.
+function wireUnitToggle() {
+  const box = document.getElementById("unitToggle");
+  if (!box) return;
+  const reflect = () => { const mi = useMiles(); box.querySelectorAll(".ut-btn").forEach(b => b.classList.toggle("active", (b.dataset.u === "mi") === mi)); };
+  box.querySelectorAll(".ut-btn").forEach(b => { b.onclick = () => { setUnits(b.dataset.u); reflect(); try { renderAll(); } catch(e){} try { renderGoal(); } catch(e){} }; });
+  reflect();
+}
+
 // Wire calibrator buttons + form
 function wireCalibrator() {
+  try { wireUnitToggle(); } catch(e){}
   const form = $("calForm");
   // Primary action is now "Connect Strava" (manual entry is via "don't have Strava?").
   $("calBtn").addEventListener("click", connectStrava);
@@ -5409,7 +5483,7 @@ function wireCalibrator() {
   // Click the big time to edit it inline (type a new H:M:S).
   makeCalTimeEditable();
   restoreStravaUI();
-  try { _grPinRender(); } catch(e){}
+  try { if (_plIsDynamic()) _grPinRender(); } catch(e){}   // coach pin is Dynamic-only
   // Per-page hero: the plans page introduces itself as the training product.
   try {
     if (window.PACELAB_VIEW === "plans") {
@@ -5435,7 +5509,7 @@ function wireCalibrator() {
   // Token lives server-side, so we don't ask people to reconnect — just quietly pull the
   // latest runs on load if what we have is more than a few hours old.
   try {
-    if (_grStravaConnected() && typeof _svRecent === "function") {
+    if (_plIsDynamic() && _grStravaConnected() && typeof _svRecent === "function") {
       let stale = true; try { const c = JSON.parse(localStorage.getItem("pacelab_strava_recent")||"null"); if (c && c.at && (Date.now()-c.at) < 6*3600*1000) stale = false; } catch(e){}
       if (stale) _svRecent(true);
     }
