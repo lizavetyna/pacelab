@@ -777,6 +777,12 @@
   .pv-split.climb b { color:#c0392b; }
   .pv-split.drop b { color:#0f8a5f; }
   .pv-foot { font-size:10.5px; color:var(--muted); border-top:1px solid var(--line); padding-top:8px; }
+  /* Feature indicators (Static vs Dynamic differentiation) */
+  .pf-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .pf-chip { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--muted); background:rgba(10,10,15,.05); padding:3px 9px; border-radius:100px; }
+  .pf-chip .pf-dot { width:6px; height:6px; border-radius:50%; background:rgba(10,10,15,.22); }
+  .pf-chip.on { color:var(--blue,#0033ff); background:rgba(0,51,255,.08); }
+  .pf-chip.on .pf-dot { background:#FC4C02; }
   /* "This week" widget — fills the empty field, light tones */
   .ws-card { margin:14px 0 6px; padding:16px 18px; border-radius:16px; background:linear-gradient(180deg,#faf9f5,#ffffff); border:1px solid var(--line); max-width:520px; }
   .ws-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; }
@@ -806,7 +812,10 @@
   .gr2-btn:hover { background:#e84402; }
   .gr2-link { background:none; border:none; color:var(--muted); text-decoration:underline; text-underline-offset:2px; font:inherit; font-size:12px; cursor:pointer; }
   .gr2-link:hover { color:var(--ink); }
-  .gr2-gpx { margin-top:16px; width:100%; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+  .gr2-btns { display:flex; gap:10px; margin-top:16px; }
+  .gr2-act { flex:1; background:transparent; color:var(--blue,#0033ff); border:1.5px solid var(--blue,#0033ff); border-radius:12px; padding:12px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gr2-act:hover { background:rgba(0,51,255,.06); }
+  .gr2-gpx { flex:1; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .gr2-gpx:hover { filter:brightness(1.06); }
   .gr2-note { font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4; }
   .gr2-edit input { width:1.4em; font:inherit; font-size:28px; text-align:center; border:none; border-bottom:2px solid var(--blue,#0033ff); background:transparent; outline:none; }
@@ -942,11 +951,16 @@
   .gr-recovery-box .gr-rec-collapsed { justify-content: center; text-align: center; width: 100%; font-size: 14.5px; font-weight: 700; letter-spacing: .01em; }
   .gr-recovery-box { position: relative; overflow: hidden; flex: none; width: 220px; max-width: 100%; border: none; background: #FC4C02; border-radius: 13px; padding: 13px 15px; cursor: pointer; font: inherit; text-align: left; display: block; color: #fff; transition: background .15s, transform .1s; }
   .gr-next-side .gr-recovery-box { width: auto; align-self: flex-end; margin: 0; padding: 10px 14px; }
-  .gr-dyn .gr-recovery-box { width: 100%; align-self: auto; margin: 0; padding: 11px 14px; }
+  .gr-dyn-tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .gr-dyn-tools .gr-coach { flex:1 1 130px; min-width:0; }
+  .gr-dyn-tools .gr-recovery-box { flex:0 1 auto; width:auto; max-width:100%; align-self:auto; margin:0; padding:8px 11px; font-size:11px; }
+  .gr-dyn-tools .gr-recovery-box .gr-rec-collapsed { font-size:11px; }
+  /* Once a plan is owned, the ideal-time / Connect-Strava calibrator card is redundant — hide it. */
+  .has-plan #calibrator { display:none; }
   /* Dynamic-plan adaptive panel (reconnect Strava + AI coach) */
   .gr-dyn { display:flex; flex-direction:column; gap:12px; width:100%; padding:14px; border:1px solid rgba(0,51,255,.18); border-radius:14px; background:linear-gradient(120deg,#eef2ff,#fdfdff 62%); }
   .gr-dyn-eyebrow { font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--blue,#0033ff); }
-  .gr-dyn-badge { align-self:flex-start; background:var(--blue,#0033ff); color:#fff; font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:7px; }
+  .gr-dyn-badge { align-self:flex-start; color:var(--blue,#0033ff); font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
   .gr-dyn-btn { width:100%; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:11px; padding:12px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:filter .15s ease, transform .15s ease; }
   .gr-dyn-btn:hover { filter:brightness(1.08); transform:translateY(-1px); }
   .gr-dyn-note { font-size:11.5px; color:var(--muted); line-height:1.4; }
@@ -3903,11 +3917,13 @@ function _grWeekStrip(nw){
 function _grDynamicCard2(){
   return `<div class="gr-card gr2">`
     + `<div class="gr2-top">`
-    +   `<div><div class="gr2-label">Your GPX Race Plan</div><div class="gr2-val">${goalRace||"Your race"}</div></div>`
+    +   `<div><div class="gr2-label">Your Race Plan</div><div class="gr2-val">${goalRace||"Your race"}</div></div>`
     +   `<div class="gr2-timebox"><span class="gr2-label">Ideal time</span><span class="gr2-t2">${fmtClock(userTime.flatMinutes)}</span></div>`
     + `</div>`
-    + `<button class="gr2-gpx" id="gr2Gpx" type="button">↓ Download My GPX Race Plan</button>`
-    + `<div class="gr2-note">Elevation-aware race-day pacing for your watch — rebuilt from your current fitness each time, so it updates as your results change.</div>`
+    + `<div class="gr2-btns">`
+    +   `<button class="gr2-act" id="gr2Race" type="button">Race-day pacing →</button>`
+    +   `<button class="gr2-gpx" id="gr2Gpx" type="button">↓ Download GPX</button>`
+    + `</div>`
     + `</div>`;
 }
 function _gr2EditTime(){
@@ -4014,8 +4030,7 @@ function _grDynamicPanel(nw){
     + `<div class="gr-dyn-badge">Dynamic · Adjustable Plan</div>`
     + `<button class="gr-dyn-btn" id="goalReconnectBtn" type="button">${label}</button>`
     + `<div class="gr-dyn-note">Wherever you need to readjust your plan — just reconnect Strava.</div>`
-    + _grCoachBlock(true)
-    + _grRecoveryBox(nw)
+    + `<div class="gr-dyn-tools">` + _grCoachBlock(true) + _grRecoveryBox(nw) + `</div>`
     + `</div>`;
 }
 function _grCoachBlock(coachOn){
@@ -4090,6 +4105,7 @@ function _grSparkline(hist) {
   return `<svg class="gr-spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 function renderGoal() {
+  try { document.documentElement.classList.toggle("has-plan", !!_plProduct()); } catch(e){}
   const el = document.getElementById("goalRace"); if (!el) return;
   if (!goalRace || !MARATHONS[goalRace]) {
     const opts = Object.keys(MARATHONS).sort().map(n => `<option value="${n}">${n}</option>`).join("");
@@ -4136,7 +4152,6 @@ function renderGoal() {
     + `<span class="gr-cd">${cd}</span>`
     + `<div class="gr-actions">`
     +   `<button class="gr-btn ghost" id="goalClearBtn">Change race</button>`
-    +   ((_plProduct()) ? `<button class="gr-btn" id="goalRacePlanBtn">Race-day pacing</button>` : "")
     +   `</div>`
     + `</div>`
     + `<div class="gr-loop-row">`
@@ -4163,14 +4178,14 @@ function renderGoal() {
     +   `<button class="gr-navbtn primary" id="goalNextBtn" type="button" data-type="${sess.type}"${(nw.complete||gated)?" disabled":""} title="Mark done &amp; go to the next workout" aria-label="Mark done and go to the next workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>`
     +   `<label class="gr-days">Days/wk <select id="goalDaysSel">${[3,4,5,6].map(d => `<option value="${d}"${d===plDays?" selected":""}>${d}</option>`).join("")}</select></label>`
     + `</div>`
-    + (function(){ const h = gated ? "That\u2019s your first two weeks \u2014 see the whole plan to keep going." : ((dynamicOn && !_grStravaConnected()) ? "Connect Strava up top and I\u2019ll check your runs against the plan." : ""); return h ? `<div class="gr-loop-hint">${h}</div>` : ""; })()
+    + (function(){ const h = gated ? "That\u2019s your first two weeks \u2014 see the whole plan to keep going." : ""; return h ? `<div class="gr-loop-hint">${h}</div>` : ""; })()
     + `<button class="gr-plan-btn${gated?" big":""}" id="goalPlanBtn">See the whole plan →</button>`
     + `</div></div>`
-    + (dynamicOn ? _grDynamicCard2() : "");
+    + (_plProduct() ? _grDynamicCard2() : "");
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
-  const rp = document.getElementById("goalRacePlanBtn");
-  if (rp) rp.onclick = () => { if (goalRace) openRacePlan(goalRace); };
+  const g2r = document.getElementById("gr2Race");
+  if (g2r) g2r.onclick = () => { if (goalRace) openRacePlan(goalRace); };
   const rc = document.getElementById("goalReconnectBtn");
   if (rc) rc.onclick = () => {
     const mm = MARATHONS[goalRace];
@@ -4348,6 +4363,13 @@ const PLAN_META = {
   static:  { name:"Static",  priceN:PRICE_STATIC,  per:"",        trial:true,  teaser:"A clear week-by-week plan.",         feats:["Week-by-week to race day","Open any week’s workouts"], inc:true,  cls:"solid" },
   dynamic: { name:"Dynamic", priceN:PRICE_DYNAMIC, per:"",        trial:true,  teaser:"A plan that adapts as you train.",   feats:["Everything in Static","Adapts when you miss or change"], inc:true, cls:"primary", rec:true },
 };
+// Visual differentiators — the live features you get (lit for Dynamic, greyed for Static).
+function _planFeatureRow(product){
+  if(product==="race") return "";
+  const on = product==="dynamic";
+  const chip=(label)=>`<span class="pf-chip${on?" on":""}"><span class="pf-dot"></span>${label}</span>`;
+  return `<div class="pf-row">${chip("Strava sync")}${chip("Coach")}${chip("Recovery")}</div>`;
+}
 function _planCardHtml(product){
   const p = PLAN_META[product]; if(!p) return "";
   const cta = p.trial ? `Start ${TRIAL_DAYS}-day trial` : `Get ${p.name} Plan`;
@@ -4358,6 +4380,7 @@ function _planCardHtml(product){
     + `<div class="pcard-trial">${p.trial?`${TRIAL_DAYS}-day free trial`:""}</div>`
     + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
     + (p.inc?`<span class="pcard-inc">Includes Race Plan</span>`:"")
+    + _planFeatureRow(product)
     + `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${cta}</button>`
     + `</div>`;
 }
@@ -4390,7 +4413,7 @@ function _planPreviewHtml(product){
     + `<div class="pv-finishlab">Predicted finish</div><div class="pv-finish">${finish}</div>`
     + dynBadge
     + week
-    + `<div class="pv-foot">${foot}</div>`
+    + _planFeatureRow(product)
     + `</div>`;
 }
 function _wirePlanHoverPreview(scope){
@@ -5695,6 +5718,7 @@ function wireUnitToggle() {
 // Wire calibrator buttons + form
 function wireCalibrator() {
   try { wireUnitToggle(); } catch(e){}
+  try { document.documentElement.classList.toggle("has-plan", !!_plProduct()); } catch(e){}
   const form = $("calForm");
   // Primary action is now "Connect Strava" (manual entry is via "don't have Strava?").
   $("calBtn").addEventListener("click", connectStrava);
