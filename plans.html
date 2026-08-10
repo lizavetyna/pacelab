@@ -4221,7 +4221,7 @@ function openPlanChooser(){
       + `<div class="pcard-name">Race</div>`
       + `<div class="pcard-price"><b>${fmtPrice(PRICE_RACE)}</b><span class="per">one-off</span></div>`
       + `<div class="pcard-trial"></div>`
-      + `<ul class="pcard-feats"><li>Elevation-aware splits every 5K / mi</li><li>Paced to the course, not linear</li><li>Export to your watch (GPX)</li></ul>`
+      + `<ul class="pcard-feats"><li>Elevation-aware splits every km / mi</li><li>Paced to the course, not linear</li><li>Export to your watch (GPX)</li></ul>`
       + `<button class="pcard-cta ghost" data-plan="race" type="button">Get Race Plan</button>`
     + `</div>`
     + `<div class="pcard">`
@@ -4248,17 +4248,24 @@ function openPlanChooser(){
 async function choosePlan(product){
   try{ localStorage.setItem("pacelab_selected_product", product); }catch(e){}
   const pid = window.PACELAB_PID || (localStorage.getItem("pacelab_pid") || "");
+  const btn = document.querySelector(`.pcard-cta[data-plan="${product}"]`);
+  const orig = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Opening checkout…"; }
   try{
     const res = await fetch(STRAVA_WORKER_URL + "/plan/checkout", {
       method:"POST", headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ product, pid }),
     });
-    const d = await res.json();
+    const d = await res.json().catch(() => null);
     if(d && d.ok && d.url){ window.location.href = d.url; return; }   // → Stripe Checkout
-  }catch(e){}
-  // Checkout unavailable (e.g. Stripe prices not configured yet) — fall back to race selection.
-  const bd=document.getElementById("modalBackdrop"); if(bd) bd.classList.remove("open");
-  try{ _openPickMarathon(); }catch(e){ location.href="plans.html?p="+(window.PACELAB_PID||""); }
+    throw new Error((d && d.reason) || "no_url");
+  }catch(e){
+    // Pay-first: never grant access if checkout can't open — surface an error instead.
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+    let err = document.getElementById("pcardErr");
+    if (!err) { err = document.createElement("div"); err.id = "pcardErr"; err.style.cssText = "margin-top:12px;font-size:12px;color:#c0392b;text-align:center;"; const grid = document.querySelector(".pchooser-grid"); if (grid && grid.parentNode) grid.parentNode.appendChild(err); }
+    err.textContent = "Couldn’t open checkout — please try again in a moment.";
+  }
 }
 function openPlanModal(name) {
   const m = MARATHONS[name];
