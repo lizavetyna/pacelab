@@ -4195,8 +4195,6 @@ function renderGoal() {
     if (d >= 15) { trend = `\u2193 ${ds} faster since you started`; tCls = "down"; }
     else if (d <= -15) { trend = `\u25B2 ${ds} since you started`; tCls = "up"; }
     else { trend = ""; }
-  } else if (_grStravaConnected()) {
-    trend = "tracking from today \u2014 log runs to watch this move";
   } else {
     trend = "";
   }
@@ -4235,7 +4233,6 @@ function renderGoal() {
     +   `</div>`
     +   `<div class="gr-next-side">`
     +     (dynamicOn ? _grDynamicPanel(nw) : "")
-    +     (dynamicOn ? _grAutoAdaptCard() : "")
     +   `</div>`
     + `</div>`
     + `<div class="gr-next-row">`
