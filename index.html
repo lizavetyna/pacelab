@@ -838,12 +838,12 @@
   .gr2-btn:hover { background:#e84402; }
   .gr2-link { background:none; border:none; color:var(--muted); text-decoration:underline; text-underline-offset:2px; font:inherit; font-size:12px; cursor:pointer; }
   .gr2-link:hover { color:var(--ink); }
-  .gr2-btns { display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:10px; margin-top:0; flex:0 0 auto; width:230px; max-width:100%; margin-left:auto; }
-  .gr2-strava { width:100%; box-sizing:border-box; background:#FC4C02; color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gr2-btns { display:flex; flex-direction:row; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:10px; margin-top:0; flex:1 1 auto; min-width:0; margin-left:auto; }
+  .gr2-strava { flex:1 1 0; min-width:0; box-sizing:border-box; background:#FC4C02; color:#fff; border:none; border-radius:12px; padding:13px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
   .gr2-strava:hover { background:#e84402; }
-  .gr2-act { width:100%; box-sizing:border-box; background:transparent; color:var(--blue,#0033ff); border:1.5px solid var(--blue,#0033ff); border-radius:12px; padding:12px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gr2-act { flex:1 1 0; min-width:0; box-sizing:border-box; background:transparent; color:var(--blue,#0033ff); border:1.5px solid var(--blue,#0033ff); border-radius:12px; padding:12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
   .gr2-act:hover { background:rgba(0,51,255,.06); }
-  .gr2-gpx { width:100%; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gr2-gpx { flex:1 1 0; min-width:0; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:12px; padding:13px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
   .gr2-gpx:hover { filter:brightness(1.06); }
   .gr2-note { font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4; }
   .gr2-edit input { width:1.4em; font:inherit; font-size:28px; text-align:center; border:none; border-bottom:2px solid var(--blue,#0033ff); background:transparent; outline:none; }
