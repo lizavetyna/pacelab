@@ -80,6 +80,16 @@
     gap: 24px;
     flex-wrap: wrap;
   }
+  .cal-eyebrow {
+    flex: 1 0 100%;
+    width: 100%;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #FC4C02;
+    margin-bottom: 2px;
+  }
   .calibrator-left {
     display: flex;
     align-items: baseline;
@@ -697,7 +707,7 @@
   .pb-title { font-family: "Fraunces", serif; font-size: 26px; line-height: 1.15; color: var(--ink); }
   .pb-title .it { font-style: italic; }
   .pb-sub { color: var(--muted); font-size: 13.5px; margin-top: 8px; max-width: 520px; }
-  .pb-btn { position: relative; overflow: hidden; width: min(560px, 100%); box-sizing: border-box; text-align: center; background: #FC4C02; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 16px 22px; font-size: 15px; box-shadow: 0 6px 18px rgba(252,76,2,.28); transition: transform .15s ease, filter .15s ease; animation: shimmer-pulse-orange 1.8s ease-in-out infinite; }
+  .pb-btn { position: relative; overflow: hidden; width: auto; max-width: 100%; box-sizing: border-box; text-align: center; background: #FC4C02; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 12px 26px; font-size: 14px; box-shadow: 0 6px 18px rgba(252,76,2,.28); transition: transform .15s ease, filter .15s ease; animation: shimmer-pulse-orange 1.8s ease-in-out infinite; }
   .pb-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
   .pb-btn::before { content: ""; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%); animation: shimmer-sweep 1.8s ease-in-out infinite; pointer-events: none; }
   /* Secondary "How it helps you" link under the Step Two CTA */
@@ -2803,6 +2813,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   </div>
 
   <div class="calibrator" id="calibrator">
+    <div class="cal-eyebrow">Step one</div>
     <div class="calibrator-left">
       <div>
         <div class="clbl">Your ideal marathon time</div>
@@ -2887,7 +2898,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     <div class="pb-left">
       <div class="pb-eyebrow">Step two</div>
     </div>
-    <button class="pb-btn" id="planBridgeBtnTop" type="button">It helps you →</button>
+    <button class="pb-btn" id="planBridgeBtnTop" type="button">I help you →</button>
   </div>
 
   <div class="strip" id="strip"></div>
@@ -2968,7 +2979,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   </div>
 
   <div class="plan-bridge bare" id="planBridge">
-    <button class="pb-btn" id="planBridgeBtn" type="button">It helps you →</button>
+    <button class="pb-btn" id="planBridgeBtn" type="button">I help you →</button>
   </div>
 
   <div class="compare-back" id="compareBack"><a href="index.html">← Compare marathon paces — see how you stack up against other runners</a></div>
@@ -4414,7 +4425,6 @@ function _planCardHtml(product){
     + (p.rec ? `<div class="pcard-ribbon">Most complete</div>` : "")
     + `<div class="pcard-name">${p.name}</div>`
     + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b>${p.per?`<span class="per">${p.per}</span>`:""}</div>`
-    + `<div class="pcard-trial">${p.trial?`${TRIAL_DAYS}-day free trial`:""}</div>`
     + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
     + (p.inc?`<span class="pcard-inc">Includes Race Plan</span>`:"")
     + _planFeatureRow(product)
@@ -4471,6 +4481,8 @@ function openPlanChooser(){
   + `<div class="pchooser-grid">${_planCardHtml("race")}${_planCardHtml("static")}${_planCardHtml("dynamic")}</div>`;
   bd.classList.add("open");
   body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); startPlanCheckout(b.getAttribute("data-plan")); }; });
+  // Whole card is clickable — tapping anywhere on a plan card opens checkout for that plan.
+  body.querySelectorAll(".pcard").forEach(c=>{ c.style.cursor="pointer"; c.onclick=()=>startPlanCheckout(c.getAttribute("data-plan")); });
   _wirePlanHoverPreview(body);
 }
 async function startPlanCheckout(product){
