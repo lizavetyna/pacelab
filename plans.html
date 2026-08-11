@@ -88,7 +88,7 @@
     letter-spacing: .14em;
     text-transform: uppercase;
     color: #FC4C02;
-    margin-bottom: 2px;
+    margin-bottom: -18px;
     text-align: center;
   }
   .calibrator-left {
@@ -827,6 +827,8 @@
   .gr2-top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   .gr2-label { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
   .gr2-val { font-family:"Fraunces",serif; font-size:30px; color:var(--ink); line-height:1; cursor:default; }
+  .gr2-change { margin-top:8px; background:transparent; border:1.5px solid var(--line); border-radius:100px; padding:5px 12px; font:inherit; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:border-color .15s ease, color .15s ease; }
+  .gr2-change:hover { border-color:var(--ink); color:var(--ink); }
   .gr2-str { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
   .gr2-timebox { display:flex; flex-direction:column; align-items:flex-end; }
   .gr2-t2 { font-family:"Fraunces",serif; font-size:22px; color:var(--blue,#0033ff); line-height:1.1; }
@@ -3950,7 +3952,7 @@ function _grDynamicCard2(){
   const showConnect = !_plIsDynamic() && !((typeof _grStravaConnected==="function") && _grStravaConnected());
   return `<div class="gr-card gr2">`
     + `<div class="gr2-top">`
-    +   `<div><div class="gr2-label">Your Race Plan</div><div class="gr2-val">${goalRace||"Your race"}</div></div>`
+    +   `<div><div class="gr2-label">Your Race Plan</div><div class="gr2-val">${goalRace||"Your race"}</div><button class="gr2-change" id="gr2Change" type="button">Change race</button></div>`
     +   `<div class="gr2-timebox"><span class="gr2-label">Ideal time</span><span class="gr2-t2">${fmtClock(userTime.flatMinutes)}</span></div>`
     + `</div>`
     + `<div class="gr2-btns">`
@@ -4200,7 +4202,7 @@ function renderGoal() {
   const cond = (m.condReal && m.weather) ? ` \u00B7 race day: ${m.weather}` : "";
   // Free preview walks the first two weeks with the arrows; beyond that we steer to the whole plan.
   const gated = !hasPlan && nw.week && nw.week.week > 2;
-  el.innerHTML = `<div class="gr-card gr-loop">`
+  const firstCard = `<div class="gr-card gr-loop">`
     + `<div class="gr-top">`
     + `<span class="gr-flag">${m.emoji || ""}</span>`
     + `<div><span class="gr-eyebrow">Your goal race</span><span class="gr-name">${goalRace}</span></div>`
@@ -4236,8 +4238,10 @@ function renderGoal() {
     + `</div>`
     + (function(){ const h = gated ? "That\u2019s your first two weeks \u2014 see the whole plan to keep going." : ""; return h ? `<div class="gr-loop-hint">${h}</div>` : ""; })()
     + `<button class="gr-plan-btn${gated?" big":""}" id="goalPlanBtn">See the whole plan →</button>`
-    + `</div></div>`
-    + (_plProduct() ? _grDynamicCard2() : "");
+    + `</div></div>`;
+  // Race plan is pacing-only: hide the training-plan card entirely, show just the Race Plan card.
+  const raceOnly = _plProduct() === "race";
+  el.innerHTML = (raceOnly ? "" : firstCard) + (_plProduct() ? _grDynamicCard2() : "");
   const cb = document.getElementById("goalClearBtn");
   if (cb) cb.onclick = () => clearGoalRace();
   const g2r = document.getElementById("gr2Race");
@@ -4249,6 +4253,8 @@ function renderGoal() {
     else if (mm) { _plRebuildFromStrava(mm); }                                                 // reconnect → recalc from latest runs
   };
   // Race Plan card
+  const g2ch = document.getElementById("gr2Change");
+  if (g2ch) g2ch.onclick = () => clearGoalRace();
   const g2c = document.getElementById("gr2Strava");
   if (g2c) g2c.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
   const g2g = document.getElementById("gr2Gpx");
@@ -4454,6 +4460,23 @@ function _planPreviewHtml(product){
   const workLine = product==="dynamic" ? `<b>Recovery run</b> · adapts to your training`
                  : product==="race"    ? `<b>Race-day pacing</b> · per km / mi`
                  : `<b>Recovery run</b> · 4–6 km easy`;
+  // Race Plan is elevation-aware race-day pacing, not a training calendar — its hover
+  // shows a mini splits list (its real form) instead of the week strip.
+  if(product==="race"){
+    const avg=(userTime.flatMinutes*60)/42.195;
+    const pace=(typeof fmtPaceU==="function") ? fmtPaceU(avg) : "5:20/km";
+    return `<div class="pv-card">`
+      + `<div class="pv-eyebrow">${race} · race day</div>`
+      + `<div class="pv-finishlab">Target finish</div><div class="pv-finish">${finish}</div>`
+      + `<div class="pv-splits">`
+        + `<div class="pv-split"><span>Km 1</span><b>${pace}</b></div>`
+        + `<div class="pv-split climb"><span>Km 8 · climb</span><b>ease off</b></div>`
+        + `<div class="pv-split drop"><span>Km 21 · descent</span><b>press on</b></div>`
+        + `<div class="pv-split"><span>Finish</span><b>${finish}</b></div>`
+      + `</div>`
+      + `<div class="pv-foot">Even effort, not even pace · per km / mi · export to watch</div>`
+      + `</div>`;
+  }
   const isDyn = product==="dynamic";
   const dynBadge = isDyn ? "" : "";
   const mic = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
