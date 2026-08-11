@@ -825,23 +825,25 @@
   /* Dynamic 2nd card (ideal time · Strava · GPX Race Plan) */
   .gr-card.gr2 { margin-top:16px; }
   .gr2-top { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .gr2-grid { display:flex; align-items:center; justify-content:space-between; gap:28px; flex-wrap:wrap; }
+  .gr2-info { display:flex; flex-direction:column; align-items:flex-start; gap:10px; min-width:0; }
   .gr2-label { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
   .gr2-val { font-family:"Fraunces",serif; font-size:30px; color:var(--ink); line-height:1; cursor:default; }
-  .gr2-change { margin-top:8px; background:transparent; border:1.5px solid var(--line); border-radius:100px; padding:5px 12px; font:inherit; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:border-color .15s ease, color .15s ease; }
+  .gr2-change { align-self:flex-start; background:transparent; border:1.5px solid var(--line); border-radius:100px; padding:5px 12px; font:inherit; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:border-color .15s ease, color .15s ease; }
   .gr2-change:hover { border-color:var(--ink); color:var(--ink); }
   .gr2-str { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
-  .gr2-timebox { display:flex; flex-direction:column; align-items:flex-end; }
+  .gr2-timebox { display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
   .gr2-t2 { font-family:"Fraunces",serif; font-size:22px; color:var(--blue,#0033ff); line-height:1.1; }
   .gr2-btn { background:#FC4C02; color:#fff; border:none; border-radius:100px; padding:10px 18px; font:inherit; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; }
   .gr2-btn:hover { background:#e84402; }
   .gr2-link { background:none; border:none; color:var(--muted); text-decoration:underline; text-underline-offset:2px; font:inherit; font-size:12px; cursor:pointer; }
   .gr2-link:hover { color:var(--ink); }
-  .gr2-btns { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
-  .gr2-strava { flex:1 1 auto; background:#FC4C02; color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gr2-btns { display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:10px; margin-top:0; flex:0 0 auto; width:230px; max-width:100%; margin-left:auto; }
+  .gr2-strava { width:100%; box-sizing:border-box; background:#FC4C02; color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .gr2-strava:hover { background:#e84402; }
-  .gr2-act { flex:1; background:transparent; color:var(--blue,#0033ff); border:1.5px solid var(--blue,#0033ff); border-radius:12px; padding:12px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gr2-act { width:100%; box-sizing:border-box; background:transparent; color:var(--blue,#0033ff); border:1.5px solid var(--blue,#0033ff); border-radius:12px; padding:12px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .gr2-act:hover { background:rgba(0,51,255,.06); }
-  .gr2-gpx { flex:1; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gr2-gpx { width:100%; box-sizing:border-box; background:var(--blue,#0033ff); color:#fff; border:none; border-radius:12px; padding:13px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .gr2-gpx:hover { filter:brightness(1.06); }
   .gr2-note { font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4; }
   .gr2-edit input { width:1.4em; font:inherit; font-size:28px; text-align:center; border:none; border-bottom:2px solid var(--blue,#0033ff); background:transparent; outline:none; }
@@ -3951,14 +3953,18 @@ function _grDynamicCard2(){
   // Dynamic connects via its own blue panel, so skip it here.
   const showConnect = !_plIsDynamic() && !((typeof _grStravaConnected==="function") && _grStravaConnected());
   return `<div class="gr-card gr2">`
-    + `<div class="gr2-top">`
-    +   `<div><div class="gr2-label">Your Race Plan</div><div class="gr2-val">${goalRace||"Your race"}</div><button class="gr2-change" id="gr2Change" type="button">Change race</button></div>`
-    +   `<div class="gr2-timebox"><span class="gr2-label">Ideal time</span><span class="gr2-t2">${fmtClock(userTime.flatMinutes)}</span></div>`
-    + `</div>`
-    + `<div class="gr2-btns">`
-    +   (showConnect ? `<button class="gr2-strava" id="gr2Strava" type="button">Connect Strava →</button>` : "")
-    +   `<button class="gr2-act" id="gr2Race" type="button">Race-day pacing →</button>`
-    +   `<button class="gr2-gpx" id="gr2Gpx" type="button">↓ Download GPX</button>`
+    + `<div class="gr2-grid">`
+    +   `<div class="gr2-info">`
+    +     `<button class="gr2-change" id="gr2Change" type="button">Change race</button>`
+    +     `<div class="gr2-label">Your Race Plan</div>`
+    +     `<div class="gr2-val">${goalRace||"Your race"}</div>`
+    +     `<div class="gr2-timebox"><span class="gr2-label">Ideal time</span><span class="gr2-t2">${fmtClock(userTime.flatMinutes)}</span></div>`
+    +   `</div>`
+    +   `<div class="gr2-btns">`
+    +     (showConnect ? `<button class="gr2-strava" id="gr2Strava" type="button">Connect Strava →</button>` : "")
+    +     `<button class="gr2-act" id="gr2Race" type="button">Race-day pacing →</button>`
+    +     `<button class="gr2-gpx" id="gr2Gpx" type="button">↓ Download GPX</button>`
+    +   `</div>`
     + `</div>`
     + `</div>`;
 }
