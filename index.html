@@ -89,6 +89,7 @@
     text-transform: uppercase;
     color: #FC4C02;
     margin-bottom: 2px;
+    text-align: center;
   }
   .calibrator-left {
     display: flex;
@@ -766,11 +767,20 @@
   .pcard.teaser .pcard-feats { filter:blur(3.5px); pointer-events:none; user-select:none; }
   .pcard-switch { margin-top:auto; font-size:11.5px; font-weight:600; color:var(--blue,#0033ff); text-align:center; }
   /* Cursor-following, non-clickable plan preview */
-  .plan-hover-pop { position:fixed; z-index:6000; pointer-events:none; width:250px; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,.22)); }
+  .plan-hover-pop { position:fixed; z-index:6000; pointer-events:none; width:300px; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,.22)); }
   .plan-hover-pop .pcard { background:#fff; border:1px solid var(--line); }
   .pcard-mini2 { font-size:12px; color:var(--muted); margin:2px 0 6px; }
   /* Hover preview mini-mockup (looks like the actual plan screen) */
-  .pv-card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 16px 14px; }
+  .pv-card { position:relative; background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 16px 14px; }
+  .pv-card.boxed .pv-head { padding-right:132px; min-height:104px; }
+  .pv-dynbox { position:absolute; top:12px; right:12px; width:120px; box-sizing:border-box; padding:8px; border-radius:11px; border:1px solid rgba(0,51,255,.2); background:linear-gradient(120deg,#eef2ff,#fdfdff 62%); display:flex; flex-direction:column; gap:6px; }
+  .pv-db-badge { color:var(--blue,#0033ff); font-family:var(--mono,ui-monospace,monospace); font-size:7.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; }
+  .pv-db-btn { background:var(--blue,#0033ff); color:#fff; border-radius:7px; padding:5px 6px; font-size:8.5px; font-weight:700; text-align:center; }
+  .pv-db-row { display:flex; align-items:center; gap:5px; }
+  .pv-db-mic { flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:#FC4C02; color:#fff; display:flex; align-items:center; justify-content:center; }
+  .pv-db-mic svg { width:12px; height:12px; }
+  .pv-db-push { flex:1; min-width:0; background:#FC4C02; color:#fff; border-radius:7px; padding:4px 5px; font-size:8px; font-weight:700; text-align:center; line-height:1.15; }
+  .pv-seeall { margin-top:12px; background:#FC4C02; color:#fff; border-radius:10px; padding:9px; font-size:12px; font-weight:700; text-align:center; box-shadow:0 4px 12px rgba(252,76,2,.24); }
   .pv-eyebrow { font-family:var(--mono,ui-monospace,monospace); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
   .pv-race { font-family:"Fraunces",serif; font-size:18px; color:var(--ink); margin:2px 0 8px; }
   .pv-finishlab { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
@@ -4444,13 +4454,28 @@ function _planPreviewHtml(product){
   const workLine = product==="dynamic" ? `<b>Recovery run</b> · adapts to your training`
                  : product==="race"    ? `<b>Race-day pacing</b> · per km / mi`
                  : `<b>Recovery run</b> · 4–6 km easy`;
-  const dynBadge = product==="dynamic" ? `<div class="pv-badge">Dynamic · Adjustable Plan</div>` : "";
-  return `<div class="pv-card">`
-    + `<div class="pv-eyebrow">Your goal race</div><div class="pv-race">${race}</div>`
-    + `<div class="pv-finishlab">Predicted finish</div><div class="pv-finish">${finish}</div>`
+  const isDyn = product==="dynamic";
+  const dynBadge = isDyn ? "" : "";
+  const mic = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+  // Dynamic: drop the same feature box that's on the plan card (Reconnect + mic + Push me)
+  // into the top-right corner, so its extra features read at a glance vs Static.
+  const dynBox = isDyn
+    ? `<div class="pv-dynbox">`
+      + `<div class="pv-db-badge">Dynamic</div>`
+      + `<div class="pv-db-btn">Reconnect Strava →</div>`
+      + `<div class="pv-db-row"><span class="pv-db-mic">${mic}</span><span class="pv-db-push">Push me when done</span></div>`
+      + `</div>`
+    : "";
+  // Static + Dynamic get the "See whole plan" button at the bottom (Race is a one-off pacing view).
+  const seeAll = (product==="static" || isDyn) ? `<div class="pv-seeall">See whole plan →</div>` : "";
+  return `<div class="pv-card${isDyn?" boxed":""}">`
+    + dynBox
+    + `<div class="pv-head"><div class="pv-eyebrow">Your goal race</div><div class="pv-race">${race}</div>`
+    + `<div class="pv-finishlab">Predicted finish</div><div class="pv-finish">${finish}</div></div>`
     + `<div class="pv-work">${workLine}</div>`
     + dynBadge
     + week
+    + seeAll
     + `</div>`;
 }
 function _wirePlanHoverPreview(scope){
