@@ -69,6 +69,9 @@
   .top .meta strong { color: var(--ink); font-weight: 500; }
 
   /* ===== CALIBRATOR PANEL ===== */
+  .steps-row { display:flex; gap:18px; align-items:stretch; margin:22px 0; }
+  .steps-row > .calibrator, .steps-row > .plan-bridge { flex:1 1 0; min-width:0; margin:0; }
+  @media (max-width:820px){ .steps-row { flex-direction:column; } }
   .calibrator {
     background: var(--paper-2);
     border: 1px solid var(--line);
@@ -2827,6 +2830,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
   </div>
 
+  <div class="steps-row">
   <div class="calibrator" id="calibrator">
     <div class="cal-eyebrow">Step one</div>
     <div class="calibrator-left">
@@ -2914,6 +2918,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       <div class="pb-eyebrow">Step two</div>
     </div>
     <button class="pb-btn" id="planBridgeBtnTop" type="button">I help you →</button>
+  </div>
   </div>
 
   <div class="strip" id="strip"></div>
