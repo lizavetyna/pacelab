@@ -2873,7 +2873,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     <div class="cal-actions-col">
       <div class="cal-actions-row">
         <button class="calibrate-btn reset" id="calReset" style="display:none;">Reset</button>
-        <button class="calibrate-btn shimmer" id="calBtn" type="button" aria-haspopup="true">Connect watch / upload file →</button>
+        <button class="calibrate-btn shimmer cycle-cta" id="calBtn" type="button" aria-haspopup="true"><span class="cc-word" id="calBtnWord">Connect Strava</span> <span class="cc-arrow">→</span></button>
       </div>
       <div class="connect-menu" id="connectMenu" role="menu" aria-label="Choose how to connect" hidden>
         <button class="cm-item" type="button" disabled aria-disabled="true"><span class="cm-name">Strava</span><span class="cm-note">Temporarily unavailable</span></button>
@@ -5854,6 +5854,29 @@ function wireCalibrator() {
   const form = $("calForm");
   // Single smart entry point: the shimmering CTA opens a small provider menu.
   $("calBtn").addEventListener("click", (e) => { e.stopPropagation(); toggleConnectMenu(); });
+  // Restore the rotating platform label (crossfade), purely cosmetic — click still opens the menu.
+  try {
+    const _ccWord = $("calBtnWord"), _ccBtn = $("calBtn");
+    if (_ccWord && _ccBtn && !_ccBtn._ccStarted) {
+      _ccBtn._ccStarted = true;
+      const _ccLabels = ["Connect Strava", "Connect Garmin", "Connect COROS", "Upload GPX / FIT"];
+      let _ccIdx = 0, _ccPaused = false;
+      _ccBtn.addEventListener("mouseenter", () => { _ccPaused = true; });
+      _ccBtn.addEventListener("mouseleave", () => { _ccPaused = false; });
+      setInterval(() => {
+        if (_ccPaused || !_ccBtn.classList.contains("shimmer")) return;   // stop once a real time is set
+        _ccWord.classList.add("cc-out");                                  // slide out left + fade
+        setTimeout(() => {
+          _ccIdx = (_ccIdx + 1) % _ccLabels.length;
+          _ccWord.textContent = _ccLabels[_ccIdx];
+          _ccWord.classList.remove("cc-out");
+          _ccWord.classList.add("cc-in");                                 // jump right (no transition)
+          void _ccWord.offsetWidth;                                       // reflow so slide-in animates
+          _ccWord.classList.remove("cc-in");                             // slide in from right + fade
+        }, 380);
+      }, 2600);
+    }
+  } catch (e) {}
   { const _mg = $("cmGarmin"); if (_mg) _mg.addEventListener("click", () => { closeConnectMenu(); connectGarmin(); }); }
   { const _mf = $("cmFile"); if (_mf) _mf.addEventListener("click", () => { closeConnectMenu(); const gi = $("gpxInput"); if (gi) gi.click(); }); }
   $("calReset").addEventListener("click", () => {
