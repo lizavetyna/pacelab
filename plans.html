@@ -246,6 +246,14 @@
     60%  { left: 110%; }
     100% { left: 110%; }
   }
+  /* Cycling connect CTA: word crossfades left-to-right (color + shimmer sweep unchanged) */
+  .cycle-cta .cc-word { display:inline-block; transition: opacity .34s ease, transform .34s ease; will-change: opacity, transform; }
+  .cycle-cta .cc-word.cc-out { opacity:0; transform: translateX(-14px); }
+  .cycle-cta .cc-word.cc-in { opacity:0; transform: translateX(14px); transition:none; }
+  .cycle-cta .cc-arrow { display:inline-block; margin-left:2px; }
+  @media (prefers-reduced-motion: reduce) {
+    .cycle-cta .cc-word { transition: none; }
+  }
   @keyframes shimmer-pulse {
     0%, 100% {
       box-shadow: 0 0 0 0 rgba(29,78,216,0.0), 0 4px 16px rgba(29,78,216,0.22);
@@ -346,7 +354,7 @@
   /* Strava has its own dedicated Connect button, so hide the redundant estimate tab. */
   .cf-tab[data-mode="strava"] { display: none; }
   /* Connect button + "don't have Strava?" affordance beneath it */
-  .cal-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .cal-actions-col { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .cal-actions-row { display: flex; gap: 8px; }
   .cal-no-strava {
     display: inline-block; background: none; border: none; padding: 0; margin: 0;
@@ -354,6 +362,29 @@
     color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
   }
   .cal-no-strava:hover { color: var(--ink); }
+  /* Provider selection menu opened by the single primary CTA */
+  .connect-menu {
+    position: absolute; top: calc(100% + 8px); right: 0; z-index: 50;
+    min-width: 248px; max-width: 88vw; box-sizing: border-box;
+    background: var(--paper, #fff); border: 1px solid var(--line);
+    border-radius: 14px; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+    box-shadow: 0 16px 40px rgba(10,10,15,.16);
+    opacity: 0; transform: translateY(-6px); transition: opacity .16s ease, transform .16s ease;
+  }
+  .connect-menu.open { opacity: 1; transform: translateY(0); }
+  .cm-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%; box-sizing: border-box; text-align: left;
+    background: transparent; border: none; border-radius: 10px; padding: 12px 14px;
+    font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer;
+    transition: background .12s ease;
+  }
+  .cm-item:hover:not(:disabled) { background: rgba(0,51,255,.06); }
+  .cm-item:disabled { cursor: default; opacity: .55; }
+  .cm-item .cm-name { white-space: nowrap; }
+  .cm-item:disabled .cm-name { color: var(--muted); }
+  .cm-item .cm-note { font-size: 11.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .cm-item .cm-arrow { color: #FC4C02; font-weight: 700; }
   /* Connect Strava = brand orange, with the shine kept (orange pulse + white sweep) */
   #calBtn.shimmer, #calBtn { background:#FC4C02; border-color:#FC4C02; color:#fff; animation: shimmer-pulse-orange 1.8s ease-in-out infinite; }
   #calBtn.shimmer:hover, #calBtn:hover { background:#e84402; border-color:#e84402; color:#fff; transform:translateY(-1px); box-shadow:0 6px 20px rgba(252,76,2,.32); }
@@ -2838,17 +2869,19 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         <div class="clbl">Your ideal marathon time</div>
         <div class="ctime shimmer" id="calTimeWrap"><span id="calTime">4:00:00</span></div>
       </div>
-      <div>
-        <div class="clbl">Mode</div>
-
-      </div>
     </div>
     <div class="cal-actions-col">
       <div class="cal-actions-row">
         <button class="calibrate-btn reset" id="calReset" style="display:none;">Reset</button>
-        <button class="calibrate-btn shimmer" id="calBtn">Connect Strava →</button>
+        <button class="calibrate-btn shimmer" id="calBtn" type="button" aria-haspopup="true">Connect watch / upload file →</button>
       </div>
-      <button type="button" class="cal-no-strava" id="calNoStrava">don't have Strava?</button>
+      <div class="connect-menu" id="connectMenu" role="menu" aria-label="Choose how to connect" hidden>
+        <button class="cm-item" type="button" disabled aria-disabled="true"><span class="cm-name">Strava</span><span class="cm-note">Temporarily unavailable</span></button>
+        <button class="cm-item" type="button" disabled aria-disabled="true"><span class="cm-name">COROS</span><span class="cm-note">Temporarily unavailable</span></button>
+        <button class="cm-item" id="cmGarmin" type="button" role="menuitem"><span class="cm-name">Garmin</span><span class="cm-arrow">→</span></button>
+        <button class="cm-item" id="cmFile" type="button" role="menuitem"><span class="cm-name">Download GPX / FIT file</span><span class="cm-arrow">→</span></button>
+      </div>
+      <button type="button" class="cal-no-strava" id="calNoStrava">don't have any?</button>
     </div>
     <div class="calibrator-form" id="calForm">
       <div class="cf-tabs">
@@ -3669,8 +3702,11 @@ function _grPinRender(){
 async function _svRecent(force){
   const pid = window.PACELAB_PID; if(!pid) return null;
   if(!force){ try { const c=JSON.parse(localStorage.getItem("pacelab_strava_recent")||"null"); if(c&&c.at&&(Date.now()-c.at)<2700000&&c.data) return c.data; } catch(e){} }
+  // Same recent-runs summary regardless of source; Garmin routes through Junction's refresh+workouts.
+  let _svSource = "strava"; try { const _si = JSON.parse(localStorage.getItem("pacelab_strava")||"null"); if(_si && _si.source === "garmin") _svSource = "garmin"; } catch(e){}
+  const _svEndpoint = _svSource === "garmin" ? "/garmin/sync" : "/strava/recent";
   try {
-    const res=await fetch(STRAVA_WORKER_URL+"/strava/recent",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ pid }) });
+    const res=await fetch(STRAVA_WORKER_URL+_svEndpoint,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ pid }) });
     const d=await res.json();
     if(d&&d.ok){ try { localStorage.setItem("pacelab_strava_recent", JSON.stringify({ at:Date.now(), data:d })); } catch(e){} }
     return d||null;
@@ -5816,8 +5852,10 @@ function wireCalibrator() {
   try { wireUnitToggle(); } catch(e){}
   try { document.documentElement.classList.toggle("has-plan", !!_plProduct()); } catch(e){}
   const form = $("calForm");
-  // Primary action is now "Connect Strava" (manual entry is via "don't have Strava?").
-  $("calBtn").addEventListener("click", connectStrava);
+  // Single smart entry point: the shimmering CTA opens a small provider menu.
+  $("calBtn").addEventListener("click", (e) => { e.stopPropagation(); toggleConnectMenu(); });
+  { const _mg = $("cmGarmin"); if (_mg) _mg.addEventListener("click", () => { closeConnectMenu(); connectGarmin(); }); }
+  { const _mf = $("cmFile"); if (_mf) _mf.addEventListener("click", () => { closeConnectMenu(); const gi = $("gpxInput"); if (gi) gi.click(); }); }
   $("calReset").addEventListener("click", () => {
     userTime.flatMinutes = 240;
     userTime.mode = 'baseline';
@@ -6449,6 +6487,49 @@ function connectStrava() {
   window.location.href = url;
 }
 
+// Provider selection menu opened by the single primary CTA.
+function openConnectMenu() {
+  const m = $("connectMenu"); if (!m) return;
+  m.hidden = false;
+  requestAnimationFrame(() => m.classList.add("open"));
+  setTimeout(() => document.addEventListener("click", _connectMenuOutside), 0);
+}
+function closeConnectMenu() {
+  const m = $("connectMenu"); if (!m) return;
+  m.classList.remove("open");
+  document.removeEventListener("click", _connectMenuOutside);
+  setTimeout(() => { if (!m.classList.contains("open")) m.hidden = true; }, 180);
+}
+function toggleConnectMenu() {
+  const m = $("connectMenu"); if (!m) return;
+  if (m.classList.contains("open")) closeConnectMenu(); else openConnectMenu();
+}
+function _connectMenuOutside(e) {
+  const m = $("connectMenu"), btn = $("calBtn");
+  if (!m) return;
+  if (m.contains(e.target) || (btn && btn.contains(e.target))) return;
+  closeConnectMenu();
+}
+
+// Connect Garmin (backend uses Junction; users never see that word). Mirrors connectStrava:
+// ask the worker for a hosted connect URL, then redirect out and return to ?state=garmin.
+async function connectGarmin() {
+  openStravaTab();
+  showStravaStatus("Opening Garmin…", null);
+  const redirect = location.origin + location.pathname + "?state=garmin";
+  try {
+    const res = await fetch(STRAVA_WORKER_URL + "/garmin/link-start", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pid: window.PACELAB_PID || "", redirect }),
+    });
+    const d = await res.json();
+    if (d && d.ok && d.url) { window.location.href = d.url; return; }
+    showStravaStatus("Couldn’t start the Garmin connection — please try again in a moment.", false);
+  } catch (e) {
+    showStravaStatus("Couldn’t reach the connection service. Please try again.", false);
+  }
+}
+
 function openStravaTab() {
   const form = $("calForm");
   if (form) form.classList.add("open");
@@ -6549,7 +6630,8 @@ function adoptStravaAccount(account) {
   } catch (e) {}
 }
 
-function applyStravaEstimate(data) {
+function applyStravaEstimate(data, source) {
+  source = source || (data && data.source) || "strava";
   const best = data.vdotMarathonSeconds || data.estimateSeconds;
   userTime.flatMinutes = best / 60;
   userTime.mode = 'real';
@@ -6563,7 +6645,7 @@ function applyStravaEstimate(data) {
     `Analyzed ${data.runsAnalyzed} runs — on your current fitness your realistic best marathon is ${data.vdotMarathonHMS || data.estimateHMS}${conf}.${vtxt} We've set it above; tweak it anytime.`,
     true
   );
-  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, weeklyKm: data.weeklyKm, vdot: data.vdot || 0, vdotMarathonSeconds: data.vdotMarathonSeconds || 0, lastActivity: data.lastActivity || null, at: Date.now() })); } catch (e) {}
+  try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, source: source, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, weeklyKm: data.weeklyKm, vdot: data.vdot || 0, vdotMarathonSeconds: data.vdotMarathonSeconds || 0, lastActivity: data.lastActivity || null, at: Date.now() })); } catch (e) {}
   setStravaConnectedUI(true, data.vdotMarathonHMS || data.estimateHMS);
   try { if (!localStorage.getItem("pacelab_first_analysis")) { localStorage.setItem("pacelab_first_analysis", "1"); _grFirstConnectMessage(data); } } catch (e) {}
 }
@@ -6636,6 +6718,46 @@ function restoreStravaUI() {
     } catch (e) {
       showStravaStatus("Couldn't reach the analysis service. Please try again in a moment.", false);
     }
+  });
+})();
+
+// Garmin return (via Junction). We don't wait for the whole history to finish importing —
+// we poll for the estimate and apply it the moment there's enough running history.
+(function handleGarminReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("state") !== "garmin") return;
+  const error = params.get("error");
+  window.history.replaceState({}, "", window.location.pathname);
+
+  const run = (fn) => {
+    if (document.readyState === 'loading') window.addEventListener("DOMContentLoaded", fn, { once: true });
+    else fn();
+  };
+
+  if (error) {
+    run(() => { openStravaTab(); showStravaStatus("Garmin connection was cancelled — you can try again anytime.", false); });
+    return;
+  }
+
+  run(async () => {
+    openStravaTab();
+    startStravaFortune();
+    const maxTries = 24, delayMs = 3000;   // ~72s of polling while Garmin history streams in
+    for (let i = 0; i < maxTries; i++) {
+      try {
+        const res = await fetch(STRAVA_WORKER_URL + "/garmin/estimate", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pid: window.PACELAB_PID || undefined }),
+        });
+        const data = await res.json();
+        if (data && data.estimateSeconds) { applyStravaEstimate(data, "garmin"); return; }   // enough history -> apply now
+        if (data && data.reason === "not_connected") { showStravaStatus("Garmin isn’t connected yet — please try again.", false); return; }
+        // reason "importing" / not_enough_data -> keep polling
+      } catch (e) { /* transient -> keep polling */ }
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+    stopStravaFortune();
+    showStravaStatus("We’re still importing your Garmin runs — give it a moment, then tap Sync to finish.", false);
   });
 })();
 
