@@ -2876,9 +2876,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         <button class="calibrate-btn shimmer cycle-cta" id="calBtn" type="button" aria-haspopup="true"><span class="cc-word" id="calBtnWord">Connect Strava</span> <span class="cc-arrow">→</span></button>
       </div>
       <div class="connect-menu" id="connectMenu" role="menu" aria-label="Choose how to connect" hidden>
-        <button class="cm-item" type="button" disabled aria-disabled="true"><span class="cm-name">Strava</span><span class="cm-note">Temporarily unavailable</span></button>
-        <button class="cm-item" type="button" disabled aria-disabled="true"><span class="cm-name">COROS</span><span class="cm-note">Temporarily unavailable</span></button>
+        <button class="cm-item" id="cmStrava" type="button" role="menuitem"><span class="cm-name">Strava</span><span class="cm-arrow">→</span></button>
         <button class="cm-item" id="cmGarmin" type="button" role="menuitem"><span class="cm-name">Garmin</span><span class="cm-arrow">→</span></button>
+        <button class="cm-item" type="button" disabled aria-disabled="true"><span class="cm-name">COROS</span><span class="cm-note">Temporarily unavailable</span></button>
         <button class="cm-item" id="cmFile" type="button" role="menuitem"><span class="cm-name">Download GPX / FIT file</span><span class="cm-arrow">→</span></button>
       </div>
       <button type="button" class="cal-no-strava" id="calNoStrava">don't have any?</button>
@@ -3238,7 +3238,7 @@ const FORMSPREE_ID = "xwvjkgnj";
 const SHEET_ENDPOINT = "";
 
 // ===== STRAVA =====
-const STRAVA_CLIENT_ID = "255679";
+const STRAVA_CLIENT_ID = "273269";   // Strava client with the fresh 10-athlete cap.
 const STRAVA_WORKER_URL = "https://pacelab-strava.lizavetyna.workers.dev";
 
 // ── Lightweight funnel analytics (anonymous pid only) ──────────────────────────
@@ -5877,6 +5877,7 @@ function wireCalibrator() {
       }, 2600);
     }
   } catch (e) {}
+  { const _ms = $("cmStrava"); if (_ms) _ms.addEventListener("click", () => { closeConnectMenu(); connectStrava(); }); }
   { const _mg = $("cmGarmin"); if (_mg) _mg.addEventListener("click", () => { closeConnectMenu(); connectGarmin(); }); }
   { const _mf = $("cmFile"); if (_mf) _mf.addEventListener("click", () => { closeConnectMenu(); const gi = $("gpxInput"); if (gi) gi.click(); }); }
   $("calReset").addEventListener("click", () => {
