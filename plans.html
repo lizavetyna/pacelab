@@ -799,6 +799,22 @@
   .pcard-cta.solid { background:var(--blue,#0033ff); color:#fff; }
   .pcard-cta.ghost { background:transparent; color:var(--ink); border:1.5px solid var(--line); }
   .pcard-cta.ghost:hover { border-color:var(--ink); }
+  /* Chooser layout: widen the modal for 3 columns; align prices, feature-lists and CTAs. */
+  .modal:has(.pchooser-grid) { max-width: 940px; }
+  .pchooser-grid { gap: 22px; margin-top: 22px; }        /* room between cards + clearance for the ribbon */
+  .pcard { padding: 24px 20px 20px; }
+  .pcard-price { margin: 14px 0 4px; }
+  .pcard-price .per { white-space: nowrap; }              /* never wrap "one-time" as "one-/time" */
+  .pcard-trial { min-height: 44px; display:flex; flex-direction:column; justify-content:flex-start; margin-bottom:12px; }
+  .pcard-trial b { font-size:12.5px; }
+  .pcard-trial-sub { display:block; font-size:10.5px; color:var(--muted); font-weight:500; line-height:1.35; margin-top:3px; }
+  .pcard-trial-empty { min-height:44px; }                 /* reserve equal space so feature lists align */
+  .pcard-feats { flex:1 1 auto; margin-bottom:14px; }
+  @media (max-width: 720px) {
+    .modal:has(.pchooser-grid) { max-width: 520px; }
+    .pchooser-grid { grid-template-columns: 1fr; gap: 16px; margin-top: 20px; }
+    .pcard-cta { font-size: 14px; }                        /* keep full CTA legible when stacked */
+  }
   /* Race Plan splits table */
   .rp-head { display:flex; justify-content:space-between; font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:8px 4px 6px; border-bottom:1px solid var(--line); }
   .rp-list { max-height:340px; overflow:auto; margin-top:2px; }
@@ -1124,6 +1140,13 @@
   .plan-lock-overlay .pl-txt { font-size: 12.5px; font-weight: 700; color: var(--ink); }
   .plan-lock-overlay .pl-sub { font-size: 11px; color: var(--muted); }
   .plan-preview-legend { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+  /* Two-week interactive preview: locked weeks (3+) blurred behind the unlock overlay; their rows
+     carry no workout detail in the DOM and are not interactive. */
+  .plw-preview-lockwrap { position: relative; margin-top: 4px; }
+  .plw-preview-lockwrap .plw-item { filter: blur(4px); opacity: .92; user-select: none; pointer-events: none; }
+  .plw-preview-lockwrap .plw-locked-row { cursor: default; }
+  .plw-preview-lockwrap .plw-lockico { color: var(--blue, #0033ff); display: inline-flex; align-items: center; margin-left: 6px; }
+  .plw-preview-lockwrap .plan-lock-overlay { border-radius: 12px; }
   .plan-preview-legend span { display: inline-flex; align-items: center; gap: 5px; }
   .plan-preview-legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
   .plan-preview-legend i.key { background: var(--blue); }
@@ -1772,7 +1795,9 @@
     background: rgba(20,20,15,0.55);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    z-index: 200;
+    /* Above the goal/plan cards and the fixed coach-pin (z 4000) so the modal + its CTA are never
+       obscured; still below the chooser hover-preview (z 6000) and transient toasts (z 9999). */
+    z-index: 5000;
     display: none;
     align-items: center;
     justify-content: center;
@@ -1780,6 +1805,8 @@
     opacity: 0;
     transition: opacity .2s ease;
   }
+  /* While any modal is open, hide the floating fixed goal/plan elements so nothing overlaps it. */
+  html.modal-open .coach-pin { display: none !important; }
   .modal-backdrop.open {
     display: flex;
     opacity: 1;
@@ -4373,10 +4400,11 @@ function renderGoal() {
           // Paid owner: no preview banner — a clear owned state + direct action.
           return `<div class="gr-owner-chip"><span class="gr-owner-ok"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Full plan unlocked</span><button class="gr-plan-btn sm" id="goalOpenFull" type="button">Open full plan →</button></div>`;
         }
-        // Unpaid: explicit preview banner naming the limit + locked weeks + gated CTA.
+        // Unpaid: upsell banner (no "preview/first-2-weeks" framing) + locked-weeks indicator + CTA
+        // that opens the product chooser (direct-buy).
         return `<div class="gr-preview-banner">`
-          + `<div class="gr-pv-main"><div class="gr-pv-t">Preview — first 2 weeks only</div>`
-          + `<div class="gr-pv-s">Unlock your full plan to see all workouts and coaching.${totalWeeks>2?` <span class="gr-pv-lock">${lockSvg} Weeks 3–${totalWeeks} locked</span>`:""}</div></div>`
+          + `<div class="gr-pv-main"><div class="gr-pv-t">Unlock your full training plan</div>`
+          + `<div class="gr-pv-s">See every workout and your adaptive coach.${totalWeeks>2?` <span class="gr-pv-lock">${lockSvg} Weeks 3–${totalWeeks} locked</span>`:""}</div></div>`
           + `<button class="gr-plan-btn" id="goalPreviewCta" type="button">See the whole plan →</button></div>`;
       })()
     + `<div class="gr-loop-row">`
@@ -4485,8 +4513,6 @@ function renderGoal() {
   if (nb) nb.onclick = () => {
     const mm = MARATHONS[goalRace];
     const before = mm ? _plNextFor(mm) : null;
-    // Non-owner advancing through the free first-two-weeks preview = a meaningful preview step.
-    if (!hasPlan) { try { trackEv("preview_week_viewed", { marathon: goalRace||null, race_slug: goalRace?raceSlug(goalRace):null, source:"goal_card" }); } catch(e){} }
     _plClearAdjust(); _plMarkDone(nb.getAttribute("data-type")); renderGoal();
     // Strava check-in reaction is a Dynamic-plan feature; Static just confirms.
     if (before && !before.complete && _plIsDynamic() && _grStravaConnected()) _grReactToActivity(before.session, before.week, before.plan.zones);
@@ -4635,29 +4661,27 @@ function _revealPlanTop(){
 }
 // The three products as data, so the chooser and the "selected" step share one card renderer.
 const PLAN_META = {
-  race:    { name:"Race",    priceN:PRICE_RACE,    per:"one-time", trial:false, teaser:"Your race-day pacing, sorted.",     feats:["Elevation-aware splits every km / mi","Paced to the course, not linear","Export to your watch (GPX)"], inc:false, cls:"ghost" },
-  static:  { name:"Static",  priceN:PRICE_STATIC,  per:"one-time", trial:false, teaser:"A clear week-by-week plan.",         feats:["Week-by-week to race day","Open any week’s workouts"], inc:true,  cls:"solid" },
-  dynamic: { name:"Dynamic", priceN:PRICE_DYNAMIC, per:"/month",   trial:false, teaser:"A plan that adapts as you train.",   feats:["Everything in Static","Adapts when you miss or change"], inc:true, cls:"primary", rec:true },
+  race:    { name:"Race",    priceN:PRICE_RACE,    per:"one-time", trial:false, cta:"Buy Race Plan",
+             feats:["Elevation-aware race pacing","Personal target time","GPX / Garmin export"], cls:"ghost" },
+  static:  { name:"Static",  priceN:PRICE_STATIC,  per:"one-time", trial:false, cta:"Buy Static Plan",
+             feats:["Full week-by-week training plan","Race Plan included","Fixed plan through race day"], cls:"solid" },
+  dynamic: { name:"Dynamic", priceN:PRICE_DYNAMIC, per:"/month",   trial:true,  cta:"Start 14-day free trial", rec:true,
+             feats:["Everything in Static","Adapts to missed/changed training","Strava sync","Coach","Recovery"], cls:"primary" },
 };
-// Visual differentiators — the live features you get (lit for Dynamic, greyed for Static).
-function _planFeatureRow(product){
-  if(product==="race") return "";
-  const on = product==="dynamic";
-  const chip=(label)=>`<span class="pf-chip${on?" on":""}"><span class="pf-dot"></span>${label}</span>`;
-  return `<div class="pf-row">${chip("Strava sync")}${chip("Coach")}${chip("Recovery")}</div>`;
-}
 function _planCardHtml(product){
   const p = PLAN_META[product]; if(!p) return "";
-  // FINAL model CTAs: Race buys directly; Static/Dynamic open the free 2-week preview first.
-  const cta = product === "race" ? "Buy Race Plan" : "Open preview";
+  // Dynamic shows its 14-day trial framing; Race/Static reserve the same block (empty) so all three
+  // feature lists start at the same vertical position and CTAs align along the bottom.
+  const trialRow = p.trial
+    ? `<div class="pcard-trial"><b>14 days free</b><span class="pcard-trial-sub">then ${fmtPrice(p.priceN)}/month · cancel anytime before the trial ends</span></div>`
+    : `<div class="pcard-trial pcard-trial-empty" aria-hidden="true"></div>`;
   return `<div class="pcard${p.rec?" rec":""}" data-plan="${product}">`
     + (p.rec ? `<div class="pcard-ribbon">Most complete</div>` : "")
     + `<div class="pcard-name">${p.name}</div>`
-    + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b>${p.per?`<span class="per">${p.per}</span>`:""}</div>`
+    + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b><span class="per">${p.per}</span></div>`
+    + trialRow
     + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
-    + (p.inc?`<span class="pcard-inc">Includes Race Plan</span>`:"")
-    + _planFeatureRow(product)
-    + `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${cta}</button>`
+    + `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${p.cta}</button>`
     + `</div>`;
 }
 // A prominent, NON-clickable preview that follows the cursor — a mini mockup of what
@@ -4743,45 +4767,17 @@ function openPlanChooser(){
   bd.classList.add("open");
   try { trackEv("product_chooser_viewed", { marathon: goalRace||null, race_slug:(goalRace?raceSlug(goalRace):null), source:"chooser" }); } catch(e){}
   body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); _planCardAction(b.getAttribute("data-plan")); }; });
-  // Whole card is clickable — Race buys directly; Static/Dynamic open the free preview first.
+  // Whole card is clickable — every product goes straight to Stripe checkout (no preview step).
   body.querySelectorAll(".pcard").forEach(c=>{ c.style.cursor="pointer"; c.onclick=()=>_planCardAction(c.getAttribute("data-plan")); });
   _wirePlanHoverPreview(body);
 }
-// Chooser click dispatch: Race → buy immediately; Static/Dynamic → open the free 2-week preview
-// (which then carries the product-specific buy CTA). Never mutates any existing entitlement.
+// Chooser click dispatch: every product goes DIRECTLY to Stripe checkout (the 2-week preview flow
+// was removed). Never mutates any existing entitlement.
 function _planCardAction(product){
   const slug = goalRace ? raceSlug(goalRace) : null;
   try { trackEv("product_selected", { product, marathon: goalRace||null, race_slug: slug, source:"chooser" }); } catch(e){}
-  if (product === "race") {
-    try { trackEv("race_plan_buy_clicked", { product:"race", marathon: goalRace||null, race_slug: slug, source:"chooser" }); } catch(e){}
-    startPlanCheckout("race");
-  } else {
-    openPlanPreview(product);
-  }
-}
-// Static/Dynamic preview: the existing free first-two-weeks preview + a single product buy CTA.
-// Opening the preview creates NO entitlement and (for Dynamic) does NOT unlock the coach — the
-// coach stays gated on a real Dynamic entitlement (pacelab_plan), which only checkout sets.
-function openPlanPreview(product){
-  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop"); if(!body||!bd) return;
-  const name = goalRace, m = name ? MARATHONS[name] : null;
-  const slug = name ? raceSlug(name) : null;
-  const buyLabel = product === "dynamic"
-    ? `Start Dynamic Plan — ${fmtPrice(PRICE_DYNAMIC)}/month`
-    : `Buy Static Plan — ${fmtPrice(PRICE_STATIC)}`;
-  body.innerHTML = `<div class="plan-eyebrow">${m&&m.emoji?m.emoji+" ":""}Preview — first 2 weeks only</div>`
-    + `<h2 class="plan-title">Your first two weeks for <span class="it">${name||"your race"}</span>.</h2>`
-    + `<p class="plan-sub">Weeks 1–2 are free to preview. Weeks 3+ unlock when you buy — no trial, just the plan.</p>`
-    + (m ? _grPlanPreview(name, m) : "")
-    + `<button class="gr-plan-btn big" id="planBuyCta" type="button">${buyLabel}</button>`;
-  bd.classList.add("open");
-  try { trackEv("preview_opened", { product, marathon: name||null, race_slug: slug, source:"chooser" }); } catch(e){}
-  try { trackEv("preview_week_viewed", { product, marathon: name||null, race_slug: slug, source:"preview" }); } catch(e){}
-  const cta = document.getElementById("planBuyCta");
-  if (cta) cta.onclick = () => {
-    try { trackEv("preview_buy_clicked", { product, marathon: name||null, race_slug: slug, source:"preview" }); } catch(e){}
-    startPlanCheckout(product);
-  };
+  if (product === "race") { try { trackEv("race_plan_buy_clicked", { product:"race", marathon: goalRace||null, race_slug: slug, source:"chooser" }); } catch(e){} }
+  startPlanCheckout(product);
 }
 async function startPlanCheckout(product){
   try{ localStorage.setItem("pacelab_selected_product", product); }catch(e){}
@@ -4904,12 +4900,11 @@ function openPlanModal(name) {
     <ul class="plan-list">
       <li>Every workout scheduled out to race day</li>
       <li>Auto-adjusts to your fitness and the forecast</li>
-      <li>Pay once \u2014 Dynamic is billed monthly, cancel anytime</li>
+      <li>Race &amp; Static one-time \u00b7 Dynamic 14 days free, then monthly</li>
     </ul>
     <button class="gr-plan-btn big" id="planChooseCta">Choose your plan \u2192</button>
-    <div class="plan-fineprint">Race \u20ac3.99 \u00b7 Static \u20ac9.99 \u2014 one-time \u00b7 Dynamic \u20ac19.99/month</div>`;
+    <div class="plan-fineprint">Race \u20ac3.99 \u00b7 Static \u20ac9.99 \u2014 one-time \u00b7 Dynamic \u20ac19.99/month (14 days free)</div>`;
   document.getElementById("modalBackdrop").classList.add("open");
-  try { trackEv("preview_opened", { marathon: name||null, race_slug: name?raceSlug(name):null, source:"goal_card" }); } catch(e){}
   const cta = document.getElementById("planChooseCta");
   if (cta) cta.onclick = () => { try { openPlanChooser(); } catch(e){} };
 }
@@ -7106,6 +7101,47 @@ function restoreStravaUI() {
   if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", run, { once: true }); else run();
 })();
 
+// ===== DEV: preview the post-payment (owner) screens without paying =====
+// Client-side ONLY — sets the same localStorage entitlement a real purchase would, then renders the
+// owner state directly (no reload, so the load-time /plan/status restore can't clear it). It grants
+// NO server entitlement and does not touch the Stripe/paywall path, so it's safe like the existing
+// ?unlock comp mechanism. Usage:
+//   ...plans.html?debug=static:sydney   → paid Static owner of Sydney
+//   ...plans.html?debug=race:berlin     → paid Race owner of Berlin
+//   ...plans.html?debug=dynamic         → Dynamic owner (race-switchable)
+//   ...plans.html?debug=off             → back to unpaid
+// Or from the console anytime:  pacelabDebugPlan('static','Sydney')   /   pacelabDebugPlan('off')
+function pacelabDebugPlan(product, raceName){
+  try {
+    product = String(product||"").toLowerCase();
+    if (product === "off") { try { localStorage.removeItem("pacelab_plan"); } catch(e){}
+      try { if (typeof loadGoalFromStorage==="function") loadGoalFromStorage(); } catch(e){}
+      try { renderGoal(); } catch(e){}
+      console.log("[pacelab debug] cleared entitlement (unpaid)"); return; }
+    if (["race","static","dynamic"].indexOf(product) < 0) product = "static";
+    let race = raceName || goalRace || "Sydney";
+    if (!MARATHONS[race]) { const hit = Object.keys(MARATHONS).find(n => raceSlug(n) === String(raceName||"").toLowerCase()); race = hit || "Sydney"; }
+    const slug = raceSlug(race);
+    const plan = { product, status: product === "dynamic" ? "active" : "paid", race_slug: product === "dynamic" ? null : slug, at: Date.now() };
+    try { localStorage.setItem("pacelab_goal", race); localStorage.setItem("pacelab_plan", JSON.stringify(plan)); } catch(e){}
+    try { if (typeof loadGoalFromStorage==="function") loadGoalFromStorage(); } catch(e){}
+    // Reveal + render the owner card on either view (no reload).
+    try { if (window.PACELAB_VIEW !== "plans" && typeof _revealPlanTop === "function") _revealPlanTop(); else renderGoal(); } catch(e){ try { renderGoal(); } catch(_){} }
+    console.log("[pacelab debug] owner state:", plan, "· race:", race, "· open the goal card / Race Plan / Open full plan to inspect");
+  } catch(e){ try { console.warn("[pacelab debug] failed", e); } catch(_){} }
+}
+try { window.pacelabDebugPlan = pacelabDebugPlan; } catch(e){}
+(function wireDebugState(){
+  const run = () => {
+    let p; try { p = new URLSearchParams(location.search).get("debug"); } catch(e){}
+    if (!p) return;
+    try { history.replaceState({}, "", location.pathname + (window.PACELAB_PID ? "?p=" + encodeURIComponent(window.PACELAB_PID) : "")); } catch(e){}
+    const [prod, race] = String(p).split(":");
+    pacelabDebugPlan(prod, race);
+  };
+  if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", run, { once: true }); else run();
+})();
+
 // One-time, self-dismissing success confirmation shown after a verified plan purchase.
 // Deliberately NOT persisted and NOT a standing banner — the owner state ("✓ Full plan
 // unlocked" chip on the goal card) is the durable indicator; this is just the moment-of-purchase
@@ -7125,6 +7161,19 @@ function showPlanReadyToast() {
   t.querySelector(".prt-x").onclick = close;
   setTimeout(close, 6000);
 }
+
+// Keep an html.modal-open flag in sync with the modal backdrop, so underlying floating elements
+// (e.g. the fixed coach-pin) can be hidden while any modal/preview/chooser is open. Robust across
+// every open/close path since it observes the backdrop's class rather than each call site.
+(function wireModalOpenFlag(){
+  const run = () => {
+    const bd = document.getElementById("modalBackdrop"); if (!bd) return;
+    const sync = () => { try { document.documentElement.classList.toggle("modal-open", bd.classList.contains("open")); } catch(e){} };
+    try { new MutationObserver(sync).observe(bd, { attributes:true, attributeFilter:["class"] }); } catch(e){}
+    sync();
+  };
+  if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", run, { once:true }); else run();
+})();
 
 (function handlePlanReturn() {
   const params = new URLSearchParams(location.search);
