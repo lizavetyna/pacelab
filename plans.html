@@ -799,6 +799,15 @@
   .pcard-cta.solid { background:var(--blue,#0033ff); color:#fff; }
   .pcard-cta.ghost { background:transparent; color:var(--ink); border:1.5px solid var(--line); }
   .pcard-cta.ghost:hover { border-color:var(--ink); }
+  /* Compact, secondary "Pick a marathon" control above the cards — must not compete with them. */
+  .pchooser-race { display:flex; align-items:center; gap:8px; margin:16px 0 2px; }
+  .pchooser-race-lab { font-family:var(--mono,monospace); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+  .pchooser-race-sel select { font:inherit; font-size:12.5px; font-weight:600; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:8px; padding:5px 26px 5px 9px; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 9px center; }
+  .pchooser-race-sel select:hover { border-color:var(--ink); }
+  /* Per-plan projected finish for the selected marathon (recalculated on change). */
+  .pcard-proj { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:0 0 12px; padding:6px 10px; background:rgba(0,51,255,.05); border-radius:8px; }
+  .pcard-proj-lab { font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+  .pcard-proj-val { font-family:var(--serif,Georgia,serif); font-size:15px; color:var(--blue,#0033ff); white-space:nowrap; }
   /* Chooser layout: widen the modal for 3 columns; align prices, feature-lists and CTAs. */
   .modal:has(.pchooser-grid) { max-width: 940px; }
   .pchooser-grid { gap: 22px; margin-top: 22px; }        /* room between cards + clearance for the ribbon */
@@ -4668,18 +4677,30 @@ const PLAN_META = {
   dynamic: { name:"Dynamic", priceN:PRICE_DYNAMIC, per:"/month",   trial:true,  cta:"Start 14-day free trial", rec:true,
              feats:["Everything in Static","Adapts to missed/changed training","Strava sync","Coach","Recovery"], cls:"primary" },
 };
-function _planCardHtml(product){
+// The projected finish for the currently selected marathon (course + your pace + elevation/temp).
+// Same course-adjusted projection for all three products (they differ in HOW you get there, not the
+// target) — but always tied to a concrete race, never generic.
+function _planProjectionSecs(race){
+  const m = race ? MARATHONS[race] : null; if(!m) return 0;
+  try { return _racePacelabSeconds(m); } catch(e){ return 0; }
+}
+function _planCardHtml(product, race){
   const p = PLAN_META[product]; if(!p) return "";
   // Dynamic shows its 14-day trial framing; Race/Static reserve the same block (empty) so all three
   // feature lists start at the same vertical position and CTAs align along the bottom.
   const trialRow = p.trial
     ? `<div class="pcard-trial"><b>14 days free</b><span class="pcard-trial-sub">then ${fmtPrice(p.priceN)}/month · cancel anytime before the trial ends</span></div>`
     : `<div class="pcard-trial pcard-trial-empty" aria-hidden="true"></div>`;
+  // Per-plan projected result for the selected marathon (recalculated whenever the race changes).
+  const secs = _planProjectionSecs(race);
+  const projLabel = product === "race" ? "Race-day target" : product === "dynamic" ? "Adaptive goal" : "Plan goal";
+  const projRow = `<div class="pcard-proj"><span class="pcard-proj-lab">${projLabel}</span><b class="pcard-proj-val">${secs>0 ? _rpHMS(secs) : "—"}</b></div>`;
   return `<div class="pcard${p.rec?" rec":""}" data-plan="${product}">`
     + (p.rec ? `<div class="pcard-ribbon">Most complete</div>` : "")
     + `<div class="pcard-name">${p.name}</div>`
     + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b><span class="per">${p.per}</span></div>`
     + trialRow
+    + projRow
     + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
     + `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${p.cta}</button>`
     + `</div>`;
@@ -4756,27 +4777,52 @@ function _wirePlanHoverPreview(scope){
     card.addEventListener("mouseleave",hide);
   });
 }
-// "How it helps you" → the three products. Hover shows a cursor-following preview; click → checkout.
+// The chooser's currently selected marathon: the "Pick a marathon" control if present, else the
+// page goal race, else the first supported (featured) race — so projections are never generic.
+function _chooserRace(){
+  const sel = document.getElementById("chooserRaceSel");
+  if (sel && sel.value && MARATHONS[sel.value]) return sel.value;
+  if (goalRace && MARATHONS[goalRace]) return goalRace;
+  return Object.keys(MARATHONS).find(n => MARATHONS[n] && MARATHONS[n].tier !== "custom") || "Sydney";
+}
+// "How it helps you" → the three products. A compact "Pick a marathon" control (secondary to the
+// cards) drives all three projected results; both entry flows (clicked a race card, or via "I help
+// you") land here with a concrete race selected.
 function openPlanChooser(){
   const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
   if(!body||!bd) return;
+  const race = _chooserRace();
+  const opts = Object.keys(MARATHONS).filter(n => MARATHONS[n] && MARATHONS[n].tier !== "custom")
+    .map(n => `<option value="${n}"${n===race?" selected":""}>${MARATHONS[n].emoji?MARATHONS[n].emoji+" ":""}${n}</option>`).join("");
   body.innerHTML =
     `<div class="plan-eyebrow">How Pacelab helps you</div>`
   + `<h2 class="plan-title">Pick the plan that <span class="it">helps you.</span></h2>`
-  + `<div class="pchooser-grid">${_planCardHtml("race")}${_planCardHtml("static")}${_planCardHtml("dynamic")}</div>`;
+  + `<div class="pchooser-race"><span class="pchooser-race-lab">Projected times for</span>`
+  +   `<span class="pchooser-race-sel"><select id="chooserRaceSel" aria-label="Pick a marathon">${opts}</select></span></div>`
+  + `<div class="pchooser-grid">${_planCardHtml("race",race)}${_planCardHtml("static",race)}${_planCardHtml("dynamic",race)}</div>`;
   bd.classList.add("open");
-  try { trackEv("product_chooser_viewed", { marathon: goalRace||null, race_slug:(goalRace?raceSlug(goalRace):null), source:"chooser" }); } catch(e){}
+  try { trackEv("product_chooser_viewed", { marathon: race||null, race_slug:(race?raceSlug(race):null), source:"chooser" }); } catch(e){}
   body.querySelectorAll(".pcard-cta").forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); _planCardAction(b.getAttribute("data-plan")); }; });
   // Whole card is clickable — every product goes straight to Stripe checkout (no preview step).
   body.querySelectorAll(".pcard").forEach(c=>{ c.style.cursor="pointer"; c.onclick=()=>_planCardAction(c.getAttribute("data-plan")); });
+  // Pick-a-marathon control: set the selected race, then recalculate all three projected times.
+  const sel = document.getElementById("chooserRaceSel");
+  if (sel) sel.onchange = () => {
+    try { setGoalRace(sel.value); } catch(e){}   // persists pacelab_goal so checkout locks to it
+    const secs = _planProjectionSecs(sel.value);
+    document.querySelectorAll(".pcard-proj-val").forEach(v => { v.textContent = secs>0 ? _rpHMS(secs) : "—"; });
+    try { trackEv("marathon_selected", { marathon: sel.value, source:"chooser" }); } catch(e){}
+  };
   _wirePlanHoverPreview(body);
 }
 // Chooser click dispatch: every product goes DIRECTLY to Stripe checkout (the 2-week preview flow
-// was removed). Never mutates any existing entitlement.
+// was removed). Ensures a concrete race is selected first so Race/Static lock to it.
 function _planCardAction(product){
-  const slug = goalRace ? raceSlug(goalRace) : null;
-  try { trackEv("product_selected", { product, marathon: goalRace||null, race_slug: slug, source:"chooser" }); } catch(e){}
-  if (product === "race") { try { trackEv("race_plan_buy_clicked", { product:"race", marathon: goalRace||null, race_slug: slug, source:"chooser" }); } catch(e){} }
+  const race = _chooserRace();
+  if (race && race !== goalRace) { try { setGoalRace(race); } catch(e){} }   // lock checkout to the chosen race
+  const slug = race ? raceSlug(race) : null;
+  try { trackEv("product_selected", { product, marathon: race||null, race_slug: slug, source:"chooser" }); } catch(e){}
+  if (product === "race") { try { trackEv("race_plan_buy_clicked", { product:"race", marathon: race||null, race_slug: slug, source:"chooser" }); } catch(e){} }
   startPlanCheckout(product);
 }
 async function startPlanCheckout(product){
@@ -4869,10 +4915,27 @@ function _racePlanHtml(name,data){
     + `<div class="rp-list">${rows}</div>`;
 }
 function openRacePlan(name){
-  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop"); if(!body||!bd) return;
+  name = name || goalRace;   // default to the selected race so openRacePlan() (no arg) works
+  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
+  if(!body||!bd || !name || !MARATHONS[name]) return;
   try { trackEv("race_pacing_opened", { product: _plProduct()||null, marathon: name, race_slug: raceSlug(name), source:"race_plan" }); } catch(e){}
-  const data=_raceSplits(name);
-  if(data){ body.innerHTML=_racePlanHtml(name,data); bd.classList.add("open"); return; }
+  const m = MARATHONS[name];
+  // Render the pacing splits. In debug mode, append a QA note when the live race-day forecast isn't
+  // loaded (elevation-based pacing still renders from the bundled profile + inline base temperature).
+  const render = (data) => {
+    let html = _racePlanHtml(name, data);
+    if (_debugActive() && !m.condReal) html += `<div class="plan-fineprint">Weather adjustment unavailable in local preview</div>`;
+    body.innerHTML = html; bd.classList.add("open");
+  };
+  const data=_raceSplits(name);                       // uses bundled PLOT_DATA — no Worker needed
+  if(data){ render(data); return; }
+  // No local profile for this course. In local/dev QA, NEVER call the production Worker (CORS) —
+  // show a clear fallback instead. (Sydney + the free courses always render offline.)
+  if(_debugActive()){
+    body.innerHTML=`<div class="plan-eyebrow">Race Plan</div><h2 class="plan-title">${name} — <span class="it">race-day pacing</span></h2>`
+      + `<p class="plan-sub">This course’s elevation profile isn’t bundled for local preview, so pacing can’t render offline. Use Sydney (or another free course) to QA the Race Plan.</p>`;
+    bd.classList.add("open"); return;
+  }
   body.innerHTML=`<div class="plan-eyebrow">Race Plan</div><h2 class="plan-title">${name} — <span class="it">race-day pacing</span></h2><p class="plan-sub">Loading the course profile…</p>`;
   bd.classList.add("open");
   if(typeof ensurePaidData==="function"){ ensurePaidData(true).then(()=>{ const d2=_raceSplits(name); const b=document.getElementById("modalBody"); if(b){ b.innerHTML = d2 ? _racePlanHtml(name,d2) : `<div class="plan-eyebrow">Race Plan</div><p class="plan-sub">Couldn’t load this course’s elevation profile.</p>`; } }); }
@@ -6177,9 +6240,11 @@ function wireCalibrator() {
     }
   } catch(e){}
   // Cross-device: which plan does this identity own? (Strava athlete_id, else email.)
+  // Skipped while local QA debug mode is active so it can't overwrite the simulated entitlement.
   try {
+    let _dbg = false; try { _dbg = sessionStorage.getItem("pacelab_debug") === "1"; } catch(e){}
     const _pid = localStorage.getItem("pacelab_pid") || "";
-    fetch(STRAVA_WORKER_URL + "/plan/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pid: _pid }) })
+    if (!_dbg) fetch(STRAVA_WORKER_URL + "/plan/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pid: _pid }) })
       .then(r => r.json()).then(d => { if (d && d.ok) { try { localStorage.setItem("pacelab_plan", JSON.stringify({ product:d.product, status:d.status, trial_ends_at:d.trial_ends_at||0, race_slug:d.race_slug||null, at:Date.now() })); } catch(e){} } }).catch(() => {});
   } catch(e){}
   // Tabs
@@ -7101,28 +7166,51 @@ function restoreStravaUI() {
   if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", run, { once: true }); else run();
 })();
 
-// ===== DEV: preview the post-payment (owner) screens without paying =====
-// Client-side ONLY — sets the same localStorage entitlement a real purchase would, then renders the
-// owner state directly (no reload, so the load-time /plan/status restore can't clear it). It grants
-// NO server entitlement and does not touch the Stripe/paywall path, so it's safe like the existing
-// ?unlock comp mechanism. Usage:
-//   ...plans.html?debug=static:sydney   → paid Static owner of Sydney
-//   ...plans.html?debug=race:berlin     → paid Race owner of Berlin
-//   ...plans.html?debug=dynamic         → Dynamic owner (race-switchable)
-//   ...plans.html?debug=off             → back to unpaid
-// Or from the console anytime:  pacelabDebugPlan('static','Sydney')   /   pacelabDebugPlan('off')
+// ===== DEV-ONLY: preview the post-payment (owner) screens without paying =====
+// GATED to local/dev hosts (localhost / 127.0.0.1 / *.local / file://). On production (pacelab.me)
+// the ?debug= param and pacelabDebugPlan() are inert — no entitlement override ships to end users.
+// It only sets the same localStorage entitlement a real purchase would (client-side; grants NO
+// server entitlement, never touches the Stripe/paywall path) and marks a session-scoped debug flag
+// so the load-time /plan/status restore can't overwrite the simulated state while you're testing.
+// Simulated states match the current commercial model:
+//   race    → { product:"race",    status:"paid",     race_slug:<selected race> }
+//   static  → { product:"static",  status:"paid",     race_slug:<selected race> }
+//   dynamic → { product:"dynamic", status:"trialing", race_slug:null, trial_ends_at:+14d }
+// Usage (local):  plans.html?debug=race:sydney | static:sydney | dynamic | off
+// Or from the console:  pacelabDebugPlan('dynamic')  /  pacelabDebugPlan('off')
+function _isDevHost(){
+  try {
+    const h = (location.hostname || "").toLowerCase();
+    return location.protocol === "file:" || h === "localhost" || h === "127.0.0.1" || h === "0.0.0.0" || h === "" || h.endsWith(".local");
+  } catch(e){ return false; }
+}
+// True while a local-QA debug entitlement is active (dev host only). Used to keep the Race Plan and
+// other owner screens rendering from bundled data without any production Worker call.
+function _debugActive(){ try { return _isDevHost() && sessionStorage.getItem("pacelab_debug") === "1"; } catch(e){ return false; } }
 function pacelabDebugPlan(product, raceName){
+  if (!_isDevHost()) { try { console.warn("[pacelab debug] disabled outside local/dev hosts"); } catch(e){} return; }
   try {
     product = String(product||"").toLowerCase();
-    if (product === "off") { try { localStorage.removeItem("pacelab_plan"); } catch(e){}
+    if (product === "off") {
+      try { localStorage.removeItem("pacelab_plan"); } catch(e){}
+      try { sessionStorage.removeItem("pacelab_debug"); } catch(e){}
       try { if (typeof loadGoalFromStorage==="function") loadGoalFromStorage(); } catch(e){}
       try { renderGoal(); } catch(e){}
-      console.log("[pacelab debug] cleared entitlement (unpaid)"); return; }
+      console.log("[pacelab debug] cleared entitlement (unpaid)"); return;
+    }
     if (["race","static","dynamic"].indexOf(product) < 0) product = "static";
     let race = raceName || goalRace || "Sydney";
     if (!MARATHONS[race]) { const hit = Object.keys(MARATHONS).find(n => raceSlug(n) === String(raceName||"").toLowerCase()); race = hit || "Sydney"; }
     const slug = raceSlug(race);
-    const plan = { product, status: product === "dynamic" ? "active" : "paid", race_slug: product === "dynamic" ? null : slug, at: Date.now() };
+    const isDyn = product === "dynamic";
+    const plan = {
+      product,
+      status: isDyn ? "trialing" : "paid",
+      race_slug: isDyn ? null : slug,
+      trial_ends_at: isDyn ? (Date.now() + 14*24*60*60*1000) : 0,
+      at: Date.now(),
+    };
+    try { sessionStorage.setItem("pacelab_debug", "1"); } catch(e){}   // block /plan/status overwrite
     try { localStorage.setItem("pacelab_goal", race); localStorage.setItem("pacelab_plan", JSON.stringify(plan)); } catch(e){}
     try { if (typeof loadGoalFromStorage==="function") loadGoalFromStorage(); } catch(e){}
     // Reveal + render the owner card on either view (no reload).
@@ -7133,11 +7221,14 @@ function pacelabDebugPlan(product, raceName){
 try { window.pacelabDebugPlan = pacelabDebugPlan; } catch(e){}
 (function wireDebugState(){
   const run = () => {
+    if (!_isDevHost()) return;   // ?debug= is inert on production
     let p; try { p = new URLSearchParams(location.search).get("debug"); } catch(e){}
     if (!p) return;
     try { history.replaceState({}, "", location.pathname + (window.PACELAB_PID ? "?p=" + encodeURIComponent(window.PACELAB_PID) : "")); } catch(e){}
     const [prod, race] = String(p).split(":");
     pacelabDebugPlan(prod, race);
+    // One URL to inspect the post-purchase Race experience: auto-open the km-by-km Race Plan.
+    if (String(prod||"").toLowerCase() === "race") { setTimeout(() => { try { openRacePlan(); } catch(e){} }, 0); }
   };
   if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", run, { once: true }); else run();
 })();
