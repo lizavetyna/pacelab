@@ -849,6 +849,26 @@
   .rp-help-ol li { font-size:12.5px; line-height:1.55; margin:2px 0; }
   .rp-help-ol li b { font-weight:700; }
   .rp-help-note { margin-top:9px; font-size:11px; color:var(--muted); font-style:italic; }
+  .rp-file-tag { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:6px; background:rgba(255,255,255,.22); font-size:10px; font-weight:800; letter-spacing:.04em; vertical-align:middle; }
+  /* Emphasised FIT note: it's a workout, not a course */
+  .rp-warn { margin-top:12px; display:flex; flex-direction:column; gap:4px; padding:12px 14px; border-radius:12px; background:rgba(0,51,255,.06); border:1px solid rgba(0,51,255,.28); border-left:3px solid var(--blue,#0033ff); }
+  .rp-warn-t { font-size:12.5px; font-weight:800; color:var(--blue,#0033ff); }
+  .rp-warn-b { font-size:12px; line-height:1.5; color:var(--ink); }
+  .rp-warn-b b { font-weight:700; }
+  /* Pace band waitlist */
+  .rp-band { margin-top:16px; padding:14px 16px; border-radius:14px; border:1px dashed var(--line); background:rgba(10,10,15,.02); }
+  .rp-band-h { font-size:13px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px; }
+  .rp-band-soon { font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--blue,#0033ff); border:1px solid rgba(0,51,255,.35); border-radius:999px; padding:2px 8px; }
+  .rp-band-p { margin-top:6px; font-size:12px; line-height:1.5; color:var(--muted); }
+  .rp-band-form { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+  .rp-band-form input { flex:1 1 180px; box-sizing:border-box; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; font-size:13.5px; color:var(--ink); background:var(--card,#fff); }
+  .rp-band-form input:focus { outline:none; border-color:var(--blue,#0033ff); }
+  .rp-band-btn { flex:0 0 auto; border:none; border-radius:10px; padding:10px 18px; background:var(--blue,#0033ff); color:#fff; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+  .rp-band-btn:disabled { opacity:.6; cursor:default; }
+  .rp-band-fine { margin-top:8px; font-size:11px; line-height:1.45; color:var(--muted); }
+  .rp-band-msg { margin-top:8px; font-size:12px; }
+  .rp-band-msg.ok { color:#0f8a5f; }
+  .rp-band-msg.err { color:#c0392b; }
   .gr2-fit { background:#0a0a0f !important; }
   /* Plan card hover mini-teaser */
   .pcard { transition: transform .15s ease, box-shadow .15s ease; }
@@ -3025,7 +3045,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         <div class="cf-fields">
           <div class="cf-field" style="grid-column: span 2;">
             <label>Let your training set your time</label>
-            <div class="cf-help">Connect Strava and we'll analyze your recent runs to estimate a realistic marathon time — no guessing. Your runs are processed privately and not stored.</div>
+            <div class="cf-help">Connect Strava and we'll analyze your recent runs to estimate a realistic marathon time — no guessing. Your race day forecast is privately calculated and not stored.</div>
           </div>
           <div class="cf-actions">
             <button class="calibrate-btn strava-btn" id="stravaConnect">Connect Strava</button>
@@ -5067,13 +5087,17 @@ function _raceFilesHtml(name){
     +   `<button class="rp-file gpx" type="button"${gpxOk?"":` disabled title="Verified course route not available yet"`} onclick="_downloadGpxUI('${name}')">`
     +     `<span class="rp-file-t">↓ Download course GPX</span><span class="rp-file-s">Route + elevation</span></button>`
     +   `<button class="rp-file fit" type="button"${fitOk?"":` disabled title="Course profile not available yet"`} onclick="_downloadFitUI('${name}')">`
-    +     `<span class="rp-file-t">↓ Download Garmin workout</span><span class="rp-file-s">km-by-km PaceLab targets for Garmin</span></button>`
+    +     `<span class="rp-file-t">↓ Download Garmin workout <span class="rp-file-tag">.FIT</span></span><span class="rp-file-s">km-by-km PaceLab targets for Garmin</span></button>`
+    + `</div>`
+    + `<div class="rp-warn">`
+    +   `<div class="rp-warn-t">⌚ Garmin workout (.FIT) — it's a workout, not a course</div>`
+    +   `<div class="rp-warn-b">Transfer it to your watch via USB → <b>GARMIN/NewFiles</b>. <b>Do not import this file as a Course in Garmin Connect</b> — it's a paced workout that runs on the watch.</div>`
     + `</div>`
     + `<div class="rp-help">`
     +   `<div class="rp-help-h">Add the Garmin workout to your watch</div>`
     +   `<ol class="rp-help-ol">`
     +     `<li>Connect your Garmin to your computer with a USB data cable</li>`
-    +     `<li>Open your Garmin drive → the <b>NewFiles</b> folder</li>`
+    +     `<li>Open your Garmin drive → the <b>GARMIN/NewFiles</b> folder</li>`
     +     `<li>Copy the downloaded <b>.FIT</b> file into <b>NewFiles</b></li>`
     +     `<li>Safely disconnect the watch</li>`
     +     `<li>On the watch open <b>Run → Training / Workouts</b></li>`
@@ -5081,8 +5105,37 @@ function _raceFilesHtml(name){
     +   `</ol>`
     +   `<div class="rp-help-note">Menu names vary by Garmin model, so your exact steps may differ.</div>`
     + `</div>`
+    + _raceBandHtml(name)
     + `</div>`;
 }
+// "Pace band" waitlist — a printable paper wrist band of the km-by-km targets is coming soon; capture
+// interested emails. The email goes ONLY to a private waitlist (worker /pace-band-interest → KV); the
+// anonymous interest event is logged server-side (never the email).
+function _raceBandHtml(name){
+  let done=false; try{ done = localStorage.getItem("pacelab_paceband_email")==="1"; }catch(e){}
+  const inner = done
+    ? `<div class="rp-band-msg ok">You're on the list — we'll email you when printable pace bands are ready. 🖨️</div>`
+    : `<div class="rp-band-form"><input id="paceBandEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email for the pace band waitlist"><button class="rp-band-btn" type="button" onclick="_paceBandSubmit('${name}')">Notify me</button></div><div class="rp-band-fine">We'll only use your email to let you know when PaceBand is ready. No marketing.</div><div class="rp-band-msg" id="paceBandMsg"></div>`;
+  return `<div class="rp-band">`
+    + `<div class="rp-band-h">🖨️ Print your pace band <span class="rp-band-soon">coming soon</span></div>`
+    + `<div class="rp-band-p">Want your km-by-km targets as a printable paper wrist band for race day? Leave your email and we'll send it your way when it's ready.</div>`
+    + inner
+    + `</div>`;
+}
+function _paceBandSubmit(name){
+  const inp=document.getElementById("paceBandEmail"), msg=document.getElementById("paceBandMsg");
+  if(!inp) return;
+  const email=(inp.value||"").trim();
+  const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && email.length<=254;
+  if(!ok){ if(msg){ msg.textContent="Please enter a valid email address."; msg.className="rp-band-msg err"; } inp.focus(); return; }
+  const btn=inp.parentNode && inp.parentNode.querySelector(".rp-band-btn"); if(btn){ btn.disabled=true; btn.textContent="Saving…"; }
+  const pid=(typeof window!=="undefined" && window.PACELAB_PID) || (function(){ try{ return localStorage.getItem("pacelab_pid")||""; }catch(e){ return ""; } })();
+  const done=(text)=>{ if(msg){ msg.textContent=text; msg.className="rp-band-msg ok"; } const f=inp.parentNode; if(f){ f.style.display="none"; } try{ localStorage.setItem("pacelab_paceband_email","1"); }catch(e){} };
+  fetch(STRAVA_WORKER_URL + "/pace-band-interest", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ email: email, pid: pid, race_slug: raceSlug(name) }), keepalive:true })
+    .then(r=>r.json().catch(()=>({ok:true}))).then(()=>{ done("Thanks — you're on the list. We'll email you when printable pace bands are ready. 🖨️"); })
+    .catch(()=>{ done("Thanks — you're on the list."); });
+}
+if (typeof window !== "undefined") { window._paceBandSubmit = _paceBandSubmit; }
 function openRacePlan(name){
   name = name || goalRace;   // default to the selected race so openRacePlan() (no arg) works
   const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
@@ -7315,10 +7368,10 @@ function applyStravaEstimate(data, source) {
   try { adoptStravaAccount(data.account); } catch (e) {}
   try { trackEv("result_viewed", { marathon: goalRace || null }); } catch (e) {}
   renderAll();
-  const conf = data.confidence ? ` · ${data.confidence} confidence` : '';
+  const conf = data.confidence ? ` — ${data.confidence} confidence` : '';
   const vtxt = data.vdot ? ` Your VDOT is about ${data.vdot}.` : '';
   showStravaStatus(
-    `Analyzed ${data.runsAnalyzed} runs — on your current fitness your realistic best marathon is ${data.vdotMarathonHMS || data.estimateHMS}${conf}.${vtxt} We've set it above; tweak it anytime.`,
+    `Analyse ${data.runsAnalyzed} runs to estimate your current fitness and realistic best marathon time. It is ${data.vdotMarathonHMS || data.estimateHMS}${conf}.${vtxt} We've placed it above — tweak it any time.`,
     true
   );
   try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, source: source, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, weeklyKm: data.weeklyKm, vdot: data.vdot || 0, vdotMarathonSeconds: data.vdotMarathonSeconds || 0, lastActivity: data.lastActivity || null, at: Date.now() })); } catch (e) {}
