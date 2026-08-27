@@ -1292,7 +1292,7 @@
     font-style: normal;
     display: block;
   }
-  .mcell-added { display:block; margin-top:4px; font-family:"JetBrains Mono", monospace; font-size:11.5px; color:var(--muted); letter-spacing:-.01em; }
+  .mcell-added { font-family:"JetBrains Mono", monospace; font-size:13px; font-weight:600; color:var(--muted); letter-spacing:-.01em; }
   /* Sub stats: gain/lost */
   .mcell-sub {
     display: flex;
@@ -5172,8 +5172,7 @@ function renderStrip() {
       </div>
       <div class="mcell-hero">
         <span class="lbl">Projected finish</span>
-        <span class="val">${fmtClock(userTime.flatMinutes + tAdded/60)}</span>
-        <span class="mcell-added">${fmtTimePenalty(tAdded)} vs flat</span>
+        <span class="val">${fmtClock(userTime.flatMinutes + tAdded/60)} <span class="mcell-added">(${fmtTimePenalty(tAdded)})</span></span>
       </div>
       <div class="mcell-sub">
         <div class="ss"><span class="l">GAIN</span><span class="v">${m.gain}m</span></div>
