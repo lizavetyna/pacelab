@@ -4834,7 +4834,11 @@ function _chooserRace(){
 function openPlanChooser(){
   const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
   if(!body||!bd) return;
-  const race = _chooserRace();
+  // Seed from the freshly-selected goal race (set by the card click / current state), NOT from a
+  // stale <select> left in the hidden modal from a previous open — otherwise reopening from a
+  // different card would show the previous race. (_chooserRace() is for live in-chooser reads only.)
+  const race = (goalRace && MARATHONS[goalRace]) ? goalRace
+    : (Object.keys(MARATHONS).find(n => MARATHONS[n] && MARATHONS[n].tier !== "custom") || "Sydney");
   const opts = Object.keys(MARATHONS).filter(n => MARATHONS[n] && MARATHONS[n].tier !== "custom")
     .map(n => `<option value="${n}"${n===race?" selected":""}>${MARATHONS[n].emoji?MARATHONS[n].emoji+" ":""}${n}</option>`).join("");
   body.innerHTML =
