@@ -869,7 +869,14 @@
   .rp-band-msg { margin-top:8px; font-size:12px; }
   .rp-band-msg.ok { color:#0f8a5f; }
   .rp-band-msg.err { color:#c0392b; }
+  .rp-file.band { background:rgba(10,10,15,.03); border:1px dashed var(--line); color:var(--ink); }
+  .rp-file.band:hover:not(:disabled) { border-color:var(--blue,#0033ff); }
+  .pb-promise { margin:14px 0 12px; padding:12px 14px; border-radius:12px; background:rgba(0,51,255,.06); border:1px solid rgba(0,51,255,.28); border-left:3px solid var(--blue,#0033ff); font-size:13px; line-height:1.5; color:var(--ink); }
+  .pb-promise b { font-weight:700; }
+  .pb-back { margin-top:16px; background:none; border:none; padding:6px 0; color:var(--blue,#0033ff); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
   .gr2-fit { background:#0a0a0f !important; }
+  .gr2-band { background:#fff !important; color:var(--ink) !important; border:1px solid var(--line) !important; }
+  .gr2-band:hover { border-color:var(--blue,#0033ff) !important; }
   /* Plan card hover mini-teaser */
   .pcard { transition: transform .15s ease, box-shadow .15s ease; }
   .pcard:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,.10); }
@@ -4172,7 +4179,7 @@ function _grDynamicCard2(){
     +   `<div class="gr2-btns">`
     +     (showConnect ? `<button class="gr2-strava" id="gr2Strava" type="button">Connect Strava</button>` : "")
     +     `<button class="gr2-act" id="gr2Race" type="button">Race-day pacing</button>`
-    +     `<button class="gr2-gpx" id="gr2Gpx" type="button"${raceRouteAvailable(goalRace) ? "" : ' disabled title="Verified course route not available yet"'}>↓ Download GPX</button>`
+    +     `<button class="gr2-gpx gr2-band" id="gr2Band" type="button">🖨️ Print pace band</button>`
     +     `<button class="gr2-gpx gr2-fit" id="gr2Fit" type="button"${(typeof _raceFitSteps==="function" && _raceFitSteps(goalRace)) ? "" : ' disabled title="Course profile not available yet"'}>↓ Garmin workout</button>`
     +   `</div>`
     + `</div>`
@@ -4555,15 +4562,8 @@ function renderGoal() {
   };
   const g2c = document.getElementById("gr2Strava");
   if (g2c) g2c.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
-  const g2g = document.getElementById("gr2Gpx");
-  if (g2g) g2g.onclick = () => {
-    const m = MARATHONS[goalRace]; if (!m) return;
-    const dims = { product: _plProduct()||null, marathon: goalRace, race_slug: raceSlug(goalRace), source:"race_plan_card" };
-    try { trackEv("gpx_download_clicked", dims); } catch(e){}
-    const fin = userTime.flatMinutes + (timeAddedSecondsFor(m, userTime.flatMinutes) / 60);
-    try { downloadPaceGpx(goalRace, fin); try { trackEv("gpx_download_succeeded", dims); } catch(e){} }
-    catch(e){ try { trackEv("gpx_download_failed", dims); } catch(_){} }
-  };
+  const g2b = document.getElementById("gr2Band");
+  if (g2b) g2b.onclick = () => { _paceBandOpen(goalRace); };   // coming-soon pace band + email (delivered before race)
   const g2f = document.getElementById("gr2Fit");
   if (g2f) g2f.onclick = () => { _downloadFitUI(goalRace); };   // km-by-km Garmin FIT Workout (safe dims analytics inside)
   const gsc = document.getElementById("goalStravaConnect");
@@ -5079,49 +5079,61 @@ function _racePlanHtml(name,data){
 // (navigation); the FIT is the km-by-km PaceLab pacing targets loaded as a Garmin workout. Both follow
 // the currently selected target. A compact, device-agnostic install guide sits underneath.
 function _raceFilesHtml(name){
-  const gpxOk = raceRouteAvailable(name);
   const fitOk = !!(typeof _raceFitSteps==="function" && _raceFitSteps(name));
+  // Two actions: a coming-soon printable pace band, and the Garmin workout (.FIT). The install
+  // instructions stay HIDDEN until the athlete actually downloads the workout — no clutter by default.
   return `<div class="rp-files">`
     + `<div class="rp-files-h">Race-day files</div>`
     + `<div class="rp-files-btns">`
-    +   `<button class="rp-file gpx" type="button"${gpxOk?"":` disabled title="Verified course route not available yet"`} onclick="_downloadGpxUI('${name}')">`
-    +     `<span class="rp-file-t">↓ Download course GPX</span><span class="rp-file-s">Route + elevation</span></button>`
-    +   `<button class="rp-file fit" type="button"${fitOk?"":` disabled title="Course profile not available yet"`} onclick="_downloadFitUI('${name}')">`
+    +   `<button class="rp-file band" type="button" onclick="_paceBandOpen('${name}')">`
+    +     `<span class="rp-file-t">🖨️ Print your pace band</span><span class="rp-file-s">Wrist pace band — coming soon</span></button>`
+    +   `<button class="rp-file fit" type="button"${fitOk?"":` disabled title="Course profile not available yet"`} onclick="_downloadFitUI('${name}'); _garminHelpReveal();">`
     +     `<span class="rp-file-t">↓ Download Garmin workout <span class="rp-file-tag">.FIT</span></span><span class="rp-file-s">km-by-km PaceLab targets for Garmin</span></button>`
     + `</div>`
-    + `<div class="rp-warn">`
-    +   `<div class="rp-warn-t">⌚ Garmin workout (.FIT) — it's a workout, not a course</div>`
-    +   `<div class="rp-warn-b">Transfer it to your watch via USB → <b>GARMIN/NewFiles</b>. <b>Do not import this file as a Course in Garmin Connect</b> — it's a paced workout that runs on the watch.</div>`
+    + `<div class="rp-help-wrap" id="garminHelp" style="display:none">`
+    +   `<div class="rp-warn">`
+    +     `<div class="rp-warn-t">⌚ Garmin workout (.FIT) — it's a workout, not a course</div>`
+    +     `<div class="rp-warn-b">Transfer it to your watch via USB → <b>GARMIN/NewFiles</b>. <b>Do not import this file as a Course in Garmin Connect</b> — it's a paced workout that runs on the watch.</div>`
+    +   `</div>`
+    +   `<div class="rp-help">`
+    +     `<div class="rp-help-h">Add the Garmin workout to your watch</div>`
+    +     `<ol class="rp-help-ol">`
+    +       `<li>Connect your Garmin to your computer with a USB data cable</li>`
+    +       `<li>Open your Garmin drive → the <b>GARMIN/NewFiles</b> folder</li>`
+    +       `<li>Copy the downloaded <b>.FIT</b> file into <b>NewFiles</b></li>`
+    +       `<li>Safely disconnect the watch</li>`
+    +       `<li>On the watch open <b>Run → Training / Workouts</b></li>`
+    +       `<li>Select the <b>PaceLab</b> workout</li>`
+    +     `</ol>`
+    +     `<div class="rp-help-note">Menu names vary by Garmin model, so your exact steps may differ.</div>`
+    +   `</div>`
     + `</div>`
-    + `<div class="rp-help">`
-    +   `<div class="rp-help-h">Add the Garmin workout to your watch</div>`
-    +   `<ol class="rp-help-ol">`
-    +     `<li>Connect your Garmin to your computer with a USB data cable</li>`
-    +     `<li>Open your Garmin drive → the <b>GARMIN/NewFiles</b> folder</li>`
-    +     `<li>Copy the downloaded <b>.FIT</b> file into <b>NewFiles</b></li>`
-    +     `<li>Safely disconnect the watch</li>`
-    +     `<li>On the watch open <b>Run → Training / Workouts</b></li>`
-    +     `<li>Select the <b>PaceLab</b> workout</li>`
-    +   `</ol>`
-    +   `<div class="rp-help-note">Menu names vary by Garmin model, so your exact steps may differ.</div>`
-    + `</div>`
-    + _raceBandHtml(name)
     + `</div>`;
 }
-// "Pace band" waitlist — a printable paper wrist band of the km-by-km targets is coming soon; capture
-// interested emails. The email goes ONLY to a private waitlist (worker /pace-band-interest → KV); the
-// anonymous interest event is logged server-side (never the email).
-function _raceBandHtml(name){
+// Reveal the Garmin install instructions — only after the athlete pushes "Download Garmin workout".
+function _garminHelpReveal(){ try{ const el=document.getElementById("garminHelp"); if(el) el.style.display=""; }catch(e){} }
+// Pace band = a slim paper wrist strip of the km-by-km targets. It's coming soon: this opens a
+// coming-soon acknowledgement and captures interest, promising delivery before the athlete's race.
+// The email goes ONLY to the private waitlist (worker /pace-band-interest → KV); the anonymous
+// interest event is logged server-side (never the email).
+function _paceBandOpen(name){
+  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
+  if(!body||!bd) return;
   let done=false; try{ done = localStorage.getItem("pacelab_paceband_email")==="1"; }catch(e){}
-  const inner = done
-    ? `<div class="rp-band-msg ok">You're on the list — we'll email you when printable pace bands are ready. 🖨️</div>`
-    : `<div class="rp-band-form"><input id="paceBandEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email for the pace band waitlist"><button class="rp-band-btn" type="button" onclick="_paceBandSubmit('${name}')">Notify me</button></div><div class="rp-band-fine">We'll only use your email to let you know when PaceBand is ready. No marketing.</div><div class="rp-band-msg" id="paceBandMsg"></div>`;
-  return `<div class="rp-band">`
-    + `<div class="rp-band-h">🖨️ Print your pace band <span class="rp-band-soon">coming soon</span></div>`
-    + `<div class="rp-band-p">Want your km-by-km targets as a printable paper wrist band for race day? Leave your email and we'll send it your way when it's ready.</div>`
-    + inner
-    + `</div>`;
+  const form = done
+    ? `<div class="rp-band-msg ok">You're on the list — we'll email you your PaceBand before race day. 🖨️</div>`
+    : `<div class="rp-band-form"><input id="paceBandEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email for your pace band"><button class="rp-band-btn" type="button" onclick="_paceBandSubmit('${name}')">Email me my pace band</button></div>`
+      + `<div class="rp-band-fine">We'll only use your email to let you know when PaceBand is ready. No marketing.</div>`
+      + `<div class="rp-band-msg" id="paceBandMsg"></div>`;
+  const back = MARATHONS[name] ? `<button class="pb-back" type="button" onclick="openRacePlan('${name}')">← Back to race plan</button>` : "";
+  body.innerHTML = `<div class="plan-eyebrow">🖨️ Pace band</div>`
+    + `<h2 class="plan-title">Print your <span class="it">pace band</span></h2>`
+    + `<p class="plan-sub">A pace band is a slim paper strip you wear on your wrist with your km-by-km target splits — glanceable while you run. <b>It's coming soon.</b></p>`
+    + `<div class="pb-promise">Want one for ${name}? Leave your email and we'll make your PaceBand and get it to you <b>before your race</b>.</div>`
+    + form + back;
+  bd.classList.add("open");
 }
+if (typeof window !== "undefined") { window._paceBandOpen = _paceBandOpen; window._garminHelpReveal = _garminHelpReveal; }
 function _paceBandSubmit(name){
   const inp=document.getElementById("paceBandEmail"), msg=document.getElementById("paceBandMsg");
   if(!inp) return;
@@ -5132,8 +5144,8 @@ function _paceBandSubmit(name){
   const pid=(typeof window!=="undefined" && window.PACELAB_PID) || (function(){ try{ return localStorage.getItem("pacelab_pid")||""; }catch(e){ return ""; } })();
   const done=(text)=>{ if(msg){ msg.textContent=text; msg.className="rp-band-msg ok"; } const f=inp.parentNode; if(f){ f.style.display="none"; } try{ localStorage.setItem("pacelab_paceband_email","1"); }catch(e){} };
   fetch(STRAVA_WORKER_URL + "/pace-band-interest", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ email: email, pid: pid, race_slug: raceSlug(name) }), keepalive:true })
-    .then(r=>r.json().catch(()=>({ok:true}))).then(()=>{ done("Thanks — you're on the list. We'll email you when printable pace bands are ready. 🖨️"); })
-    .catch(()=>{ done("Thanks — you're on the list."); });
+    .then(r=>r.json().catch(()=>({ok:true}))).then(()=>{ done("Thanks — we'll make your PaceBand and email it to you before race day. 🖨️"); })
+    .catch(()=>{ done("Thanks — we'll email you your PaceBand before race day."); });
 }
 if (typeof window !== "undefined") { window._paceBandSubmit = _paceBandSubmit; }
 function openRacePlan(name){
