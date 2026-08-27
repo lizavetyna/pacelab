@@ -833,6 +833,23 @@
   .rp-row .rp-cum { width:90px; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
   .rp-row.up .rp-pace { color:#c0392b; }
   .rp-row.down .rp-pace { color:#0f8a5f; }
+  /* Race-day files (GPX + Garmin FIT workout) + install help */
+  .rp-files { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+  .rp-files-h { font-family:var(--mono,ui-monospace,monospace); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .rp-files-btns { display:flex; flex-wrap:wrap; gap:10px; }
+  .rp-file { flex:1 1 200px; display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; box-sizing:border-box; border-radius:14px; padding:13px 16px; font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--card,#fff); color:var(--ink); transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+  .rp-file:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(10,10,15,.08); border-color:var(--blue,#0033ff); }
+  .rp-file:disabled { opacity:.5; cursor:not-allowed; }
+  .rp-file.fit { background:var(--blue,#0033ff); color:#fff; border-color:var(--blue,#0033ff); }
+  .rp-file .rp-file-t { font-size:14.5px; font-weight:700; }
+  .rp-file .rp-file-s { font-size:11.5px; font-weight:500; opacity:.72; }
+  .rp-help { margin-top:16px; background:rgba(10,10,15,.03); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .rp-help-h { font-size:12.5px; font-weight:700; color:var(--ink); margin-bottom:8px; }
+  .rp-help-ol { margin:0; padding-left:18px; color:var(--ink); }
+  .rp-help-ol li { font-size:12.5px; line-height:1.55; margin:2px 0; }
+  .rp-help-ol li b { font-weight:700; }
+  .rp-help-note { margin-top:9px; font-size:11px; color:var(--muted); font-style:italic; }
+  .gr2-fit { background:#0a0a0f !important; }
   /* Plan card hover mini-teaser */
   .pcard { transition: transform .15s ease, box-shadow .15s ease; }
   .pcard:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,.10); }
@@ -4136,6 +4153,7 @@ function _grDynamicCard2(){
     +     (showConnect ? `<button class="gr2-strava" id="gr2Strava" type="button">Connect Strava</button>` : "")
     +     `<button class="gr2-act" id="gr2Race" type="button">Race-day pacing</button>`
     +     `<button class="gr2-gpx" id="gr2Gpx" type="button"${raceRouteAvailable(goalRace) ? "" : ' disabled title="Verified course route not available yet"'}>↓ Download GPX</button>`
+    +     `<button class="gr2-gpx gr2-fit" id="gr2Fit" type="button"${(typeof _raceFitSteps==="function" && _raceFitSteps(goalRace)) ? "" : ' disabled title="Course profile not available yet"'}>↓ Garmin workout</button>`
     +   `</div>`
     + `</div>`
     + `</div>`;
@@ -4526,6 +4544,8 @@ function renderGoal() {
     try { downloadPaceGpx(goalRace, fin); try { trackEv("gpx_download_succeeded", dims); } catch(e){} }
     catch(e){ try { trackEv("gpx_download_failed", dims); } catch(_){} }
   };
+  const g2f = document.getElementById("gr2Fit");
+  if (g2f) g2f.onclick = () => { _downloadFitUI(goalRace); };   // km-by-km Garmin FIT Workout (safe dims analytics inside)
   const gsc = document.getElementById("goalStravaConnect");
   if (gsc) gsc.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
   const gss = document.getElementById("goalStravaSync");
@@ -4944,14 +4964,13 @@ function _raceCourseWeightAt(m, physicalTotalKm){
     let f=grade>=0?1+grade*8:1+grade*2; return Math.max(0.7, Math.min(3.0, f));
   };
 }
-function _raceSplits(name){
-  const m=MARATHONS[name]; if(!m) return null;
-  const elev=PLOT_DATA[m.col], dist=PLOT_DATA.distance_km;
-  if(!elev||!dist||!elev.length||!dist.length) return null;
-  const N=Math.min(elev.length,dist.length), endIdx=N-1;
-  const totalSec=_raceTargetSeconds(m);   // follows the selected target (Pacelab rec or manual)
-  const courseKm=(m.customDistance!==undefined)?m.customDistance:dist[N-1];
-  // Per-segment effort weight: uphill slower, downhill faster (same model as the chart runner).
+// Shared even-effort pacing model — the SINGLE source behind the visible Race Plan splits, the GPX
+// export and the Garmin FIT Workout. Uphill slower, downhill faster (grade-weighted effort), clamped,
+// then normalised so timeAtKm(courseKm) === totalSec exactly. (Byte-identical to race_fit.mjs's
+// evenEffortModel — the FIT encoder never recomputes pacing; it only serialises what this produces.)
+function _raceEvenEffort(elev, dist, totalSec){
+  if(!Array.isArray(elev)||!Array.isArray(dist)||!elev.length||!dist.length) return null;
+  const N=Math.min(elev.length,dist.length), endIdx=N-1; if(endIdx<1) return null;
   const segW=new Array(endIdx).fill(0); let sumW=0;
   for(let i=0;i<endIdx;i++){
     const dx=(dist[i+1]-dist[i])*1000, dy=elev[i+1]-elev[i], grade=dx>0?dy/dx:0;
@@ -4961,6 +4980,60 @@ function _raceSplits(name){
   const cumTime=new Array(N).fill(0); let cum=0;
   for(let i=0;i<endIdx;i++){ cum+=segW[i]; cumTime[i+1]=sumW>0?(cum/sumW)*totalSec:((i+1)/endIdx)*totalSec; }
   const timeAtKm=(tk)=>{ if(tk<=dist[0]) return 0; for(let i=0;i<endIdx;i++){ if(dist[i+1]>=tk){ const t=(tk-dist[i])/((dist[i+1]-dist[i])||1); return cumTime[i]+(cumTime[i+1]-cumTime[i])*t; } } return totalSec; };
+  return { timeAtKm, cumTime, N, endIdx, courseKm: dist[N-1] };
+}
+// Km-by-km FIT Workout steps (1000 m per full km, then the marathon remainder ~195 m), each carrying
+// the exact target speed + a symmetric ±tolerance speed band. Derived from the SAME _raceEvenEffort
+// model and _raceTargetSeconds target as the on-screen splits — no independent pacing math.
+function _raceClampProfile(elev, dist, courseKm){
+  const N=Math.min(elev.length,dist.length);
+  if(!(courseKm>0) || dist[N-1] <= courseKm+1e-9) return { elev:elev.slice(0,N), dist:dist.slice(0,N) };
+  const e=[], d=[];
+  for(let i=0;i<N;i++){ if(dist[i] < courseKm-1e-9){ d.push(dist[i]); e.push(elev[i]); } else break; }
+  let i=0; while(i<N-1 && dist[i+1]<courseKm) i++;
+  const t=(courseKm-dist[i])/((dist[i+1]-dist[i])||1), ev=elev[i]+(elev[i+1]-elev[i])*t;
+  d.push(courseKm); e.push(ev);
+  return { elev:e, dist:d };
+}
+function _raceFitSteps(name, toleranceSec){
+  const m=MARATHONS[name]; if(!m) return null;
+  const elev0=PLOT_DATA[m.col], dist0=PLOT_DATA.distance_km;
+  if(!elev0||!dist0||!elev0.length||!dist0.length) return null;
+  const totalSec=_raceTargetSeconds(m);
+  // The true marathon distance (42.195 km) → 42×1000 m steps + a 195 m final step, summing to target.
+  const courseKm=(m.customDistance!==undefined)?m.customDistance:42.195;
+  const prof=_raceClampProfile(elev0,dist0,courseKm), elev=prof.elev, dist=prof.dist;
+  const model=_raceEvenEffort(elev,dist,totalSec);
+  if(!model||!(courseKm>0)||!(totalSec>0)) return null;
+  const tol=(toleranceSec!=null)?toleranceSec:3;
+  const spd=(sec)=> sec>0?1000/sec:0;
+  const fmt=(sec)=>{ const s=Math.round(sec); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
+  const whole=Math.floor(courseKm+1e-9), steps=[]; let prevT=0;
+  for(let km=1; km<=whole; km++){
+    const t=model.timeAtKm(km), seg=t-prevT, pace=seg;                 // sec per 1 km
+    steps.push({ index:km-1, km, distanceM:1000, seconds:seg, paceSecPerKm:pace,
+      targetSpeed:spd(pace), targetSpeedLow:spd(pace+tol), targetSpeedHigh:spd(Math.max(1,pace-tol)),
+      name:"KM "+km+" · "+fmt(pace)+"/km" });
+    prevT=t;
+  }
+  const remM=Math.round((courseKm-whole)*1000);
+  if(remM>=1){
+    const t=model.timeAtKm(courseKm), seg=t-prevT, pace=seg/(remM/1000);
+    steps.push({ index:whole, km:courseKm, distanceM:remM, seconds:seg, paceSecPerKm:pace,
+      targetSpeed:spd(pace), targetSpeedLow:spd(pace+tol), targetSpeedHigh:spd(Math.max(1,pace-tol)),
+      name:"Final "+remM+" m · "+fmt(pace)+"/km" });
+  }
+  return { steps, totalSec, courseKm };
+}
+function _raceSplits(name){
+  const m=MARATHONS[name]; if(!m) return null;
+  const elev=PLOT_DATA[m.col], dist=PLOT_DATA.distance_km;
+  if(!elev||!dist||!elev.length||!dist.length) return null;
+  const N=Math.min(elev.length,dist.length), endIdx=N-1;
+  const totalSec=_raceTargetSeconds(m);   // follows the selected target (Pacelab rec or manual)
+  const courseKm=(m.customDistance!==undefined)?m.customDistance:dist[N-1];
+  // Even-effort model (shared with the GPX + FIT exports) → elapsed time at any logical distance.
+  const _mdl=_raceEvenEffort(elev,dist,totalSec), timeAtKm=_mdl.timeAtKm;
   const mi=useMiles(), unitKm=mi?KM_PER_MI:1, avgPerUnit=totalSec/(courseKm/unitKm);
   const splits=[]; let prev=0, u=1;
   for(let d=unitKm; d<=courseKm+1e-6; d+=unitKm){
@@ -4979,7 +5052,36 @@ function _racePlanHtml(name,data){
     + `<h2 class="plan-title">${name} — <span class="it">race-day pacing</span></h2>`
     + `<p class="plan-sub">Even effort, not even pace — each split is tuned to the course's climbs and descents. Target finish ${_rpHMS(data.totalSec)}.</p>`
     + `<div class="rp-head"><span>Split</span><span>Pace</span><span>Elapsed</span></div>`
-    + `<div class="rp-list">${rows}</div>`;
+    + `<div class="rp-list">${rows}</div>`
+    + _raceFilesHtml(name);
+}
+// RACE-DAY FILES — the two exports solve different problems: the GPX is the course route + elevation
+// (navigation); the FIT is the km-by-km PaceLab pacing targets loaded as a Garmin workout. Both follow
+// the currently selected target. A compact, device-agnostic install guide sits underneath.
+function _raceFilesHtml(name){
+  const gpxOk = raceRouteAvailable(name);
+  const fitOk = !!(typeof _raceFitSteps==="function" && _raceFitSteps(name));
+  return `<div class="rp-files">`
+    + `<div class="rp-files-h">Race-day files</div>`
+    + `<div class="rp-files-btns">`
+    +   `<button class="rp-file gpx" type="button"${gpxOk?"":` disabled title="Verified course route not available yet"`} onclick="_downloadGpxUI('${name}')">`
+    +     `<span class="rp-file-t">↓ Download course GPX</span><span class="rp-file-s">Route + elevation</span></button>`
+    +   `<button class="rp-file fit" type="button"${fitOk?"":` disabled title="Course profile not available yet"`} onclick="_downloadFitUI('${name}')">`
+    +     `<span class="rp-file-t">↓ Download Garmin workout</span><span class="rp-file-s">km-by-km PaceLab targets for Garmin</span></button>`
+    + `</div>`
+    + `<div class="rp-help">`
+    +   `<div class="rp-help-h">Add the Garmin workout to your watch</div>`
+    +   `<ol class="rp-help-ol">`
+    +     `<li>Connect your Garmin to your computer with a USB data cable</li>`
+    +     `<li>Open your Garmin drive → the <b>NewFiles</b> folder</li>`
+    +     `<li>Copy the downloaded <b>.FIT</b> file into <b>NewFiles</b></li>`
+    +     `<li>Safely disconnect the watch</li>`
+    +     `<li>On the watch open <b>Run → Training / Workouts</b></li>`
+    +     `<li>Select the <b>PaceLab</b> workout</li>`
+    +   `</ol>`
+    +   `<div class="rp-help-note">Menu names vary by Garmin model, so your exact steps may differ.</div>`
+    + `</div>`
+    + `</div>`;
 }
 function openRacePlan(name){
   name = name || goalRace;   // default to the selected race so openRacePlan() (no arg) works
@@ -6735,6 +6837,70 @@ function syncTierUI() {
   window.PacelabGpx = { haversineKm, normalizeRoute, cumulativeKm, routeBounds, interpolateAtKm, buildRaceGpx };
   })();
 
+// ── Canonical Garmin FIT Workout encoder (inlined verbatim from race_fit.mjs, SDK-parity tested) ──
+// Standards-compliant FIT profile: file_id + workout + workout_step + CRC. The byte packer does ZERO
+// pacing math — it serialises the speed targets it is handed by _raceFitSteps (the shared model).
+// FIT units (confirmed against Garmin's official SDK): distance = metres×100, speed = m/s×1000.
+(function(){
+  const BASE = { enum:0x00, uint8:0x02, uint16:0x84, uint32:0x86, uint32z:0x8c, string:0x07 };
+  const MESG = { fileId:0, workout:26, workoutStep:27 };
+  const FIT_EPOCH = 631065600;
+  const CRC_TABLE = [0x0000,0xcc01,0xd801,0x1400,0xf001,0x3c00,0x2800,0xe401,0xa001,0x6c00,0x7800,0xb401,0x5000,0x9c01,0x8801,0x4400];
+  function crc16(bytes, from, to, crc){
+    from=from||0; to=(to==null)?bytes.length:to; crc=crc||0;
+    for(let i=from;i<to;i++){ let b=bytes[i], tmp=CRC_TABLE[crc&0xf];
+      crc=((crc>>4)&0x0fff)^tmp^CRC_TABLE[b&0xf]; tmp=CRC_TABLE[crc&0xf];
+      crc=((crc>>4)&0x0fff)^tmp^CRC_TABLE[(b>>4)&0xf]; }
+    return crc&0xffff;
+  }
+  const utf8 = (s)=> (typeof TextEncoder!=="undefined") ? new TextEncoder().encode(s) : Uint8Array.from(String(s).split("").map(c=>c.charCodeAt(0)&0xff));
+  function sanitizeWorkoutName(name, maxBytes){
+    maxBytes=maxBytes||30; const enc=utf8(String(name||"Race Plan"));
+    if(enc.length<=maxBytes) return enc;
+    let end=maxBytes; while(end>0 && (enc[end]&0xc0)===0x80) end--;
+    return enc.slice(0,end);
+  }
+  // steps: [{ name, distanceM, targetSpeedLow, targetSpeedHigh }] (speeds m/s). opts: { name, sport, timeCreatedSec }
+  function buildFitWorkout(steps, opts){
+    opts=opts||{}; if(!Array.isArray(steps)||!steps.length) return null;
+    const sportCode=(opts.sport==="cycling")?2:1;
+    const nameBytes=sanitizeWorkoutName(opts.name,30);
+    const stepNames=steps.map((s)=>{ const e=utf8(String(s.name||"")); return e.length>40?e.slice(0,40):e; });
+    const nameFieldSize=Math.max(1, ...stepNames.map((n)=>n.length+1));
+    const out=[];
+    const u8=(v)=>out.push(v&0xff);
+    const u16=(v)=>{ out.push(v&0xff); out.push((v>>8)&0xff); };
+    const u32=(v)=>{ out.push(v&0xff); out.push((v>>8)&0xff); out.push((v>>16)&0xff); out.push((v>>>24)&0xff); };
+    const defHdr=(local,mesg,fields)=>{ u8(0x40|local); u8(0); u8(0); u16(mesg); u8(fields.length); for(const f of fields){ u8(f[0]); u8(f[1]); u8(f[2]); } };
+    // file_id
+    defHdr(0, MESG.fileId, [[0,1,BASE.enum],[1,2,BASE.uint16],[2,2,BASE.uint16],[3,4,BASE.uint32z],[4,4,BASE.uint32]]);
+    u8(0x00); u8(5); u16(255); u16(0); u32(1);
+    const created=Math.max(0, Math.round((opts.timeCreatedSec||Math.floor(Date.now()/1000))-FIT_EPOCH)); u32(created);
+    // workout
+    defHdr(1, MESG.workout, [[254,2,BASE.uint16],[4,1,BASE.enum],[6,2,BASE.uint16],[8,nameBytes.length,BASE.string]]);
+    u8(0x01); u16(0); u8(sportCode); u16(steps.length); for(const b of nameBytes) u8(b);
+    // workout_step (one definition reused)
+    defHdr(2, MESG.workoutStep, [[254,2,BASE.uint16],[0,nameFieldSize,BASE.string],[1,1,BASE.enum],[2,4,BASE.uint32],[3,1,BASE.enum],[4,4,BASE.uint32],[5,4,BASE.uint32],[6,4,BASE.uint32],[7,1,BASE.enum]]);
+    for(let i=0;i<steps.length;i++){
+      const s=steps[i], nm=stepNames[i];
+      u8(0x02); u16(i);
+      for(let k=0;k<nameFieldSize;k++) u8(k<nm.length?nm[k]:0x00);
+      u8(1); u32(Math.round(s.distanceM*100)); u8(0); u32(0);
+      u32(Math.max(0,Math.round(s.targetSpeedLow*1000)));
+      u32(Math.max(0,Math.round(s.targetSpeedHigh*1000)));
+      u8(0);
+    }
+    const dataLen=out.length;
+    const header=[14,0x20,0x00,0x00,0,0,0,0,0x2e,0x46,0x49,0x54,0,0];
+    header[4]=dataLen&0xff; header[5]=(dataLen>>8)&0xff; header[6]=(dataLen>>16)&0xff; header[7]=(dataLen>>>24)&0xff;
+    const hdrCrc=crc16(header,0,12); header[12]=hdrCrc&0xff; header[13]=(hdrCrc>>8)&0xff;
+    const file=new Uint8Array(14+dataLen+2); file.set(header,0); file.set(out,14);
+    const fileCrc=crc16(file,0,14+dataLen); file[14+dataLen]=fileCrc&0xff; file[14+dataLen+1]=(fileCrc>>8)&0xff;
+    return file;
+  }
+  window.PacelabFit = { buildFitWorkout, sanitizeWorkoutName };
+  })();
+
 function courseRouteLatLon(m) {
   try {
     const key = (m && m.col) ? m.col + "_latlon" : null;
@@ -6785,6 +6951,52 @@ function downloadPaceGpx(marathonName, totalFinishMinutes) {
   } catch (e) { return false; }
   return true;
 }
+function showFitUnavailable(name){
+  try { alert("Garmin workout for " + name + " isn’t available yet — Pacelab only builds it from a verified course profile and this one isn’t loaded. Your Race Plan pacing is still shown in the app."); } catch (e) {}
+}
+// Download the Garmin FIT Workout — km-by-km PaceLab pacing targets, NOT a course/navigation file
+// (that's the GPX). Built from the SAME _raceFitSteps() splits and the currently selected target, so
+// the visible splits, the GPX and this FIT always agree. Fails clearly if the profile is unavailable.
+function downloadPaceFit(marathonName){
+  const m = MARATHONS[marathonName];
+  if (!m) return false;
+  const built = _raceFitSteps(marathonName);
+  if (!built || !built.steps || !built.steps.length) { showFitUnavailable(marathonName); return false; }
+  const targetSeconds = _raceTargetSeconds(m);
+  const hh = Math.floor(targetSeconds / 3600), mm = Math.round((targetSeconds % 3600) / 60);
+  const wname = `PaceLab ${marathonName} ${hh}h${String(mm).padStart(2, "0")}`;   // e.g. "PaceLab Sydney 2h40"
+  const bytes = (typeof window !== "undefined" && window.PacelabFit && typeof window.PacelabFit.buildFitWorkout === "function")
+    ? window.PacelabFit.buildFitWorkout(built.steps, { name: wname, sport: "running" })
+    : null;
+  if (!bytes || !bytes.length) { showFitUnavailable(marathonName); return false; }
+  try {
+    const blob = new Blob([bytes], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pacelab-${marathonName.toLowerCase().replace(/\s+/g, "-")}-${hh}h${mm}m.fit`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { return false; }
+  return true;
+}
+// UI wrappers: fire the download + safe analytics (pid + session_id are attached by trackEv).
+function _fitDims(name){ const m = MARATHONS[name]; const t = _raceTarget(); return { race_slug: raceSlug(name), target_mode: (t && t.mode) || "pacelab", target_seconds: m ? _raceTargetSeconds(m) : 0, source: "race_plan_files" }; }
+function _downloadGpxUI(name){
+  const m = MARATHONS[name]; if (!m) return;
+  const dims = _fitDims(name);
+  try { trackEv("gpx_download_clicked", dims); } catch (e) {}
+  try { const ok = downloadPaceGpx(name); try { trackEv(ok ? "gpx_download_succeeded" : "gpx_download_failed", dims); } catch (e) {} }
+  catch (e) { try { trackEv("gpx_download_failed", dims); } catch (_) {} }
+}
+function _downloadFitUI(name){
+  const m = MARATHONS[name]; if (!m) return;
+  const dims = _fitDims(name);
+  try { trackEv("fit_download_clicked", dims); } catch (e) {}
+  try { const ok = downloadPaceFit(name); try { trackEv(ok ? "fit_download_succeeded" : "fit_download_failed", dims); } catch (e) {} }
+  catch (e) { try { trackEv("fit_download_failed", dims); } catch (_) {} }
+}
+if (typeof window !== "undefined") { window.downloadPaceFit = downloadPaceFit; window._downloadFitUI = _downloadFitUI; window._downloadGpxUI = _downloadGpxUI; }
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Stripe Payment Links ───────────────────────────────────────────────────────────────────────────────
