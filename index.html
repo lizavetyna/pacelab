@@ -881,6 +881,7 @@
   .pv-split.climb b { color:#c0392b; }
   .pv-split.drop b { color:#0f8a5f; }
   .pv-foot { font-size:10.5px; color:var(--muted); border-top:1px solid var(--line); padding-top:8px; }
+  .pv-disc { font-size:10px; color:var(--muted); line-height:1.35; margin-top:8px; font-style:italic; }
   /* Feature indicators (Static vs Dynamic differentiation) */
   .pf-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .pf-chip { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--muted); background:rgba(10,10,15,.05); padding:3px 9px; border-radius:100px; }
@@ -1291,6 +1292,7 @@
     font-style: normal;
     display: block;
   }
+  .mcell-added { display:block; margin-top:4px; font-family:"JetBrains Mono", monospace; font-size:11.5px; color:var(--muted); letter-spacing:-.01em; }
   /* Sub stats: gain/lost */
   .mcell-sub {
     display: flex;
@@ -4684,6 +4686,41 @@ function _planProjectionSecs(race){
   const m = race ? MARATHONS[race] : null; if(!m) return 0;
   try { return _racePacelabSeconds(m); } catch(e){ return 0; }
 }
+// Per-PRODUCT projected finish for a race, derived from the athlete's current baseline projection.
+//   Race    = base = current course+weather-adjusted prediction (no training improvement).
+//   Static  = base minus a bounded improvement from following the full structured plan.
+//   Dynamic = base minus a larger bounded improvement (adaptive training + coach + recovery + Strava).
+// The improvement is a fraction of the athlete's OWN projection (so it scales with them), then
+// clamped to sane absolute min/max so neither a very fast nor very slow athlete gets an absurd jump,
+// and Dynamic is always strictly faster than Static, which is always strictly faster than Race.
+const _PLAN_GAIN = {
+  static:  { pct: 0.013, minSec: 45, maxSec: 8 * 60 },   // ~1.3%, capped 0:45 … 8:00 faster
+  dynamic: { pct: 0.022, minSec: 90, maxSec: 14 * 60 },  // ~2.2%, capped 1:30 … 14:00 faster
+};
+// How much of the modeled training improvement is realistically available given the time left until
+// the race. Smoothly scales 0→1 (smoothstep, no threshold jumps): <2 weeks ≈ 0 (a plan can't move a
+// race days away), ramping through 4/8 weeks, reaching the FULL modeled opportunity by ~14+ weeks.
+function _trainingOpportunityFactor(m){
+  let weeks = 12;                                   // default block when the race date is unknown
+  try { if (typeof _plWeeksToRace === "function") weeks = _plWeeksToRace(m); } catch(e){}
+  const LO = 2, HI = 14;
+  let x = (weeks - LO) / (HI - LO);
+  x = Math.max(0, Math.min(1, x));
+  return x * x * (3 - 2 * x);                        // smoothstep(x)
+}
+// Per-PRODUCT projected finish. Race = current prediction. Static/Dynamic subtract a bounded gain
+// that is ALSO scaled by the time-to-race opportunity factor, so a race days away shows almost no
+// projected improvement while a full training block shows the full modeled potential.
+function _planProjectionSecsFor(product, race){
+  const base = _planProjectionSecs(race);
+  if(!(base > 0)) return 0;
+  if(product === "race") return base;
+  const g = _PLAN_GAIN[product]; if(!g) return base;
+  const m = race ? MARATHONS[race] : null;
+  const cappedGain = Math.max(g.minSec, Math.min(g.maxSec, Math.round(base * g.pct)));
+  const gain = Math.round(cappedGain * _trainingOpportunityFactor(m));   // 0 when the race is imminent
+  return Math.max(1, base - gain);   // never below 1s; gain is bounded + time-scaled → never absurd
+}
 function _planCardHtml(product, race){
   const p = PLAN_META[product]; if(!p) return "";
   // Dynamic shows its 14-day trial framing; Race/Static reserve the same block (empty) so all three
@@ -4691,16 +4728,13 @@ function _planCardHtml(product, race){
   const trialRow = p.trial
     ? `<div class="pcard-trial"><b>14 days free</b><span class="pcard-trial-sub">then ${fmtPrice(p.priceN)}/month · cancel anytime before the trial ends</span></div>`
     : `<div class="pcard-trial pcard-trial-empty" aria-hidden="true"></div>`;
-  // Per-plan projected result for the selected marathon (recalculated whenever the race changes).
-  const secs = _planProjectionSecs(race);
-  const projLabel = product === "race" ? "Race-day target" : product === "dynamic" ? "Adaptive goal" : "Plan goal";
-  const projRow = `<div class="pcard-proj"><span class="pcard-proj-lab">${projLabel}</span><b class="pcard-proj-val">${secs>0 ? _rpHMS(secs) : "—"}</b></div>`;
+  // The per-race projected finish is shown ONLY on the hover preview (_planPreviewHtml), not on the
+  // card face — keeps the cards clean. `race` is accepted for parity but not rendered here.
   return `<div class="pcard${p.rec?" rec":""}" data-plan="${product}">`
     + (p.rec ? `<div class="pcard-ribbon">Most complete</div>` : "")
     + `<div class="pcard-name">${p.name}</div>`
     + `<div class="pcard-price"><b>${fmtPrice(p.priceN)}</b><span class="per">${p.per}</span></div>`
     + trialRow
-    + projRow
     + `<ul class="pcard-feats">${p.feats.map(f=>`<li>${f}</li>`).join("")}</ul>`
     + `<button class="pcard-cta ${p.cls}" data-plan="${product}" type="button">${p.cta}</button>`
     + `</div>`;
@@ -4709,8 +4743,16 @@ function _planCardHtml(product, race){
 // that plan's actual screen looks like (Dynamic shows the plan's first card).
 function _planPreviewHtml(product){
   if(!PLAN_META[product]) return "";
-  const finish = (typeof fmtClock==="function") ? fmtClock(userTime.flatMinutes||225) : "3:45:00";
-  const race = goalRace || "Your marathon";
+  // Tie the hover projection to the currently selected marathon (chooser control) AND to THIS product
+  // — Race shows the current prediction, Static a realistic improvement, Dynamic a further one.
+  const race = (typeof _chooserRace === "function") ? _chooserRace() : (goalRace || "Sydney");
+  const secs = (typeof _planProjectionSecsFor === "function") ? _planProjectionSecsFor(product, race) : 0;
+  const finish = secs > 0 ? _rpHMS(secs) : ((typeof fmtClock==="function") ? fmtClock(userTime.flatMinutes||225) : "3:45:00");
+  // Wording: Race is a current outlook; Static/Dynamic are an ESTIMATED POTENTIAL (not a guarantee).
+  const finLab = product === "race" ? "Your current race outlook" : "Estimated potential";
+  const disc = product === "race" ? ""
+    : product === "dynamic" ? "Adaptive training gives you the strongest shot at this — not a guaranteed finish."
+    : "Estimate from following the full plan — not a guaranteed finish.";
   const days = (typeof _plCfg==="function" ? _plCfg().daysPerWeek : 4) || 4;
   const week = `<div class="pv-week">${["M","T","W","T","F","S","S"].map((d,i)=>`<span class="pv-day"><i>${d}</i><b class="${i<days?'on':''}"></b></span>`).join("")}</div>`;
   // All three previews share the same calendar-based card, differing only by an
@@ -4725,7 +4767,7 @@ function _planPreviewHtml(product){
     const pace=(typeof fmtPaceU==="function") ? fmtPaceU(avg) : "5:20/km";
     return `<div class="pv-card">`
       + `<div class="pv-eyebrow">${race} · race day</div>`
-      + `<div class="pv-finishlab">Target finish</div><div class="pv-finish">${finish}</div>`
+      + `<div class="pv-finishlab">${finLab}</div><div class="pv-finish">${finish}</div>`
       + `<div class="pv-splits">`
         + `<div class="pv-split"><span>Km 1</span><b>${pace}</b></div>`
         + `<div class="pv-split climb"><span>Km 8 · climb</span><b>ease off</b></div>`
@@ -4752,10 +4794,11 @@ function _planPreviewHtml(product){
   return `<div class="pv-card${isDyn?" boxed":""}">`
     + dynBox
     + `<div class="pv-head"><div class="pv-eyebrow">Your goal race</div><div class="pv-race">${race}</div>`
-    + `<div class="pv-finishlab">Predicted finish</div><div class="pv-finish">${finish}</div></div>`
+    + `<div class="pv-finishlab">${finLab}</div><div class="pv-finish">${finish}</div></div>`
     + `<div class="pv-work">${workLine}</div>`
     + dynBadge
     + week
+    + `<div class="pv-disc">${disc}</div>`
     + seeAll
     + `</div>`;
 }
@@ -4809,8 +4852,8 @@ function openPlanChooser(){
   const sel = document.getElementById("chooserRaceSel");
   if (sel) sel.onchange = () => {
     try { setGoalRace(sel.value); } catch(e){}   // persists pacelab_goal so checkout locks to it
-    const secs = _planProjectionSecs(sel.value);
-    document.querySelectorAll(".pcard-proj-val").forEach(v => { v.textContent = secs>0 ? _rpHMS(secs) : "—"; });
+    // The per-race projected finish shows on hover (_planPreviewHtml reads _chooserRace() live), so
+    // nothing to repaint on the card faces here.
     try { trackEv("marathon_selected", { marathon: sel.value, source:"chooser" }); } catch(e){}
   };
   _wirePlanHoverPreview(body);
@@ -5124,8 +5167,9 @@ function renderStrip() {
         ${m.emoji ? `<span class="emoji" title="${m.weather || ''}">${m.emoji}</span>` : ''}
       </div>
       <div class="mcell-hero">
-        <span class="lbl">Time added</span>
-        <span class="val">${fmtTimePenalty(tAdded)}</span>
+        <span class="lbl">Projected finish</span>
+        <span class="val">${fmtClock(userTime.flatMinutes + tAdded/60)}</span>
+        <span class="mcell-added">${fmtTimePenalty(tAdded)} vs flat</span>
       </div>
       <div class="mcell-sub">
         <div class="ss"><span class="l">GAIN</span><span class="v">${m.gain}m</span></div>
@@ -5147,13 +5191,20 @@ function renderStrip() {
 
   // Wire card interactions
   strip.querySelectorAll(".mcell.on").forEach(c => {
+    c.style.cursor = "pointer";
     c.addEventListener("click", e => {
       if (e.target.closest("[data-action='remove']")) {
         const name = e.target.closest("[data-action='remove']").dataset.name;
         visible.delete(name);
         chipOrder = chipOrder.filter(n => n !== name);
         renderAll();
+        return;
       }
+      // Clicking a marathon card → open the product chooser with THAT race selected, so the plans
+      // + projections are tied to it. The projected finish already reflects Strava (personalized
+      // userTime) or the default baseline, so the chooser opens on the right time automatically.
+      const name = c.getAttribute("data-name");
+      if (name && MARATHONS[name]) { try { setGoalRace(name); } catch(err){} try { openPlanChooser(); } catch(err){} }
     });
   });
 
