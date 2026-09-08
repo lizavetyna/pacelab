@@ -874,6 +874,14 @@
   .pb-promise { margin:14px 0 12px; padding:12px 14px; border-radius:12px; background:rgba(0,51,255,.06); border:1px solid rgba(0,51,255,.28); border-left:3px solid var(--blue,#0033ff); font-size:13px; line-height:1.5; color:var(--ink); }
   .pb-promise b { font-weight:700; }
   .pb-back { margin-top:16px; background:none; border:none; padding:6px 0; color:var(--blue,#0033ff); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  /* Download chooser options */
+  .dl-opts { display:flex; flex-direction:column; gap:12px; margin-top:6px; }
+  .dl-opt { display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; box-sizing:border-box; border:1px solid var(--line); border-radius:14px; padding:16px 18px; font:inherit; cursor:pointer; background:var(--card,#fff); color:var(--ink); transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+  .dl-opt:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(10,10,15,.08); border-color:var(--blue,#0033ff); }
+  .dl-opt:disabled { opacity:.5; cursor:not-allowed; }
+  .dl-opt-t { font-size:15.5px; font-weight:800; }
+  .dl-opt-s { font-size:12px; font-weight:500; color:var(--muted); }
+  .rp-file-tag.alt { background:rgba(0,51,255,.12); color:var(--blue,#0033ff); }
   .gr2-fit { background:#0a0a0f !important; }
   .gr2-band { background:#fff !important; color:var(--ink) !important; border:1px solid var(--line) !important; }
   .gr2-band:hover { border-color:var(--blue,#0033ff) !important; }
@@ -2936,6 +2944,303 @@
   .gpx-dl-btn:hover { opacity: 0.75; }
   .gpx-dl-btn:active { opacity: 0.55; }
 
+  /* ==========================================================================
+     ===== MOBILE / RESPONSIVE PASS =====
+     Presentation only. Everything below is either (a) inside a `max-width` /
+     `hover:none` media query, or (b) a default rule for a class that only exists
+     on the responsive path (`.pcard-proj`, `.pcard-more`, `.pcard-preview`,
+     `.hint-touch`). The desktop layout (>= 881px, pointer-capable) is unchanged.
+     No product logic, pricing, entitlement, pacing or analytics behaviour is
+     affected by anything in this block.
+     Breakpoints reuse the ones the file already uses: 880 (tablet), 720 (chooser
+     stack), 640 (phone), 380 (small phone).
+     ========================================================================== */
+
+  /* ---- Hover-only copy has a touch twin. Both strings live in the markup; the
+     media query below picks one, so the wording is right on every device and no
+     JS is involved. ---- */
+  .hint-touch { display: none; }
+
+  /* ---- Inline plan projection + preview disclosure (chooser cards) ----
+     Desktop shows the projected finish in the cursor-following popup
+     (_planPreviewHtml). A phone has no cursor, so _wirePlanHoverPreview ALSO
+     injects this compact block into every card from the SAME source
+     (_planProjectionSecsFor). It is hidden here by default — the desktop card
+     face keeps exactly the layout it has today — and revealed only where there
+     is no hover, or where the viewport is too narrow for a cursor popup. */
+  .pcard-proj {
+    display: none;                                   /* revealed in the touch/narrow query below */
+    flex-wrap: wrap; row-gap: 2px;
+    margin: 2px 0 12px; padding: 8px 11px;
+    background: rgba(0,51,255,.05); border-radius: 10px;
+  }
+  .pcard-proj-lab { flex: 1 1 auto; }
+  .pcard-proj-val { flex: 0 0 auto; }
+  .pcard-proj-note {
+    flex: 1 1 100%; font-size: 10px; line-height: 1.4; color: var(--muted);
+    font-weight: 500; margin-top: 2px;
+  }
+  /* Secondary, deliberately quiet — the projection must not compete with the
+     product name, the price or the CTA. */
+  .pcard-more {
+    display: none; margin: 0 0 12px; padding: 8px 0; width: 100%;
+    background: none; border: none; text-align: left;
+    font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--muted); text-decoration: underline; text-underline-offset: 3px;
+    cursor: pointer; min-height: 36px;
+  }
+  .pcard-more[aria-expanded="true"] { color: var(--blue, #0033ff); }
+  .pcard-preview { display: none; margin: 0 0 12px; }
+  .pcard-preview.open { display: block; }
+  .pcard-preview .pv-card { padding: 14px; }
+
+  /* No hover: reveal the inline projection + disclosure, neutralise sticky
+     hover transforms, and drop the cursor-following popup entirely. */
+  @media (hover: none) {
+    .hint-hover { display: none; }
+    .hint-touch { display: inline; }
+    /* Hover-revealed mini-teaser under each plan card → always visible on touch. */
+    .pcard .pcard-mini { max-height: none; opacity: 1; margin-top: 8px; }
+    /* Blurred teaser features are a hover affordance on desktop; keep them readable. */
+    .pcard.teaser { opacity: 1; }
+    /* Lift/scale transforms stick after a tap on touch — neutralise them (shadows kept). */
+    .pcard:hover { transform: none; }
+    .rp-file:hover:not(:disabled), .dl-opt:hover:not(:disabled) { transform: none; }
+    .pcard-cta:hover { transform: none; }
+    /* The cursor-following plan preview can never show without a pointer. */
+    .plan-hover-pop { display: none !important; }
+  }
+  /* Either no hover at all, or a viewport too narrow to place a cursor popup. */
+  @media (max-width: 720px), (hover: none) {
+    .pcard-proj { display: flex; }
+    .pcard-more { display: block; }
+  }
+
+  /* ---- Tablets and large phones ---- */
+  @media (max-width: 880px) {
+    /* Notch / rounded-corner safe areas, with a 16px floor so there is always
+       real breathing room next to the text. */
+    body {
+      padding: 28px max(16px, env(safe-area-inset-right))
+               calc(40px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+    /* Owner Race Plan card. On desktop the action row is right-aligned, nowrap and
+       flex:0 0 auto, which pushed ~880px of buttons off a phone screen. Stack it. */
+    .gr2-top, .gr2-grid { flex-direction: column; align-items: stretch; gap: 16px; }
+    .gr2-btns {
+      flex-direction: column; align-items: stretch; justify-content: flex-start;
+      width: 100%; margin-left: 0; gap: 10px;
+    }
+    .gr2-strava, .gr2-act, .gr2-gpx {
+      width: 100%; white-space: normal; padding: 16px 20px; font-size: 15px;
+      min-height: 52px; line-height: 1.25;
+    }
+    .gr2-act { padding: 14.5px 20px; }
+    .gr2-info, .gr2-str { width: 100%; align-items: flex-start; }
+    .gr2-target { max-width: none; width: 100%; }
+    .gr2-val { font-size: 26px; overflow-wrap: anywhere; }
+    /* Long-column blocks that reserve a desktop min-width wider than a phone. */
+    .ch-left, .ft-right, .ub-left { min-width: 0; }
+    .gr-next-side { width: 100%; }
+    /* "Add marathon" panel: the desktop 600px cap clips the country list on a
+       narrow screen (the panel is taller when the pills wrap). Let it grow with
+       the page instead of hiding its own content. */
+    .picker.open { max-height: 2400px; }
+  }
+
+  /* ---- Phones ---- */
+  @media (max-width: 640px) {
+    .wrap { gap: 22px; }
+
+    /* Hero / header */
+    .top h1 { font-size: clamp(30px, 9.4vw, 46px); max-width: none; }
+    /* The unit toggle and the tagline share .meta; side by side at 360px they
+       collide and the tagline wraps mid-phrase. Stack them. */
+    .top .meta {
+      display: flex; flex-direction: column; align-items: flex-start;
+      gap: 10px; font-size: 10.5px; line-height: 1.7;
+    }
+    .top .meta .unit-toggle { margin-bottom: 0; }
+
+    /* PaceLab ID / QR / email block */
+    .top-right { width: 100%; align-items: stretch; }
+    .yl-corner { max-width: none; width: 100%; }
+    .yl-corner .ylt-qr { width: 84px; height: 84px; }
+    .ylt-top { gap: 10px; }
+    .ylt-email, .yl-row { flex-direction: column; align-items: stretch; }
+    .ylt-email .yl-send, .ylt-email .yl-input,
+    .yl-row .yl-input, .yl-row .yl-copy { width: 100%; }
+    .ylt-email .yl-send, .yl-row .yl-copy { min-height: 48px; }
+    .yl-note { max-width: none; }
+
+    /* STEP ONE — connect menu. It is anchored right:0 to .cal-actions-col, whose
+       right edge sits mid-card once the step stacks, so a 248px popover hung off
+       the left of the screen. Let the column span the card and the menu becomes a
+       full-width sheet under the button. */
+    .cal-actions-col { width: 100%; align-items: center; }
+    .connect-menu { left: 0; right: 0; width: auto; min-width: 0; max-width: none; }
+    .cm-item { padding: 13px 14px; min-height: 48px; }
+    .cm-item .cm-name { white-space: normal; }
+    .cm-item .cm-note { white-space: normal; text-align: right; }
+
+    /* Charts + legend + chips. The chart is a viewBox'd SVG at width:100%, so it
+       scales instead of scrolling; nothing here can widen the document. */
+    .chart-card { padding: 16px; }
+    #chart { height: 320px; }
+    .chart-wrap { overflow-x: hidden; }
+    .chart-help { line-height: 1.55; margin-bottom: 16px; }
+    /* The plot is an SVG with a fixed 1200×540 viewBox and preserveAspectRatio="none",
+       so on a phone every label inside it is drawn at ~0.27× horizontally and becomes
+       unreadable. Scaling the axis text up in viewBox units restores a normal reading
+       size (presentation only — no plotted geometry, scale or tick position changes).
+       The rotated "ELEVATION / M" title would then collide with the value labels in the
+       64-unit gutter, so it steps aside; the values themselves are the axis. */
+    #chart text { font-size: 26px; letter-spacing: 0; }
+    #chart text[transform] { display: none; }
+    /* The difficulty-rank overlay covers ~60% of a phone-width plot. Take it out
+       of the chart and put it under it, full width — same content, readable. */
+    .live-rank {
+      position: static; width: 100%; box-sizing: border-box;
+      min-width: 0; margin-top: 14px;
+      box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+      background: var(--paper, #fff);
+    }
+    .chips-bar-head { flex-wrap: wrap; gap: 8px 10px; }
+    .chips-bar-head button.linklike { min-height: 32px; padding: 6px 2px; font-size: 12px; }
+    .chip { min-height: 40px; }
+
+    /* Marathon comparison cards */
+    .mcell { padding: 16px 14px; }
+    .mcell-country { font-size: 10.5px; }
+    .mcell-remove { min-width: 34px; min-height: 34px; font-size: 12px; }
+
+    /* Add Marathon picker. The close control is a "CLOSE ✕" pill, not an icon
+       button — give it tap height with padding, never a fixed square. */
+    .picker.open { padding: 18px 16px; }
+    .picker-head { align-items: center; gap: 12px; }
+    .picker-head h3 { font-size: 20px; }
+    .picker-head .close { flex: none; min-height: 40px; padding: 9px 14px; white-space: nowrap; }
+    .pick-pill { min-height: 42px; }
+    .pm-item { padding: 14px; font-size: 15px; min-height: 52px; }
+    .pm-req input { flex: 1 1 100%; }
+    .pm-req-btn { flex: 1 1 100%; min-height: 46px; }
+
+    /* ---- Dialogs / modals (one shared modal shell drives them all) ---- */
+    .modal-backdrop { padding: 16px 12px; align-items: flex-start; overflow-y: auto; }
+    .modal {
+      --modal-px: 18px;
+      padding: 0 var(--modal-px) 24px; border-radius: 20px;
+      max-height: calc(100vh - 32px);
+      max-height: calc(100dvh - 32px);   /* honours mobile browser chrome */
+      overscroll-behavior: contain;      /* don't scroll the page behind the modal */
+    }
+    /* The modal itself is the scroll container and the close button is absolutely
+       positioned inside it, so on a long phone modal (chooser, race plan) the ✕
+       scrolled away and could not be reached. It is the modal's first child, so
+       putting it back in flow and sticking it to the top keeps it reachable at
+       any scroll position without touching the markup. Dropping the modal's own
+       padding-top (the ✕ row provides that space) means nothing can scroll
+       visibly *above* the pinned row. */
+    .modal-close {
+      position: sticky; top: 0; right: auto; z-index: 5;
+      display: block; width: 38px; height: 38px; font-size: 15px;
+      margin: 0 -2px 4px auto; background: var(--paper-2);
+    }
+    .modal-title, .plan-title { font-size: 27px; }
+    .modal-eyebrow, .plan-eyebrow { font-size: 10.5px; }
+    .modal-sub, .plan-sub { font-size: 13px; }
+
+    /* Product chooser + Race / Static / Dynamic cards (already 1-col at 720) */
+    .modal:has(.pchooser-grid) { max-width: none; }
+    .pchooser-grid { gap: 14px; margin-top: 16px; }
+    .pcard { padding: 20px 16px 18px; }
+    .pcard-line { min-height: 0; }
+    /* The equal-height spacers only exist to align three side-by-side columns;
+       stacked, they are dead vertical space. */
+    .pcard-trial, .pcard-trial-empty { min-height: 0; }
+    .pcard-trial-empty { display: none; }
+    .pcard-cta { padding: 15px 16px; font-size: 15px; min-height: 50px; }
+    /* Keep the selected marathon visible and tappable while the three stacked
+       cards are scrolled: full width, never clipped, pinned under the ✕ (which
+       is why it reserves 46px on the right). */
+    .pchooser-race {
+      flex-wrap: wrap; gap: 6px;
+      position: sticky; top: 0; z-index: 2;
+      background: var(--paper-2, #f5f4ef);
+      /* Full-bleed across the modal's side padding so nothing scrolls past it at
+         the edges; 46px of right padding keeps the <select> clear of the ✕. */
+      margin: 12px calc(var(--modal-px) * -1) 2px;
+      padding: 10px calc(var(--modal-px) + 46px) 12px var(--modal-px);
+    }
+    .pchooser-race-sel { flex: 1 1 100%; }
+    .pchooser-race-sel select { width: 100%; padding: 12px 34px 12px 12px; min-height: 48px; }
+    .psel-main, .psel-teasers { max-width: none; }
+
+    /* Race-day pacing modal: km-by-km splits stay readable without sideways
+       scrolling; the list keeps its own vertical scroll so the race-day file
+       buttons are still reachable without paging past 42 rows. */
+    .rp-list {
+      max-height: 52vh; overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .rp-head { font-size: 9.5px; padding: 8px 2px 6px; }
+    .rp-row { font-size: 12.5px; padding: 9px 2px; }
+    .rp-row .rp-k { width: 52px; }
+    .rp-row .rp-cum { width: 72px; }
+
+    /* Race-day files, Download chooser, Garmin guide, PaceBand capture */
+    .rp-files-btns { flex-direction: column; }
+    .rp-file { flex: 1 1 auto; width: 100%; padding: 15px 16px; }
+    .dl-opt { padding: 16px; }
+    .dl-opt-t { font-size: 15px; }
+    .rp-help, .rp-warn { padding: 13px 14px; }
+    .rp-help-ol { padding-left: 17px; }
+    .rp-band-form { flex-direction: column; }
+    .rp-band-form input, .rp-band-btn { width: 100%; flex: 1 1 auto; min-height: 48px; }
+    .pb-back { min-height: 40px; }
+
+    /* Target time control + manual HH:MM:SS inputs. Three equal fields filling
+       the row read as one control and give a comfortable tap target. */
+    .gr2-tinputs { gap: 6px; flex-wrap: nowrap; width: 100%; }
+    .gr2-tinputs input { flex: 1 1 0; width: auto; min-width: 0; padding: 12px 4px; }
+    .gr2-topt { font-size: 14px; }
+    .gr2-update { width: 100%; min-height: 48px; }
+    .gr2-change { min-height: 36px; padding: 7px 14px; }
+    /* Separate "set your target" from the race-day actions so the stacked
+       buttons read as two groups instead of one long column. */
+    .gr2-btns { padding-top: 16px; border-top: 1px solid var(--line); }
+
+    /* Small controls that were below a comfortable tap size. */
+    .unit-toggle .ut-btn { padding: 9px 14px; font-size: 11.5px; }
+    .cal-no-strava { min-height: 40px; padding: 12px 4px; font-size: 12.5px; }
+    .psel-back { min-height: 40px; padding: 10px 0; font-size: 13px; }
+
+    /* 16px minimum on text fields — anything smaller makes iOS Safari zoom the
+       page on focus, which is the classic source of "the site jumped sideways". */
+    .yl-input, .pm-search, #marathonSearch, .pm-req input,
+    .rp-band-form input, .gr2-tinputs input,
+    .pchooser-race-sel select, .gr-days select { font-size: 16px; }
+  }
+
+  /* ---- Small phones (320-380) ---- */
+  @media (max-width: 380px) {
+    .top h1 { font-size: clamp(28px, 8.8vw, 34px); }
+    .modal { --modal-px: 15px; padding: 0 var(--modal-px) 22px; }
+    .modal-backdrop { padding: 12px 10px; }
+    .modal-title, .plan-title { font-size: 24px; }
+    .pcard { padding: 18px 14px 16px; }
+    .rp-row .rp-k { width: 46px; }
+    .rp-row .rp-cum { width: 64px; }
+    .rp-row { font-size: 12px; }
+    .gr2-tinputs { gap: 5px; }
+    .gr2-tinputs input { padding: 11px 2px; }
+    .yl-corner .ylt-qr { width: 72px; height: 72px; }
+    #chart { height: 280px; }
+    #chart text { font-size: 31px; }        /* narrower viewport → stronger squash */
+    .gr2-strava, .gr2-act, .gr2-gpx { font-size: 14.5px; padding: 15px 14px; }
+    .chart-card { padding: 14px; }
+    .mcell { padding: 14px 12px; }
+  }
 </style>
 </head>
 <body>
@@ -3108,7 +3413,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   </div>
 
   <div class="chart-card">
-    <div class="chart-help">▸ HOVER THE CHART TO COMPARE ELEVATIONS AT THE SAME KM</div>
+    <div class="chart-help"><span class="hint-hover">▸ HOVER THE CHART TO COMPARE ELEVATIONS AT THE SAME KM</span><span class="hint-touch">▸ DRAG ACROSS THE CHART TO COMPARE ELEVATIONS AT THE SAME KM</span></div>
     <div class="chart-wrap">
       <svg id="chart" viewBox="0 0 1200 540" preserveAspectRatio="none"></svg>
       <div class="chart-tooltip" id="chartTooltip"></div>
@@ -3120,7 +3425,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
     <div class="chips-bar">
       <div class="chips-bar-head">
-        <span>▸ MARATHONS ON CHART · DRAG TO REORDER · CLICK TO TOGGLE</span>
+        <span><span class="hint-hover">▸ MARATHONS ON CHART · DRAG TO REORDER · CLICK TO TOGGLE</span><span class="hint-touch">▸ MARATHONS ON CHART · TAP TO TOGGLE</span></span>
         <span class="right">
           <button class="linklike" id="chipsAll">ALL</button>
           <span style="opacity:0.4;">·</span>
@@ -4180,7 +4485,7 @@ function _grDynamicCard2(){
     +     (showConnect ? `<button class="gr2-strava" id="gr2Strava" type="button">Connect Strava</button>` : "")
     +     `<button class="gr2-act" id="gr2Race" type="button">Race-day pacing</button>`
     +     `<button class="gr2-gpx gr2-band" id="gr2Band" type="button">🖨️ Print pace band</button>`
-    +     `<button class="gr2-gpx gr2-fit" id="gr2Fit" type="button"${(typeof _raceFitSteps==="function" && _raceFitSteps(goalRace)) ? "" : ' disabled title="Course profile not available yet"'}>↓ Garmin workout</button>`
+    +     `<button class="gr2-gpx" id="gr2Download" type="button">↓ Download</button>`
     +   `</div>`
     + `</div>`
     + `</div>`;
@@ -4564,8 +4869,8 @@ function renderGoal() {
   if (g2c) g2c.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
   const g2b = document.getElementById("gr2Band");
   if (g2b) g2b.onclick = () => { _paceBandOpen(goalRace); };   // coming-soon pace band + email (delivered before race)
-  const g2f = document.getElementById("gr2Fit");
-  if (g2f) g2f.onclick = () => { _downloadFitUI(goalRace); };   // km-by-km Garmin FIT Workout (safe dims analytics inside)
+  const g2d = document.getElementById("gr2Download");
+  if (g2d) g2d.onclick = () => { _raceDownloadOpen(goalRace); };   // chooser → PDF pace sheet or Garmin (.FIT)
   const gsc = document.getElementById("goalStravaConnect");
   if (gsc) gsc.onclick = () => { if (typeof connectStrava === "function") connectStrava(); };
   const gss = document.getElementById("goalStravaSync");
@@ -4862,11 +5167,64 @@ function _planPreviewHtml(product){
     + seeAll
     + `</div>`;
 }
+// Compact, always-in-the-DOM projected finish for each chooser card, built from the SAME source
+// as the desktop hover popup (_planProjectionSecsFor + the wording used by _planPreviewHtml), so
+// there is never a second, divergent mobile projection. It is written for every device and CSS
+// alone decides whether it shows (`@media (max-width:720px), (hover:none)`) — deliberately NOT a
+// matchMedia branch, because that would not survive a rotation or a resize, and because the
+// desktop card face must keep exactly the layout it has today.
+// Idempotent: called again from the "Pick a marathon" selector so all three products re-project
+// onto the newly selected race.
+function _planCardInlineProjections(scope){
+  scope = scope || document.getElementById("modalBody");
+  if(!scope) return;
+  const race = (typeof _chooserRace==="function") ? _chooserRace() : goalRace;
+  scope.querySelectorAll(".pchooser-grid .pcard").forEach(card=>{
+    const product=card.getAttribute("data-plan"); if(!product) return;
+    const cta=card.querySelector(".pcard-cta");
+    const put=(el)=>{ if(cta) card.insertBefore(el,cta); else card.appendChild(el); };
+    let secs=0; try{ secs=(typeof _planProjectionSecsFor==="function")?_planProjectionSecsFor(product,race):0; }catch(e){}
+    let proj=card.querySelector(".pcard-proj");
+    if(secs>0){
+      if(!proj){ proj=document.createElement("div"); proj.className="pcard-proj"; put(proj); }
+      // Same labels + same non-guarantee disclaimer the hover preview uses.
+      const lab = product === "race" ? "Your current race outlook" : "Estimated potential";
+      const note = product === "race" ? ""
+        : product === "dynamic" ? "Adaptive training gives you the strongest shot at this \u2014 not a guaranteed finish."
+        : "Estimate from following the full plan \u2014 not a guaranteed finish.";
+      proj.innerHTML='<span class="pcard-proj-lab">'+lab+'</span>'
+                   + '<span class="pcard-proj-val">'+_rpHMS(secs)+'</span>'
+                   + (note ? '<span class="pcard-proj-note">'+note+'</span>' : '');
+    } else if(proj){ proj.remove(); }
+    // The rest of the hover preview stays one tap away rather than being unreachable.
+    let panel=card.querySelector(".pcard-preview");
+    if(!panel){
+      panel=document.createElement("div"); panel.className="pcard-preview";
+      // The whole card is a checkout target; the disclosure and its panel must not trigger it.
+      panel.addEventListener("click",(ev)=>{ ev.stopPropagation(); });
+      const more=document.createElement("button");
+      more.type="button"; more.className="pcard-more"; more.setAttribute("aria-expanded","false");
+      more.textContent="Preview what you get";
+      more.addEventListener("click",(ev)=>{
+        ev.stopPropagation();
+        const open=panel.classList.toggle("open");
+        more.setAttribute("aria-expanded",open?"true":"false");
+        more.textContent=open?"Hide preview":"Preview what you get";
+        if(open){ try{ panel.innerHTML=_planPreviewHtml(product); }catch(e){} }
+      });
+      put(more); put(panel);
+    } else if(panel.classList.contains("open")){
+      try{ panel.innerHTML=_planPreviewHtml(product); }catch(e){}   // race changed while open
+    }
+  });
+}
 function _wirePlanHoverPreview(scope){
   let pop=document.getElementById("planHoverPop");
   if(!pop){ pop=document.createElement("div"); pop.id="planHoverPop"; pop.className="plan-hover-pop"; document.body.appendChild(pop); }
   const hide=()=>{ pop.style.display="none"; };
   hide();
+  // Touch has no hover, so the projected finish (desktop: hover-only) is also written inline.
+  try { _planCardInlineProjections(scope); } catch(e){}
   scope.querySelectorAll(".pchooser-grid .pcard").forEach(card=>{
     const product=card.getAttribute("data-plan");
     card.addEventListener("mouseenter",()=>{ pop.innerHTML=_planPreviewHtml(product); pop.style.display="block"; });
@@ -4916,8 +5274,10 @@ function openPlanChooser(){
   const sel = document.getElementById("chooserRaceSel");
   if (sel) sel.onchange = () => {
     try { setGoalRace(sel.value); } catch(e){}   // persists pacelab_goal so checkout locks to it
-    // The per-race projected finish shows on hover (_planPreviewHtml reads _chooserRace() live), so
-    // nothing to repaint on the card faces here.
+    // Desktop reads the new race live on the next hover (_planPreviewHtml calls _chooserRace()).
+    // The inline projections shown on touch/narrow screens are already painted, so repaint them
+    // here from the same source — otherwise all three would keep showing the previous race.
+    try { _planCardInlineProjections(body); } catch(e){}
     try { trackEv("marathon_selected", { marathon: sel.value, source:"chooser" }); } catch(e){}
   };
   _wirePlanHoverPreview(body);
@@ -5079,39 +5439,104 @@ function _racePlanHtml(name,data){
 // (navigation); the FIT is the km-by-km PaceLab pacing targets loaded as a Garmin workout. Both follow
 // the currently selected target. A compact, device-agnostic install guide sits underneath.
 function _raceFilesHtml(name){
-  const fitOk = !!(typeof _raceFitSteps==="function" && _raceFitSteps(name));
-  // Two actions: a coming-soon printable pace band, and the Garmin workout (.FIT). The install
-  // instructions stay HIDDEN until the athlete actually downloads the workout — no clutter by default.
+  // Two actions: a coming-soon printable pace band, and a single "Download" that lets the athlete
+  // pick a PDF pace sheet (prints as a wrist band) or the Garmin workout (.FIT).
   return `<div class="rp-files">`
     + `<div class="rp-files-h">Race-day files</div>`
     + `<div class="rp-files-btns">`
     +   `<button class="rp-file band" type="button" onclick="_paceBandOpen('${name}')">`
     +     `<span class="rp-file-t">🖨️ Print your pace band</span><span class="rp-file-s">Wrist pace band — coming soon</span></button>`
-    +   `<button class="rp-file fit" type="button"${fitOk?"":` disabled title="Course profile not available yet"`} onclick="_downloadFitUI('${name}'); _garminHelpReveal();">`
-    +     `<span class="rp-file-t">↓ Download Garmin workout <span class="rp-file-tag">.FIT</span></span><span class="rp-file-s">km-by-km PaceLab targets for Garmin</span></button>`
-    + `</div>`
-    + `<div class="rp-help-wrap" id="garminHelp" style="display:none">`
-    +   `<div class="rp-warn">`
-    +     `<div class="rp-warn-t">⌚ Garmin workout (.FIT) — it's a workout, not a course</div>`
-    +     `<div class="rp-warn-b">Transfer it to your watch via USB → <b>GARMIN/NewFiles</b>. <b>Do not import this file as a Course in Garmin Connect</b> — it's a paced workout that runs on the watch.</div>`
-    +   `</div>`
-    +   `<div class="rp-help">`
-    +     `<div class="rp-help-h">Add the Garmin workout to your watch</div>`
-    +     `<ol class="rp-help-ol">`
-    +       `<li>Connect your Garmin to your computer with a USB data cable</li>`
-    +       `<li>Open your Garmin drive → the <b>GARMIN/NewFiles</b> folder</li>`
-    +       `<li>Copy the downloaded <b>.FIT</b> file into <b>NewFiles</b></li>`
-    +       `<li>Safely disconnect the watch</li>`
-    +       `<li>On the watch open <b>Run → Training / Workouts</b></li>`
-    +       `<li>Select the <b>PaceLab</b> workout</li>`
-    +     `</ol>`
-    +     `<div class="rp-help-note">Menu names vary by Garmin model, so your exact steps may differ.</div>`
-    +   `</div>`
+    +   `<button class="rp-file fit" type="button" onclick="_raceDownloadOpen('${name}')">`
+    +     `<span class="rp-file-t">↓ Download</span><span class="rp-file-s">Pace sheet (PDF) or Garmin workout</span></button>`
     + `</div>`
     + `</div>`;
 }
-// Reveal the Garmin install instructions — only after the athlete pushes "Download Garmin workout".
+// Reveal the Garmin install instructions — only after the athlete chooses the Garmin workout.
 function _garminHelpReveal(){ try{ const el=document.getElementById("garminHelp"); if(el) el.style.display=""; }catch(e){} }
+// Garmin install guide (warning + steps). Emphasises: it's a workout, not a course.
+function _garminHelpBody(){
+  return `<div class="rp-warn">`
+    +   `<div class="rp-warn-t">⌚ Garmin workout (.FIT) — it's a workout, not a course</div>`
+    +   `<div class="rp-warn-b">Transfer it to your watch via USB → <b>GARMIN/NewFiles</b>. <b>Do not import this file as a Course in Garmin Connect</b> — it's a paced workout that runs on the watch.</div>`
+    + `</div>`
+    + `<div class="rp-help">`
+    +   `<div class="rp-help-h">Add the Garmin workout to your watch</div>`
+    +   `<ol class="rp-help-ol">`
+    +     `<li>Connect your Garmin to your computer with a USB data cable</li>`
+    +     `<li>Open your Garmin drive → the <b>GARMIN/NewFiles</b> folder</li>`
+    +     `<li>Copy the downloaded <b>.FIT</b> file into <b>NewFiles</b></li>`
+    +     `<li>Safely disconnect the watch</li>`
+    +     `<li>On the watch open <b>Run → Training / Workouts</b></li>`
+    +     `<li>Select the <b>PaceLab</b> workout</li>`
+    +   `</ol>`
+    +   `<div class="rp-help-note">Menu names vary by Garmin model, so your exact steps may differ.</div>`
+    + `</div>`;
+}
+// The Download chooser — one button, two formats. PDF pace sheet (print / save, doubles as a wrist
+// band) or the Garmin workout (.FIT). Choosing Garmin downloads it and reveals the install guide here.
+function _raceDownloadOpen(name){
+  const body=document.getElementById("modalBody"), bd=document.getElementById("modalBackdrop");
+  if(!body||!bd) return;
+  const fitOk = !!(typeof _raceFitSteps==="function" && _raceFitSteps(name));
+  const back = MARATHONS[name] ? `<button class="pb-back" type="button" onclick="openRacePlan('${name}')">← Back to race plan</button>` : "";
+  body.innerHTML = `<div class="plan-eyebrow">↓ Download</div>`
+    + `<h2 class="plan-title">Your <span class="it">race-day file</span></h2>`
+    + `<p class="plan-sub">Pick the format that suits you. The PDF pace sheet prints as a wrist pace band; the Garmin workout runs on your watch.</p>`
+    + `<div class="dl-opts">`
+    +   `<button class="dl-opt" type="button" onclick="_racePrintSheet('${name}')">`
+    +     `<span class="dl-opt-t">📄 Pace sheet (PDF)</span><span class="dl-opt-s">Print it or save as PDF — km-by-km splits, doubles as a wrist pace band</span></button>`
+    +   `<button class="dl-opt" type="button"${fitOk?"":` disabled title="Course profile not available yet"`} onclick="_downloadFitUI('${name}'); _garminHelpReveal();">`
+    +     `<span class="dl-opt-t">⌚ Garmin workout <span class="rp-file-tag alt">.FIT</span></span><span class="dl-opt-s">km-by-km targets on your Garmin watch</span></button>`
+    + `</div>`
+    + `<div class="rp-help-wrap" id="garminHelp" style="display:none">` + _garminHelpBody() + `</div>`
+    + back;
+  bd.classList.add("open");
+}
+// Printable PDF pace sheet — opens a clean, self-contained page the browser can Print or Save as PDF.
+// Built from the SAME visible _raceSplits() (selected target). Includes a cut-out wrist strip.
+function _racePrintSheet(name){
+  const m = MARATHONS[name]; if(!m) return;
+  const data = (typeof _raceSplits==="function") ? _raceSplits(name) : null;
+  if(!data || !data.splits || !data.splits.length){ try{ alert("Pace sheet isn't available for this course yet."); }catch(e){} return; }
+  const unit = data.mi ? "mi" : "km";
+  const target = _rpHMS(data.totalSec);
+  const esc = (s)=>String(s).replace(/[<>&]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+  const rows = data.splits.map(s=>`<tr><td class="k">${esc(s.label)}</td><td class="p">${_rpMS(s.paceSec)}/${unit}</td><td class="c">${_rpHMS(s.cumSec)}</td></tr>`).join("");
+  const strip = data.splits.map(s=>{ const n=parseInt(s.label,10); const lab = isNaN(n) ? "F" : n; return `<span class="ps-cell"><b>${lab}</b>${_rpHMS(s.cumSec)}</span>`; }).join("");
+  const title = `PaceLab — ${esc(name)} — target ${target}`;
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>`
+    + `<style>`
+    + `*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0a0a0f;margin:0;padding:28px 30px;}`
+    + `h1{font-size:20px;margin:0 0 2px}.sub{color:#555;font-size:12.5px;margin:0 0 16px}`
+    + `.meta{font-weight:700}`
+    + `table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px}`
+    + `th,td{text-align:left;padding:5px 8px;border-bottom:1px solid #e6e6ea}th{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#666}`
+    + `td.p{text-align:center}td.c{text-align:right;color:#333}td.k{font-weight:700}`
+    + `.cols{column-count:2;column-gap:26px}`
+    + `.strip-h{margin:22px 0 6px;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#666}`
+    + `.strip{border:1px dashed #999;border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:0}`
+    + `.ps-cell{flex:0 0 auto;min-width:52px;text-align:center;font-size:10px;padding:4px 5px;border-right:1px dashed #ccc;font-variant-numeric:tabular-nums}`
+    + `.ps-cell b{display:block;font-size:11px}`
+    + `.foot{margin-top:14px;color:#777;font-size:10.5px}`
+    + `.noprint{margin-bottom:16px}`
+    + `.btn{background:#0033ff;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}`
+    + `@media print{.noprint{display:none}body{padding:0}}`
+    + `</style></head><body>`
+    + `<div class="noprint"><button class="btn" onclick="window.print()">Print / Save as PDF</button></div>`
+    + `<h1>${esc(name)} — race-day pace sheet</h1>`
+    + `<p class="sub">Target finish <span class="meta">${target}</span> · even-effort splits (tuned to the course climbs &amp; descents) · PaceLab</p>`
+    + `<div class="cols"><table><thead><tr><th>Split</th><th style="text-align:center">Pace</th><th style="text-align:right">Elapsed</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    + `<div class="strip-h">✂ Cut-out wrist pace band — elapsed time at each ${unit}</div>`
+    + `<div class="strip">${strip}</div>`
+    + `<div class="foot">Even effort, not even pace. Run to the elapsed time at each ${unit} marker. Generated by PaceLab.</div>`
+    + `<script>setTimeout(function(){try{window.print()}catch(e){}},350)<\/script>`
+    + `</body></html>`;
+  let w=null; try{ w = window.open("", "_blank"); }catch(e){}
+  if(!w){ try{ alert("Please allow pop-ups to open the printable pace sheet, then try again."); }catch(e){} return; }
+  try{ w.document.open(); w.document.write(doc); w.document.close(); }catch(e){}
+  try{ trackEv("pace_sheet_opened", { race_slug: raceSlug(name), target_mode: _raceTarget().mode, target_seconds: _raceTargetSeconds(m), source:"race_plan_download" }); }catch(e){}
+}
+if (typeof window !== "undefined") { window._raceDownloadOpen = _raceDownloadOpen; window._racePrintSheet = _racePrintSheet; }
 // Pace band = a slim paper wrist strip of the km-by-km targets. It's coming soon: this opens a
 // coming-soon acknowledgement and captures interest, promising delivery before the athlete's race.
 // The email goes ONLY to the private waitlist (worker /pace-band-interest → KV); the anonymous
@@ -5951,6 +6376,19 @@ function renderChart() {
     hoverDots.innerHTML = "";
     tooltip.classList.remove("on");
   });
+  // Touch equivalent of the hover scrub. Phones have no pointer, so the elevation tooltip was
+  // unreachable. Mirror each touch onto the SAME mousemove/mouseleave handlers above rather than
+  // duplicating any chart logic. Listeners are passive so vertical page scrolling still wins.
+  if (!rect._plTouchWired) {
+    rect._plTouchWired = 1;
+    const _plScrub = (e) => {
+      const t = e.touches && e.touches[0]; if (!t) return;
+      rect.dispatchEvent(new MouseEvent("mousemove", { clientX: t.clientX, clientY: t.clientY }));
+    };
+    rect.addEventListener("touchstart", _plScrub, { passive: true });
+    rect.addEventListener("touchmove", _plScrub, { passive: true });
+    rect.addEventListener("touchcancel", () => rect.dispatchEvent(new MouseEvent("mouseleave")), { passive: true });
+  }
 
   // Rebuild runner animation profiles for currently visible marathons
   rebuildRunnerProfiles(maxY);
