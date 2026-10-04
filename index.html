@@ -768,6 +768,11 @@
   .pb-btn { position: relative; overflow: hidden; width: auto; max-width: 100%; box-sizing: border-box; text-align: center; background: #FC4C02; color: #fff; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; border-radius: 12px; padding: 12px 26px; font-size: 14px; box-shadow: 0 6px 18px rgba(252,76,2,.28); transition: transform .15s ease, filter .15s ease; animation: shimmer-pulse-orange 1.8s ease-in-out infinite; }
   .pb-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
   .pb-btn::before { content: ""; position: absolute; top: 0; left: -60%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%); animation: shimmer-sweep 1.8s ease-in-out infinite; pointer-events: none; }
+  /* Explanatory copy under the Step Two CTA (moved here from the Step One form, so Step One shows
+     only the live Strava result line). Keeps the muted label + body-copy pairing it had before. */
+  .pb-note { max-width: 520px; }
+  .pb-note-h { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .pb-note .pb-sub { margin-top: 6px; }
   /* Secondary "How it helps you" link under the Step Two CTA */
   .pb-help { background:none; border:none; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--blue,#0033ff); text-decoration:underline; text-underline-offset:3px; padding:2px; }
   .pb-help:hover { filter:brightness(1.15); }
@@ -3366,15 +3371,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       </div>
       <div class="cf-mode" data-mode="strava">
         <div class="cf-fields">
+          <!-- Status text occupies columns 1-2 so the button lands in column 3, hard right —
+               the alignment this row had before the help paragraph moved to Step Two. -->
           <div class="cf-field" style="grid-column: span 2;">
-            <label>Let your training set your time</label>
-            <div class="cf-help">Connect Strava and we'll analyze your recent runs to estimate a realistic marathon time — no guessing. Your race day forecast is privately calculated and not stored.</div>
+            <div class="strava-status" id="stravaStatus"></div>
           </div>
           <div class="cf-actions">
             <button class="calibrate-btn strava-btn" id="stravaConnect">Connect Strava</button>
-          </div>
-          <div class="cf-field" style="grid-column: span 2;">
-            <div class="strava-status" id="stravaStatus"></div>
           </div>
         </div>
       </div>
@@ -3386,6 +3389,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       <div class="pb-eyebrow">Step two</div>
     </div>
     <button class="pb-btn" id="planBridgeBtnTop" type="button">I help you →</button>
+    <div class="pb-note">
+      <div class="pb-note-h">Let your training set your time</div>
+      <div class="pb-sub">Connect Strava and we'll analyze your recent runs to estimate a realistic marathon time — no guessing. Your race day forecast is privately calculated and not stored.</div>
+    </div>
   </div>
   </div>
 
