@@ -775,6 +775,11 @@
   .unit-toggle { display:inline-flex; border:1px solid var(--line); border-radius:100px; overflow:hidden; margin-bottom:8px; }
   .unit-toggle .ut-btn { background:transparent; border:none; padding:5px 13px; font-family:inherit; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); cursor:pointer; transition:all .15s; }
   .unit-toggle .ut-btn.active { background:var(--ink); color:var(--paper); }
+  /* Marathon / Half selector above the Step One time — same pill language as the km/mi toggle,
+     because it is the same kind of control: a view over one underlying number. */
+  .dist-toggle { display:inline-flex; border:1px solid var(--line); border-radius:100px; overflow:hidden; margin-bottom:10px; }
+  .dist-toggle .dt-btn { background:transparent; border:none; padding:5px 14px; font-family:inherit; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .dist-toggle .dt-btn.active { background:var(--ink); color:var(--paper); }
 
   /* ===== Product chooser (Static / Dynamic / Race) ===== */
   .pchooser-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:6px; align-items:stretch; }
@@ -3212,6 +3217,7 @@
 
     /* Small controls that were below a comfortable tap size. */
     .unit-toggle .ut-btn { padding: 9px 14px; font-size: 11.5px; }
+    .dist-toggle .dt-btn { padding: 9px 16px; font-size: 11.5px; min-height: 40px; }
     .cal-no-strava { min-height: 40px; padding: 12px 4px; font-size: 12.5px; }
     .psel-back { min-height: 40px; padding: 10px 0; font-size: 13px; }
 
@@ -3225,6 +3231,7 @@
   /* ---- Small phones (320-380) ---- */
   @media (max-width: 380px) {
     .top h1 { font-size: clamp(28px, 8.8vw, 34px); }
+    .dist-toggle .dt-btn { padding: 9px 12px; font-size: 11px; }
     .modal { --modal-px: 15px; padding: 0 var(--modal-px) 22px; }
     .modal-backdrop { padding: 12px 10px; }
     .modal-title, .plan-title { font-size: 24px; }
@@ -3290,7 +3297,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     <div class="cal-eyebrow">Step one</div>
     <div class="calibrator-left">
       <div>
-        <div class="clbl">Your ideal marathon time</div>
+        <div class="dist-toggle" id="distToggle" role="group" aria-label="Predicted race distance">
+          <button type="button" class="dt-btn" data-d="marathon">Marathon</button>
+          <button type="button" class="dt-btn" data-d="half">Half</button>
+        </div>
+        <div class="clbl" id="calLbl">Your ideal marathon time</div>
         <div class="ctime shimmer" id="calTimeWrap"><span id="calTime">4:00:00</span></div>
       </div>
     </div>
@@ -3309,14 +3320,14 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
     <div class="calibrator-form" id="calForm">
       <div class="cf-tabs">
-        <button class="cf-tab active" data-mode="time">I've run a marathon</button>
+        <button class="cf-tab active" data-mode="time" id="cfTabTime">I've run a marathon</button>
         <button class="cf-tab" data-mode="pace">I have a goal pace</button>
         <button class="cf-tab" data-mode="strava">Estimate from Strava</button>
       </div>
       <div class="cf-mode active" data-mode="time">
         <div class="cf-fields">
           <div class="cf-field">
-            <label>Your marathon time (flat course)</label>
+            <label id="calTimeLabel">Your marathon time (flat course)</label>
             <div class="cf-time-row">
               <input type="number" id="calHours" min="2" max="8" value="4" placeholder="H">
               <span class="sep">:</span>
@@ -4003,7 +4014,18 @@ function fmtDist(km, dp){ return fmtDistNum(km, dp) + " " + unitDist(); }       
 // Named fmtPaceU (not fmtPace) — there is a separate legacy fmtPace(paceMin) that takes
 // MINUTES; colliding names silently broke pace display ("396:00"). This one takes sec/km.
 function fmtPaceU(secPerKm){ let s = useMiles() ? secPerKm * KM_PER_MI : secPerKm; s = Math.max(1, Math.round(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0") + (useMiles() ? "/mi" : "/km"); }
-// --- Daniels VDOT engine (validated against Daniels' Running Formula, Tables 5.1/5.2) ---
+// --- Daniels VDOT engine. The Gilbert/Daniels regressions from Oxygen Power (1979): the economy
+// curve and the %VO2max-vs-duration curve that Daniels' Running Formula plots as figures 5.1 and 5.2
+// but never prints the coefficients for.
+// Audited 2026-10-04 against Running Formula 4th ed. **Table 5.1** ("VDOT Values Associated With
+// Running Times of Popular Distances") — the book's only race-equivalence table. Agreement is close:
+// 5K and 10K within 3 s, half within 13 s, marathon within 32 s; worst case is at VDOT 30, and from
+// VDOT 35-85 the marathon is within 11 s (<=0.18% of race time at every distance). What is left is a
+// small curve-fit residual between these 1979 coefficients and the Run SMART calculator that
+// generated the 4th-edition table; it does not grow with fitness. Numerical inversion contributes
+// nothing (80 bisection iterations converge below double precision).
+// NOTE: Table 5.2 is "Training Intensities Based on Current VDOT" and holds no race times — it is
+// the right reference for the training paces in _vdotPaceKm/_plZones below, not for race prediction.
 function _vo2(v){ return -4.60 + 0.182258*v + 0.000104*v*v; }                              // v in m/min -> O2 cost
 function _pctMax(t){ return 0.8 + 0.1894393*Math.exp(-0.012778*t) + 0.2989558*Math.exp(-0.1932605*t); } // t in min
 function _velFromVo2(o){ return (-0.182258 + Math.sqrt(0.182258*0.182258 + 4*0.000104*(4.60+o)))/(2*0.000104); }
@@ -4014,6 +4036,35 @@ function _currentVdot(flatMin){
   try { const s=JSON.parse(localStorage.getItem("pacelab_strava")||"null"); if(s&&s.connected&&s.vdot&&s.vdot>=20&&s.vdot<=85) return s.vdot; } catch(e){}
   return Math.max(20, Math.min(85, _vdotFromPerf(42195, (flatMin||225)*60)));
 }
+// ===== Race-distance view (Marathon / Half) ==========================================
+// The athlete's fitness is stored ONCE, as a flat MARATHON time in userTime.flatMinutes.
+// A half-marathon prediction is that same fitness expressed over 21.0975 km through the same
+// Daniels engine above — _vdotRaceSec is already distance-generic, so there is no second model,
+// no second table and nothing new to keep in sync.
+const PL_MARATHON_M = 42195, PL_HALF_M = 21097.5;
+function _plDistance(){ try { return localStorage.getItem("pacelab_distance") === "half" ? "half" : "marathon"; } catch(e){ return "marathon"; } }
+function _plSetDistance(d){ try { localStorage.setItem("pacelab_distance", d === "half" ? "half" : "marathon"); } catch(e){} }
+function _plIsHalf(){ return _plDistance() === "half"; }
+// The VDOT implied by the marathon time currently on screen. After a Strava connect that time IS
+// data.vdotMarathonSeconds, so this recovers the Strava VDOT; after a manual edit it tracks the
+// edit. Deriving it from the displayed number (rather than reading the stored Strava VDOT) is what
+// guarantees the two readouts are always two views of the SAME fitness and round-trip exactly.
+function _plFitnessVdot(flatMin){ return Math.max(20, Math.min(85, _vdotFromPerf(PL_MARATHON_M, (flatMin||225)*60))); }
+// Predicted finish for the selected distance, in seconds.
+function _plPredictedSeconds(flatMin, dist){
+  const half = (dist ? dist === "half" : _plIsHalf());
+  if (!half) return Math.round((flatMin||225)*60);
+  return Math.round(_vdotRaceSec(_plFitnessVdot(flatMin), PL_HALF_M));
+}
+// Inverse, for manual entry in Half mode: a half time becomes the equivalent flat marathon minutes,
+// so only ever ONE number is stored and everything downstream is untouched.
+function _plFlatMinFromHalfSeconds(halfSec){
+  const v = Math.max(20, Math.min(85, _vdotFromPerf(PL_HALF_M, Math.max(1, halfSec))));
+  return _vdotRaceSec(v, PL_MARATHON_M) / 60;
+}
+// Entry bounds per distance, in minutes (the marathon pair is the long-standing 2:00-8:00 rule).
+function _plBounds(){ return _plIsHalf() ? { lo: 55, hi: 240, lab: "0:55 and 4:00", noun: "half marathon" }
+                                         : { lo: 120, hi: 480, lab: "2:00 and 8:00", noun: "marathon" }; }
 function _plZones(flatMin){
   const vdot = _currentVdot(flatMin);
   const mp = _vdotRaceSec(vdot, 42195)/42.195;                                             // M = predicted marathon pace
@@ -6742,7 +6793,8 @@ function renderMeta() {
 
 /* ================== CALIBRATOR ================== */
 function renderCalibrator() {
-  $("calTime").textContent = fmtClock(userTime.flatMinutes);
+  $("calTime").textContent = fmtClock(_plPredictedSeconds(userTime.flatMinutes) / 60);
+  if ($("calLbl")) $("calLbl").textContent = _plIsHalf() ? "Your ideal half marathon time" : "Your ideal marathon time";
   const modeEl = $("calMode") || { textContent: "", classList: { add: ()=>{}, remove: ()=>{} } };
   const timeWrap = $("calTimeWrap");
   const calBtn = $("calBtn");
@@ -6775,7 +6827,7 @@ function makeCalTimeEditable() {
   wrap.title = "Click to edit your time";
   wrap.addEventListener("click", () => {
     if (wrap.querySelector(".ctime-edit")) return;         // already editing
-    const total = Math.round(userTime.flatMinutes * 60);
+    const total = _plPredictedSeconds(userTime.flatMinutes);   // edit what is on screen
     const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
     span.style.display = "none";
     const ed = document.createElement("span");
@@ -6798,14 +6850,16 @@ function makeCalTimeEditable() {
       const M = parseInt(inputs[1].value, 10) || 0;
       const S = parseInt(inputs[2].value, 10) || 0;
       const t = H * 60 + M + S / 60;
-      if (t < 120 || t > 480) {                            // same 2:00–8:00 bound as Apply
+      const b = _plBounds();                               // same bounds as Apply, per distance
+      if (t < b.lo || t > b.hi) {
         wrap.classList.add("shake");
         setTimeout(() => wrap.classList.remove("shake"), 420);
         inputs[0].focus();
         return;
       }
       cancel();
-      userTime.flatMinutes = t;
+      // Half entry is converted back through the same engine, so ONE marathon number is stored.
+      userTime.flatMinutes = _plIsHalf() ? _plFlatMinFromHalfSeconds(t * 60) : t;
       userTime.mode = "real";
       renderAll();
     };
@@ -6820,6 +6874,49 @@ function makeCalTimeEditable() {
   });
 }
 
+// Marathon / Half toggle. It switches the VIEW over one stored fitness number — it never writes
+// a second prediction, and it deliberately touches nothing outside Step One and the Strava result
+// line, because every race in Pacelab is a 42.195 km course.
+function _plSyncDistanceCopy() {
+  const half = _plIsHalf();
+  const noun = half ? "half marathon" : "marathon";
+  const tab = document.getElementById("cfTabTime");
+  if (tab) tab.textContent = half ? "I've run a half" : "I've run a marathon";
+  const lab = document.getElementById("calTimeLabel");
+  if (lab) lab.textContent = "Your " + noun + " time (flat course)";
+  const help = document.getElementById("calHelpTime");
+  if (help) help.innerHTML = half
+    ? "Your finish time on a pancake-flat half marathon. We convert it to the same fitness estimate we use for the marathon, so your race projections stay consistent."
+    : "Your finish time on a pancake-flat marathon (Berlin, Chicago, Valencia). We'll scale the elevation penalty to <em>your</em> fitness.";
+  // Prefill the manual fields with the currently displayed time, in the selected distance.
+  const total = _plPredictedSeconds(userTime.flatMinutes);
+  const H = document.getElementById("calHours"), M = document.getElementById("calMinutes"), S = document.getElementById("calSeconds");
+  if (H && M && S) {
+    H.min = half ? 0 : 2; H.max = half ? 4 : 8;
+    H.value = Math.floor(total / 3600);
+    M.value = Math.floor((total % 3600) / 60);
+    S.value = total % 60;
+  }
+}
+function wireDistToggle() {
+  const box = document.getElementById("distToggle");
+  if (!box) return;
+  const reflect = () => { const d = _plDistance(); box.querySelectorAll(".dt-btn").forEach(b => {
+    const on = b.dataset.d === d; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+  }); };
+  box.querySelectorAll(".dt-btn").forEach(b => {
+    b.onclick = () => {
+      _plSetDistance(b.dataset.d);
+      reflect();
+      try { _plSyncDistanceCopy(); } catch(e){}
+      try { renderCalibrator(); } catch(e){}
+      try { _plRefreshStravaLine(); } catch(e){}
+      try { trackEv("predicted_distance_selected", { }); } catch(e){}
+    };
+  });
+  reflect();
+  try { _plSyncDistanceCopy(); } catch(e){}
+}
 // km / mi toggle: reflect the saved preference and re-render everything on change.
 function wireUnitToggle() {
   const box = document.getElementById("unitToggle");
@@ -6832,6 +6929,7 @@ function wireUnitToggle() {
 // Wire calibrator buttons + form
 function wireCalibrator() {
   try { wireUnitToggle(); } catch(e){}
+  try { wireDistToggle(); } catch(e){}
   try { document.documentElement.classList.toggle("has-plan", !!_plProduct()); } catch(e){}
   const form = $("calForm");
   // Single smart entry point: the shimmering CTA opens a small provider menu.
@@ -6949,11 +7047,12 @@ function wireCalibrator() {
     const m = parseInt($("calMinutes").value) || 0;
     const s = parseInt($("calSeconds").value) || 0;
     const total = h * 60 + m + s / 60;
-    if (total < 120 || total > 480) {
-      alert("Please enter a marathon time between 2:00 and 8:00.");
+    const b = _plBounds();
+    if (total < b.lo || total > b.hi) {
+      alert("Please enter a " + b.noun + " time between " + b.lab + ".");
       return;
     }
-    userTime.flatMinutes = total;
+    userTime.flatMinutes = _plIsHalf() ? _plFlatMinFromHalfSeconds(total * 60) : total;
     userTime.mode = 'real';
     form.classList.remove("open");
     renderAll();
@@ -7818,6 +7917,28 @@ function adoptStravaAccount(account) {
   } catch (e) {}
 }
 
+// The Strava result sentence, in whichever distance is selected. The MARATHON wording is the
+// documented one and is reproduced verbatim; the half variant reuses the same analysis — the same
+// runs, the same VDOT — and only reports the distance the athlete asked for.
+let _plLastEstimate = null;
+function _plStravaSentence(data) {
+  if (!data) return "";
+  const conf = data.confidence ? ` — ${data.confidence} confidence` : '';
+  const vtxt = data.vdot ? ` Your VDOT is about ${data.vdot}.` : '';
+  if (_plIsHalf()) {
+    const marSec = data.vdotMarathonSeconds || data.estimateSeconds;
+    const halfHMS = _rpHMS(_plPredictedSeconds(marSec / 60, "half"));
+    return `Analyse ${data.runsAnalyzed} runs to estimate your current fitness and realistic best half marathon time. It is ${halfHMS}${conf}.${vtxt} We've placed it above — tweak it any time.`;
+  }
+  return `Analyse ${data.runsAnalyzed} runs to estimate your current fitness and realistic best marathon time. It is ${data.vdotMarathonHMS || data.estimateHMS}${conf}.${vtxt} We've placed it above — tweak it any time.`;
+}
+// Repaint the result line when the distance toggle flips (no-op if there is nothing to repaint).
+function _plRefreshStravaLine() {
+  if (!_plLastEstimate) return;
+  const el = document.getElementById("stravaStatus");
+  if (!el || !el.textContent) return;
+  showStravaStatus(_plStravaSentence(_plLastEstimate), true);
+}
 function applyStravaEstimate(data, source) {
   source = source || (data && data.source) || "strava";
   const best = data.vdotMarathonSeconds || data.estimateSeconds;
@@ -7827,12 +7948,8 @@ function applyStravaEstimate(data, source) {
   try { adoptStravaAccount(data.account); } catch (e) {}
   try { trackEv("result_viewed", { marathon: goalRace || null }); } catch (e) {}
   renderAll();
-  const conf = data.confidence ? ` — ${data.confidence} confidence` : '';
-  const vtxt = data.vdot ? ` Your VDOT is about ${data.vdot}.` : '';
-  showStravaStatus(
-    `Analyse ${data.runsAnalyzed} runs to estimate your current fitness and realistic best marathon time. It is ${data.vdotMarathonHMS || data.estimateHMS}${conf}.${vtxt} We've placed it above — tweak it any time.`,
-    true
-  );
+  _plLastEstimate = data;
+  showStravaStatus(_plStravaSentence(data), true);
   try { localStorage.setItem("pacelab_strava", JSON.stringify({ connected: true, source: source, estimateHMS: data.estimateHMS, estimateSeconds: data.estimateSeconds, weeklyKm: data.weeklyKm, vdot: data.vdot || 0, vdotMarathonSeconds: data.vdotMarathonSeconds || 0, lastActivity: data.lastActivity || null, at: Date.now() })); } catch (e) {}
   setStravaConnectedUI(true, data.vdotMarathonHMS || data.estimateHMS);
   try { if (!localStorage.getItem("pacelab_first_analysis")) { localStorage.setItem("pacelab_first_analysis", "1"); _grFirstConnectMessage(data); } } catch (e) {}
