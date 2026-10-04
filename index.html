@@ -773,6 +773,25 @@
   .pb-note { max-width: 520px; }
   .pb-note-h { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .pb-note .pb-sub { margin-top: 6px; }
+  /* Eyebrow + CTA as one block so the copy below can be separated from them by a rule. Reproduces
+     the 16px rhythm the two used to get from .plan-bridge's own gap, so stacked layouts are
+     unchanged. */
+  .pb-head { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  /* Desktop: the Step Two copy sits under a hairline that continues Step One's divider across the
+     column gap. Same 18px margin / 22px padding / --line-soft rule as .calibrator-form, so the two
+     lines are the same weight and colour; _syncStepTwoRule() puts them on the same baseline. */
+  @media (min-width: 821px) {
+    #planBridgeTop { row-gap: 0; }
+    #planBridgeTop .pb-head { width: 100%; justify-content: center; }
+    #planBridgeTop .pb-note {
+      width: 100%;
+      max-width: none;
+      margin-top: 18px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line-soft);
+    }
+    #planBridgeTop .pb-note .pb-sub { max-width: 520px; margin-left: auto; margin-right: auto; }
+  }
   /* Secondary "How it helps you" link under the Step Two CTA */
   .pb-help { background:none; border:none; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--blue,#0033ff); text-decoration:underline; text-underline-offset:3px; padding:2px; }
   .pb-help:hover { filter:brightness(1.15); }
@@ -3385,10 +3404,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   </div>
 
   <div class="plan-bridge" id="planBridgeTop">
-    <div class="pb-left">
-      <div class="pb-eyebrow">Step two</div>
+    <div class="pb-head">
+      <div class="pb-left">
+        <div class="pb-eyebrow">Step two</div>
+      </div>
+      <button class="pb-btn" id="planBridgeBtnTop" type="button">I help you →</button>
     </div>
-    <button class="pb-btn" id="planBridgeBtnTop" type="button">I help you →</button>
     <div class="pb-note">
       <div class="pb-note-h">Let your training set your time</div>
       <div class="pb-sub">Connect Strava and we'll analyze your recent runs to estimate a realistic marathon time — no guessing. Your race day forecast is privately calculated and not stored.</div>
@@ -8661,6 +8682,54 @@ try {
   }
 } catch(e){}
 window.addEventListener("resize", () => renderChart());
+
+/* ---- Keep Step Two's hairline on the same baseline as Step One's divider -------------------
+   Purely cosmetic. Step One's divider is the border-top of #calForm, and how far down the card it
+   falls depends on whether .calibrator's flex row has wrapped — which changes with the viewport, the
+   rotating CTA label and whether Reset is showing. So measure it and stretch .pb-head to match
+   instead of hard-coding an offset. Does nothing while the cards are stacked (<=820px) or while
+   Step One has no line to continue (form closed). Bails out, leaving the copy in its natural
+   position, if the stretch would make Step Two the taller card and so disturb Step One's own
+   layout. */
+function _syncStepTwoRule() {
+  try {
+    const row = document.querySelector(".steps-row");
+    const cal = $("calibrator"), form = $("calForm"), pb = $("planBridgeTop");
+    if (!row || !cal || !form || !pb) return;
+    const head = pb.querySelector(".pb-head"), note = pb.querySelector(".pb-note");
+    if (!head || !note) return;
+    head.style.minHeight = "";
+    if (getComputedStyle(row).flexDirection !== "row") return;        // stacked: nothing to continue
+    if (!form.classList.contains("open") || !form.offsetHeight) return;
+    if (pb.offsetParent === null) return;                             // hidden (plans view)
+    const want0 = form.getBoundingClientRect().top - pb.getBoundingClientRect().top;
+    const have = note.getBoundingClientRect().top - pb.getBoundingClientRect().top;
+    const h = head.getBoundingClientRect().height + (want0 - have);
+    if (!(h > 0) || h > 600) return;
+    head.style.minHeight = h.toFixed(2) + "px";
+    // Growing Step Two must not have pushed Step One's own content around (.calibrator wraps and
+    // its lines stretch). If it did, give up rather than oscillate.
+    const want1 = form.getBoundingClientRect().top - pb.getBoundingClientRect().top;
+    if (Math.abs(want1 - want0) > 0.5) head.style.minHeight = "";
+  } catch (e) {}
+}
+(function wireStepTwoRule() {
+  let t = null;
+  const kick = () => { clearTimeout(t); t = setTimeout(_syncStepTwoRule, 0); };
+  window.addEventListener("resize", kick);
+  try {
+    const form = $("calForm");
+    if (form && window.MutationObserver) {
+      new MutationObserver(kick).observe(form, { attributes: true, attributeFilter: ["class"] });
+    }
+    const word = $("calBtnWord");                                     // the label rotates every 2.6s
+    if (word && window.MutationObserver) {
+      new MutationObserver(kick).observe(word, { childList: true, characterData: true, subtree: true });
+    }
+  } catch (e) {}
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(kick).catch(() => {});
+  _syncStepTwoRule();
+})();
 
 /* ================== UNLOCK CTAs ================== */
 // (FORMSPREE_ID is declared at the top with the unlock state.)
